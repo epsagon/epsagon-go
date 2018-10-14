@@ -1,0 +1,20 @@
+service: erez-example-go-application
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: eu-west-1
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./bin/**
+
+functions:
+  hello:
+    handler: bin/hello
+    events:
+      - http:
+          path: hello
+          method: post
