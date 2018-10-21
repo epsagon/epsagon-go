@@ -20,6 +20,10 @@ func errorHandler(e error) genericHandler {
 	}
 }
 
+// validateArguments returns an error if the handler's arguments are
+// not compatible with aws lambda handlers
+// the boolean return value is wether or not the handler accepts context.Context
+// in its first argument.
 func validateArguments(handler reflect.Type) (bool, error) {
 	handlerTakesContext := false
 	if handler.NumIn() > 2 {
