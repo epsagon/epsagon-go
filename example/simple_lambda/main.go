@@ -18,6 +18,7 @@ func main() {
 		"erez-test-go",
 		"4e988052-fb55-4c6d-b46f-f17f3dd81b6b",
 		"http://dev.tc.epsagon.com",
+		false,
 		myHandler,
 	))
 }
