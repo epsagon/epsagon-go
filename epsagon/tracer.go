@@ -13,8 +13,17 @@ import (
 
 var (
 	mutex        sync.Mutex
-	globalTracer *epsagonTracer
+	globalTracer tracer
 )
+
+type tracer interface {
+	AddEvent(*protocol.Event)
+	AddException(*protocol.Exception)
+	Run()
+	Running() bool
+	Stop()
+	Stopped() bool
+}
 
 type epsagonTracer struct {
 	appName      string
@@ -29,6 +38,7 @@ type epsagonTracer struct {
 
 	closeCmd chan struct{}
 	stopped  chan struct{}
+	running  chan struct{}
 }
 
 func (tracer *epsagonTracer) sendTraces() {
@@ -67,20 +77,30 @@ func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	return bytes.NewBuffer([]byte(traceJSON)), nil
 }
 
-func (tracer *epsagonTracer) closed() bool {
+func isChannelPinged(ch chan struct{}) bool {
 	select {
-	case <-tracer.stopped:
+	case <-ch:
 		return true
 	default:
 		return false
 	}
 }
 
+// Running return true iff the tracer has been running
+func (tracer *epsagonTracer) Running() bool {
+	return isChannelPinged(tracer.running)
+}
+
+// Stopped return true iff the tracer has been closed
+func (tracer *epsagonTracer) Stopped() bool {
+	return isChannelPinged(tracer.stopped)
+}
+
 // CreateTracer will initiallize a global epsagon tracer
 func CreateTracer(appName, token, collectorURL string, metadataOnly bool) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	if globalTracer != nil && !globalTracer.closed() {
+	if globalTracer != nil && !globalTracer.Stopped() {
 		log.Println("The tracer is already created")
 		return
 	}
@@ -95,8 +115,9 @@ func CreateTracer(appName, token, collectorURL string, metadataOnly bool) {
 		exceptions:     make([]*protocol.Exception, 0, 0),
 		closeCmd:       make(chan struct{}),
 		stopped:        make(chan struct{}),
+		running:        make(chan struct{}),
 	}
-	go globalTracer.worker()
+	go globalTracer.Run()
 }
 
 // AddException adds a tracing exception to the tracer
@@ -111,7 +132,7 @@ func (tracer *epsagonTracer) AddEvent(event *protocol.Event) {
 
 // AddEvent adds an event to the tracer
 func AddEvent(event *protocol.Event) {
-	if globalTracer == nil || globalTracer.closed() {
+	if globalTracer == nil || globalTracer.Stopped() {
 		// TODO
 		log.Println("The tracer is not initialized!")
 		return
@@ -121,7 +142,7 @@ func AddEvent(event *protocol.Event) {
 
 // AddException adds an exception to the tracer
 func AddException(exception *protocol.Exception) {
-	if globalTracer == nil || globalTracer.closed() {
+	if globalTracer == nil || globalTracer.Stopped() {
 		// TODO
 		log.Println("The tracer is not initialized!")
 		return
@@ -129,24 +150,37 @@ func AddException(exception *protocol.Exception) {
 	globalTracer.AddException(exception)
 }
 
+// Stop stops the tracer running routine
+func (tracer *epsagonTracer) Stop() {
+	select {
+	case <-tracer.stopped:
+		return
+	default:
+		tracer.closeCmd <- struct{}{}
+		<-tracer.stopped
+	}
+}
+
 // StopTracer will close the tracer and send all the data to the collector
 func StopTracer() {
-	if globalTracer == nil || globalTracer.closed() {
+	if globalTracer == nil || globalTracer.Stopped() {
 		// TODO
 		log.Println("The tracer is not initialized!")
 		return
 	}
-	select {
-	case <-globalTracer.stopped:
-		return
-	default:
-		globalTracer.closeCmd <- struct{}{}
-		<-globalTracer.stopped
-	}
+	globalTracer.Stop()
 }
 
-func (tracer *epsagonTracer) worker() {
+// Run starts the runner background routine that will
+// run until it
+func (tracer *epsagonTracer) Run() {
+	if tracer.Running() {
+		return
+	}
+	close(tracer.running)
+	defer func() { tracer.running = make(chan struct{}) }()
 	defer close(tracer.stopped)
+
 	for {
 		select {
 		case event := <-tracer.eventsPipe:
