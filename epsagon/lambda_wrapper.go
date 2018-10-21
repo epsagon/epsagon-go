@@ -22,6 +22,7 @@ type epsagonLambdaWrapper struct {
 	token           string
 	applicationName string
 	collectorURL    string
+	metadataOnly    bool
 }
 
 func (handler *epsagonLambdaWrapper) createTracer() {
@@ -29,6 +30,7 @@ func (handler *epsagonLambdaWrapper) createTracer() {
 		handler.applicationName,
 		handler.token,
 		handler.collectorURL,
+		handler.metadataOnly,
 	)
 }
 
@@ -37,6 +39,8 @@ func (handler epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Raw
 	handler.createTracer()
 	defer StopTracer()
 	errorStatus := protocol.ErrorCode_OK
+
+	addLambdaTrigger(ctx, payload, handler.metadataOnly, triggerFactories)
 
 	startTime := float64(time.Now().UTC().Unix())
 
@@ -77,7 +81,7 @@ func (handler epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Raw
 }
 
 // WrapLambdaHandler wraps a generic handler for lambda function with epsagon tracing
-func WrapLambdaHandler(appName, token, collectorURL string, handler interface{}) interface{} {
+func WrapLambdaHandler(appName, token, collectorURL string, metadataOnly bool, handler interface{}) interface{} {
 	return func(ctx context.Context, payload json.RawMessage) (interface{}, error) {
 		wrapper := &epsagonLambdaWrapper{
 			applicationName: appName,
