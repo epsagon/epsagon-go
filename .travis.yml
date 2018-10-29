@@ -1,0 +1,16 @@
+language: go
+go:
+  - "1.10"
+  - "tip"
+
+before_install:
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
+install:
+  - dep ensure
+  - go get golang.org/x/lint/golint
+
+script:
+  - go test ./...
+  - go vet -v ./...
+  - golint $(go list ./...)
