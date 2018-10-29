@@ -7,6 +7,7 @@ import (
 	"github.com/epsagon/epsagon-go/protocol"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -52,6 +53,7 @@ func (handler epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Raw
 		"function_version": lambdacontext.FunctionVersion,
 		"memory":           strconv.Itoa(lambdacontext.MemoryLimitInMB),
 		"cold_start":       strconv.FormatBool(coldStart),
+		"aws_account":      strings.Split(lc.InvokedFunctionArn, ":")[4],
 		"region":           os.Getenv("AWS_REGION"),
 	}
 	coldStart = false
