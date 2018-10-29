@@ -16,7 +16,7 @@ func myHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRes
 func main() {
 	log.Println("enter main")
 	lambda.Start(epsagon.WrapLambdaHandler(
-		"erez-test-go", os.Environ("EPSAGON_TOKEN"),
+		"erez-test-go", os.Getenv("EPSAGON_TOKEN"),
 		"http://dev.tc.epsagon.com", false, myHandler,
 	))
 }
