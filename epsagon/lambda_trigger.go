@@ -1,19 +1,20 @@
 package epsagon
 
 import (
-	"context"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	lambdaEvents "github.com/aws/aws-lambda-go/events"
 	"github.com/epsagon/epsagon-go/protocol"
 	"reflect"
 	"runtime/debug"
+	"strings"
 	"time"
 )
 
-type triggerFactory func(ctx context.Context, event interface{}, metadataOnly bool) *protocol.Event
+type triggerFactory func(event interface{}, metadataOnly bool) *protocol.Event
 
-func unknownTrigger(ctx context.Context, event interface{}, metadataOnly bool) *protocol.Event {
+func unknownTrigger(event interface{}, metadataOnly bool) *protocol.Event {
 	return &protocol.Event{}
 }
 
@@ -35,7 +36,7 @@ func mapParametersToString(params map[string]string) string {
 	return string(buf)
 }
 
-func triggerAPIGatewayProxyRequest(ctx context.Context, rawEvent interface{}, metadataOnly bool) *protocol.Event {
+func triggerAPIGatewayProxyRequest(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	event, ok := rawEvent.(lambdaEvents.APIGatewayProxyRequest)
 	if !ok {
 		AddException(&protocol.Exception{
@@ -72,7 +73,7 @@ func triggerAPIGatewayProxyRequest(ctx context.Context, rawEvent interface{}, me
 			})
 			triggerEvent.Resource.Metadata["body"] = ""
 		} else {
-			triggerEvent.Resource.Metadata["body"] = string(bodyJson)
+			triggerEvent.Resource.Metadata["body"] = string(bodyJSON)
 		}
 		triggerEvent.Resource.Metadata["headers"] = mapParametersToString(event.Headers)
 	}
@@ -80,21 +81,96 @@ func triggerAPIGatewayProxyRequest(ctx context.Context, rawEvent interface{}, me
 	return triggerEvent
 }
 
+type factoryAndType struct {
+	EventType reflect.Type
+	Factory   triggerFactory
+}
+
 var (
-	triggerFactories = map[reflect.Type]triggerFactory{
-		getReflectType(lambdaEvents.APIGatewayProxyRequest{}): triggerAPIGatewayProxyRequest,
+	triggerFactories = map[string]factoryAndType{
+		"api_gateway": factoryAndType{
+			EventType: reflect.TypeOf(lambdaEvents.APIGatewayProxyRequest{}),
+			Factory:   triggerAPIGatewayProxyRequest,
+		},
 	}
 )
 
-func addLambdaTrigger(ctx context.Context, payload json.RawMessage, metadataOnly bool, triggerFactories map[reflect.Type]triggerFactory) {
-	var triggerEvent *protocol.Event
-	for eventType, factory := range triggerFactories {
-		event := reflect.New(eventType)
-		if err := json.Unmarshal(payload, event.Interface()); err == nil {
-			// On Success:
-			triggerEvent = factory(ctx, event.Elem().Interface(), metadataOnly)
-		}
+func decodeAndUnpackEvent(
+	payload json.RawMessage,
+	eventType reflect.Type,
+	factory triggerFactory,
+	metadataOnly bool,
+	disallowUnknownFields bool,
+) *protocol.Event {
+
+	event := reflect.New(eventType)
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	if disallowUnknownFields {
+		decoder.DisallowUnknownFields()
 	}
+	if err := decoder.Decode(event.Interface()); err != nil {
+		// fmt.Printf("DEBUG: addLambdaTrigger error in json decoder: %v\n", err)
+		return nil
+	}
+	return factory(event.Elem().Interface(), metadataOnly)
+}
+
+type recordField struct {
+	EventSource string
+}
+
+type interestingFields struct {
+	Records    []recordField
+	HTTPMethod string
+	Context    map[string]interface{}
+	MethodArn  string
+	Source     string
+}
+
+func guessTriggerSource(payload json.RawMessage) string {
+	var rawEvent interestingFields
+	err := json.Unmarshal(payload, &rawEvent)
+	if err != nil {
+		AddException(&protocol.Exception{
+			Type:      "trigger-identification",
+			Message:   fmt.Sprintf("Failed to unmarshal json %v\n", err),
+			Traceback: string(debug.Stack()),
+			Time:      float64(time.Now().UTC().Unix()),
+		})
+		return ""
+	}
+	triggerSource := "json"
+	if len(rawEvent.Records) > 0 {
+		triggerSource = rawEvent.Records[0].EventSource
+	} else if len(rawEvent.HTTPMethod) > 0 {
+		triggerSource = "api_gateway"
+	} else if _, ok := rawEvent.Context["http-method"]; ok {
+		triggerSource = "api_gateway_no_proxy"
+	} else if len(rawEvent.Source) > 0 {
+		sourceSlice := strings.Split(rawEvent.Source, ".")
+		triggerSource = sourceSlice[len(sourceSlice)-1]
+	}
+	return triggerSource
+}
+
+func addLambdaTrigger(
+	payload json.RawMessage,
+	metadataOnly bool,
+	triggerFactories map[string]factoryAndType) {
+
+	var triggerEvent *protocol.Event
+	for _, factoryStruct := range triggerFactories {
+		triggerEvent = decodeAndUnpackEvent(
+			payload, factoryStruct.EventType, factoryStruct.Factory, metadataOnly, true)
+	}
+
+	triggerSource := guessTriggerSource(payload)
+	factoryStruct, found := triggerFactories[triggerSource]
+	if found {
+		triggerEvent = decodeAndUnpackEvent(
+			payload, factoryStruct.EventType, factoryStruct.Factory, metadataOnly, false)
+	}
+
 	// If a trigger was found
 	if triggerEvent != nil {
 		AddEvent(triggerEvent)

@@ -36,12 +36,12 @@ func (handler *epsagonLambdaWrapper) createTracer() {
 }
 
 // Invoke calls the handler, and creates a tracer for that duration.
-func (handler epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.RawMessage) (interface{}, error) {
+func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.RawMessage) (interface{}, error) {
 	handler.createTracer()
 	defer StopTracer()
 	errorStatus := protocol.ErrorCode_OK
 
-	addLambdaTrigger(ctx, payload, handler.metadataOnly, triggerFactories)
+	addLambdaTrigger(payload, handler.metadataOnly, triggerFactories)
 
 	startTime := float64(time.Now().UTC().Unix())
 
