@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"runtime"
 	"sync"
+	"time"
 )
 
 var (
@@ -49,7 +50,8 @@ func (tracer *epsagonTracer) sendTraces() {
 		log.Println("failed to Marshal json")
 		return
 	}
-	resp, err := http.Post(tracer.collectorURL, "application/json", tracesReader)
+	client := &http.Client{Timeout: time.Duration(time.Second)}
+	resp, err := client.Post(tracer.collectorURL, "application/json", tracesReader)
 	if err != nil {
 		var respBody []byte
 		resp.Body.Read(respBody)
