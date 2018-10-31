@@ -4,6 +4,8 @@ provider:
   name: aws
   runtime: go1.x
   region: eu-west-1
+  environment:
+    EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
 
 package:
   exclude:

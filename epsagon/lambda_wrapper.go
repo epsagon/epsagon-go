@@ -19,20 +19,12 @@ type genericHandler func(context.Context, json.RawMessage) (interface{}, error)
 
 // epsagonLambdaWrapper is a generic lambda function type
 type epsagonLambdaWrapper struct {
-	handler         genericHandler
-	token           string
-	applicationName string
-	collectorURL    string
-	metadataOnly    bool
+	handler genericHandler
+	config  *Config
 }
 
 func (handler *epsagonLambdaWrapper) createTracer() {
-	CreateTracer(
-		handler.applicationName,
-		handler.token,
-		handler.collectorURL,
-		handler.metadataOnly,
-	)
+	CreateTracer(handler.config)
 }
 
 // Invoke calls the handler, and creates a tracer for that duration.
@@ -41,7 +33,7 @@ func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Ra
 	defer StopTracer()
 	errorStatus := protocol.ErrorCode_OK
 
-	addLambdaTrigger(payload, handler.metadataOnly, triggerFactories)
+	addLambdaTrigger(payload, handler.config.MetadataOnly, triggerFactories)
 
 	startTime := float64(time.Now().UTC().Unix())
 
@@ -83,13 +75,11 @@ func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Ra
 }
 
 // WrapLambdaHandler wraps a generic handler for lambda function with epsagon tracing
-func WrapLambdaHandler(appName, token, collectorURL string, metadataOnly bool, handler interface{}) interface{} {
+func WrapLambdaHandler(config *Config, handler interface{}) interface{} {
 	return func(ctx context.Context, payload json.RawMessage) (interface{}, error) {
 		wrapper := &epsagonLambdaWrapper{
-			applicationName: appName,
-			token:           token,
-			collectorURL:    collectorURL,
-			handler:         makeGenericHandler(handler),
+			config:  config,
+			handler: makeGenericHandler(handler),
 		}
 		return wrapper.Invoke(ctx, payload)
 	}

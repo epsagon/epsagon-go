@@ -5,7 +5,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"log"
-	"os"
 )
 
 func myHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -15,8 +14,8 @@ func myHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRes
 
 func main() {
 	log.Println("enter main")
-	lambda.Start(epsagon.WrapLambdaHandler(
-		"erez-test-go", os.Getenv("EPSAGON_TOKEN"),
-		"http://dev.tc.epsagon.com", false, myHandler,
-	))
+	config := epsagon.Config{
+		ApplicationName: "erez-test-go",
+		CollectorURL:    "http://dev.tc.epsagon.com"}
+	lambda.Start(epsagon.WrapLambdaHandler(&config, myHandler))
 }
