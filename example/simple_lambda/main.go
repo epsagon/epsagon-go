@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"log"
 )
 
-func myHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	log.Println("In myHandler, received body: ", request.Body)
-	return events.APIGatewayProxyResponse{Body: request.Body, StatusCode: 200}, nil
+type Response events.APIGatewayProxyResponse
+
+func Handler(ctx context.Context) (Response, error) {
+	log.Println("In myHandler, received body: ", ctx)
+	return Response {Body: "yes", StatusCode: 200}, nil
 }
 
 func main() {
@@ -17,5 +20,5 @@ func main() {
 	config := epsagon.Config{
 		ApplicationName: "erez-test-go",
 		CollectorURL:    "http://dev.tc.epsagon.com"}
-	lambda.Start(epsagon.WrapLambdaHandler(&config, myHandler))
+	lambda.Start(epsagon.WrapLambdaHandler(&config, Handler))
 }

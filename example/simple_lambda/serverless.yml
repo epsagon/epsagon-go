@@ -1,4 +1,4 @@
-service: erez-example-go-application
+service: hen-test-go-app
 
 provider:
   name: aws
@@ -15,8 +15,4 @@ package:
 
 functions:
   hello:
-    handler: bin/hello
-    events:
-      - http:
-          path: hello
-          method: post
+    handler: main
