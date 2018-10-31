@@ -2,11 +2,13 @@ package epsagon
 
 import (
 	"bytes"
+	"fmt"
 	protocol "github.com/epsagon/epsagon-go/protocol"
 	"github.com/golang/protobuf/jsonpb"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -26,11 +28,17 @@ type tracer interface {
 	Stopped() bool
 }
 
+// Config is the configuration for Epsagon's tracer
+type Config struct {
+	ApplicationName string
+	Token           string
+	CollectorURL    string
+	MetadataOnly    bool
+	Debug           bool
+}
+
 type epsagonTracer struct {
-	appName      string
-	token        string
-	collectorURL string
-	metadataOnly bool
+	Config *Config
 
 	eventsPipe     chan *protocol.Event
 	events         []*protocol.Event
@@ -46,12 +54,11 @@ func (tracer *epsagonTracer) sendTraces() {
 	tracesReader, err := tracer.getTraceReader()
 	if err != nil {
 		// TODO create an exception and send a trace only with that
-		log.Printf("Encountered an error while marshaling the traces: %v\n", err)
-		log.Println("failed to Marshal json")
+		log.Printf("Epsagon: Encountered an error while marshaling the traces: %v\n", err)
 		return
 	}
 	client := &http.Client{Timeout: time.Duration(time.Second)}
-	resp, err := client.Post(tracer.collectorURL, "application/json", tracesReader)
+	resp, err := client.Post(tracer.Config.CollectorURL, "application/json", tracesReader)
 	if err != nil {
 		var respBody []byte
 		resp.Body.Read(respBody)
@@ -63,8 +70,8 @@ func (tracer *epsagonTracer) sendTraces() {
 func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	version := runtime.Version()
 	trace := protocol.Trace{
-		AppName:    tracer.appName,
-		Token:      tracer.token,
+		AppName:    tracer.Config.ApplicationName,
+		Token:      tracer.Config.Token,
 		Events:     tracer.events,
 		Exceptions: tracer.exceptions,
 		Version:    "0.0.1",
@@ -98,19 +105,42 @@ func (tracer *epsagonTracer) Stopped() bool {
 	return isChannelPinged(tracer.stopped)
 }
 
+func fillConfigDefaults(config *Config) {
+	if !config.Debug {
+		if os.Getenv("EPSAGON_DEBUG") == "TRUE" {
+			config.Debug = true
+		}
+	}
+	if len(config.Token) == 0 {
+		config.Token = os.Getenv("EPSAGON_TOKEN")
+		if config.Debug {
+			log.Println("EPSAGON DEBUG: setting token from environment variable")
+		}
+	}
+	if len(config.CollectorURL) == 0 {
+		region := os.Getenv("AWS_REGION")
+		if len(region) != 0 {
+			config.CollectorURL = fmt.Sprintf("http://%s.tc.epsagon.com", region)
+		} else {
+			config.CollectorURL = "http://us-east-1.tc.epsagon.com"
+		}
+		if config.Debug {
+			log.Printf("EPSAGON DEBUG: setting collector url to %s", config.CollectorURL)
+		}
+	}
+}
+
 // CreateTracer will initiallize a global epsagon tracer
-func CreateTracer(appName, token, collectorURL string, metadataOnly bool) {
+func CreateTracer(config *Config) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	if globalTracer != nil && !globalTracer.Stopped() {
 		log.Println("The tracer is already created")
 		return
 	}
+	fillConfigDefaults(config)
 	globalTracer = &epsagonTracer{
-		appName:        appName,
-		token:          token,
-		collectorURL:   collectorURL,
-		metadataOnly:   metadataOnly,
+		Config:         config,
 		eventsPipe:     make(chan *protocol.Event),
 		events:         make([]*protocol.Event, 0, 0),
 		exceptionsPipe: make(chan *protocol.Exception),
@@ -118,6 +148,9 @@ func CreateTracer(appName, token, collectorURL string, metadataOnly bool) {
 		closeCmd:       make(chan struct{}),
 		stopped:        make(chan struct{}),
 		running:        make(chan struct{}),
+	}
+	if config.Debug {
+		log.Println("EPSAGON DEBUG: Created a new tracer")
 	}
 	go globalTracer.Run()
 }
@@ -130,6 +163,9 @@ func (tracer *epsagonTracer) AddException(exception *protocol.Exception) {
 // AddEvent adds an event to the tracer
 func (tracer *epsagonTracer) AddEvent(event *protocol.Event) {
 	tracer.eventsPipe <- event
+	if tracer.Config.Debug {
+		log.Println("EPSAGON DEBUG: Adding event: ", event)
+	}
 }
 
 // AddEvent adds an event to the tracer
@@ -176,6 +212,9 @@ func StopTracer() {
 // Run starts the runner background routine that will
 // run until it
 func (tracer *epsagonTracer) Run() {
+	if tracer.Config.Debug {
+		log.Println("EPSAGON DEBUG: tracer started running")
+	}
 	if tracer.Running() {
 		return
 	}
@@ -190,6 +229,9 @@ func (tracer *epsagonTracer) Run() {
 		case exception := <-tracer.exceptionsPipe:
 			tracer.exceptions = append(tracer.exceptions, exception)
 		case <-tracer.closeCmd:
+			if tracer.Config.Debug {
+				log.Println("EPSAGON DEBUG: tracer stops running, sending traces")
+			}
 			tracer.sendTraces()
 			return
 		}
