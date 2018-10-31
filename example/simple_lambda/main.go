@@ -10,8 +10,9 @@ import (
 
 type Response events.APIGatewayProxyResponse
 
-func Handler(ctx context.Context) (Response, error) {
+func Handler(ctx context.Context, event interface{}) (Response, error) {
 	log.Println("In myHandler, received body: ", ctx)
+	log.Println("In myHandler, received body: ", event)
 	return Response {Body: "yes", StatusCode: 200}, nil
 }
 
