@@ -13,7 +13,7 @@ dep ensure -add github.com/epsagon/com
 ## Usage
 
 ### To wrap a lambda handler
-```
+```go
 package main
 
 import (
@@ -31,17 +31,29 @@ func myHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRes
 func main() {
 	log.Println("enter main")
 	lambda.Start(epsagon.WrapLambdaHandler(
-		"APPLICATION-NAME", os.Environ("EPSAGON_TOKEN"),
-		"http://tc.epsagon.com", false, myHandler,
-	))
+        &epsagon.Config{ApplicationName: "APPLICATION-NAME"},
+        myHandler))
 }
 ```
 
 `epsagon.WrapLambdaHandler` will wrap your handler with code that will start a tracer that will wait for events and will send them to the collector when the lambda finishes
 
 ### Wrapping other libraries
-TODO
+#### aws-sdk-go
+Wrapping of aws-sdk-go is done through the Session object that has to be created to communicate with AWS:
+```go
+import (
+...
+	"github.com/epsagon/epsagon-go/wrappers/aws/aws-sdk-go/aws"
+)
+    ...
+	sess := epsagonawswrapper.WrapSession(session.Must(session.NewSession()))
+	svcSQS := sqs.New(sess)
+```
 
 ## Configuration
-
-
+The epsagon.Config structure that is sent to `WraphLambdaHandler` has some fields to customize epsagons behaviour:
+- `MetadataOnly`: Boolean flag to make sure to only send metadata information and not the data itself
+- `Debug`: Will print debug information form epsagon
+- `CollectorURL`: Set the collector's address instead of getting it from `EPSAGON_COLLECTOR_URL` or using epsagon's default in the same aws region
+- `Token`: Your epsagon token (The default is to attempt to read this from `EPSAGON_TOKEN` environment variable)

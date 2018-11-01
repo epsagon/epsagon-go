@@ -7,17 +7,18 @@ import (
 	"log"
 )
 
+// Response is an API gateway response type
 type Response events.APIGatewayProxyResponse
 
 func myHandler(request events.APIGatewayProxyRequest) (Response, error) {
 	log.Println("In myHandler, received body: ", request.Body)
-	return Response {Body: "yes", StatusCode: 200}, nil
+	return Response{Body: "yes", StatusCode: 200}, nil
 }
 
 func main() {
 	log.Println("enter main")
 	config := epsagon.Config{
 		ApplicationName: "epsagon-test-go",
-		CollectorURL:    "http://dev.tc.epsagon.com"}
+	}
 	lambda.Start(epsagon.WrapLambdaHandler(&config, myHandler))
 }
