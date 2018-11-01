@@ -64,7 +64,7 @@ func (tracer *epsagonTracer) sendTraces() {
 		var respBody []byte
 		resp.Body.Read(respBody)
 		resp.Body.Close()
-		log.Printf("Error while sending traces \n%v\n%v\n", err, respBody)
+		log.Printf("Error while sending traces \n%v\n%+v\n", err, respBody)
 	}
 }
 
@@ -78,6 +78,10 @@ func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 		Version:    "0.0.1",
 		Platform:   version,
 	}
+	if tracer.Config.Debug {
+		log.Printf("EPSAGON DEBUG sending trace: %+v\n", trace)
+	}
+
 	marshaler := jsonpb.Marshaler{
 		EnumsAsInts: true, EmitDefaults: true, OrigName: true}
 	traceJSON, err := marshaler.MarshalToString(&trace)
@@ -122,14 +126,19 @@ func fillConfigDefaults(config *Config) {
 		}
 	}
 	if len(config.CollectorURL) == 0 {
-		region := os.Getenv("AWS_REGION")
-		if len(region) != 0 {
-			config.CollectorURL = fmt.Sprintf("http://%s.tc.epsagon.com", region)
+		envURL := os.Getenv("EPSAGON_COLLECTOR_URL")
+		if len(envURL) != 0 {
+			config.CollectorURL = envURL
 		} else {
-			config.CollectorURL = "http://us-east-1.tc.epsagon.com"
+			region := os.Getenv("AWS_REGION")
+			if len(region) != 0 {
+				config.CollectorURL = fmt.Sprintf("http://%s.tc.epsagon.com", region)
+			} else {
+				config.CollectorURL = "http://us-east-1.tc.epsagon.com"
+			}
 		}
 		if config.Debug {
-			log.Printf("EPSAGON DEBUG: setting collector url to %s", config.CollectorURL)
+			log.Printf("EPSAGON DEBUG: setting collector url to %s\n", config.CollectorURL)
 		}
 	}
 }
@@ -166,10 +175,10 @@ func (tracer *epsagonTracer) AddException(exception *protocol.Exception) {
 
 // AddEvent adds an event to the tracer
 func (tracer *epsagonTracer) AddEvent(event *protocol.Event) {
-	tracer.eventsPipe <- event
 	if tracer.Config.Debug {
 		log.Println("EPSAGON DEBUG: Adding event: ", event)
 	}
+	tracer.eventsPipe <- event
 }
 
 // AddEvent adds an event to the tracer
@@ -240,4 +249,14 @@ func (tracer *epsagonTracer) Run() {
 			return
 		}
 	}
+}
+
+// GetGlobalTracerConfig returns the configuration of the global tracer
+func GetGlobalTracerConfig() *Config {
+	if globalTracer == nil || globalTracer.Stopped() {
+		// TODO
+		log.Println("The tracer is not initialized!")
+		return nil
+	}
+	return globalTracer.(*epsagonTracer).Config
 }

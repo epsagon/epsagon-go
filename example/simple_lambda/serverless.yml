@@ -6,6 +6,7 @@ provider:
   region: eu-west-1
   environment:
     EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
+    EPSAGON_COLLECTOR_URL: ${env:EPSAGON_COLLECTOR_URL}
 
 functions:
   hello:

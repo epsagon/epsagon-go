@@ -1,0 +1,62 @@
+service: example-go-app-sqs
+
+custom:
+  QueueName: GoExampleTestQueue
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: eu-west-1
+  environment:
+    EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
+    EPSAGON_COLLECTOR_URL: ${env:EPSAGON_COLLECTOR_URL}
+
+  queueArn:
+    Fn::Join:
+      - ":"
+      - - "arn:aws:sqs"
+        - ${self:provider.region}
+        - Ref: AWS::AccountId
+        - ${self:custom.QueueName}
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "sqs:ListQueues"
+      Resource:
+        Fn::Join:
+          - ":"
+          - - "arn:aws:sqs"
+            - ${self:provider.region}
+            - Ref: AWS::AccountId
+            - "*"
+    - Effect: "Allow"
+      Action:
+        - "sqs:*"
+      Resource: ${self:provider.queueArn}
+
+functions:
+  hello:
+    handler: hello/main
+    events:
+      - http:
+          path: hello
+          method: post
+    environment:
+      SQS_NAME: ${self:custom.QueueName}
+  triggered:
+    handler: triggered/main
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - ExampleTestQueue
+              - Arn
+          batchSize: 1
+
+resources:
+  Resources:
+    ExampleTestQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.QueueName}

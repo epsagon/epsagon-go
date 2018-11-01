@@ -18,6 +18,6 @@ func main() {
 	log.Println("enter main")
 	config := epsagon.Config{
 		ApplicationName: "epsagon-test-go",
-		CollectorURL:    "http://dev.tc.epsagon.com"}
+	}
 	lambda.Start(epsagon.WrapLambdaHandler(&config, myHandler))
 }
