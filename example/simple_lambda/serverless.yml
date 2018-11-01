@@ -1,4 +1,4 @@
-service: hen-test-go-app
+service: example-go-app
 
 provider:
   name: aws
