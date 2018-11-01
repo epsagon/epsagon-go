@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var (
@@ -35,7 +34,7 @@ func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Ra
 
 	addLambdaTrigger(payload, handler.config.MetadataOnly, triggerFactories)
 
-	startTime := float64(time.Now().UTC().Unix())
+	startTime := GetTimestamp()
 
 	lc, _ := lambdacontext.FromContext(ctx)
 
@@ -56,7 +55,7 @@ func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Ra
 		errorStatus = protocol.ErrorCode_ERROR
 	}
 
-	endTime := float64(time.Now().UTC().Unix())
+	endTime := GetTimestamp()
 	duration := endTime - startTime
 	AddEvent(&protocol.Event{
 		Id:        lc.AwsRequestID,

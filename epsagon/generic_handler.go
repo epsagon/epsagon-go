@@ -4,9 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	protocol "github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/protocol"
 	"reflect"
-	"time"
 )
 
 func errorHandler(e error) genericHandler {
@@ -14,7 +13,7 @@ func errorHandler(e error) genericHandler {
 		AddException(&protocol.Exception{
 			Type:    "wrapper",
 			Message: fmt.Sprintf("Error in wrapper: %v", e),
-			Time:    float64(time.Now().UTC().Unix()),
+			Time:    GetTimestamp(),
 		})
 		return nil, e
 	}
@@ -89,7 +88,7 @@ func makeGenericHandler(handlerSymbol interface{}) genericHandler {
 				AddException(&protocol.Exception{
 					Type:    "wrapper",
 					Message: fmt.Sprintf("Error in wrapper: failed to convert arguments: %v", err),
-					Time:    float64(time.Now().UTC().Unix()),
+					Time:    GetTimestamp(),
 				})
 				return nil, err
 			}

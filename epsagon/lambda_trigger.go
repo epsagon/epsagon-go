@@ -10,8 +10,8 @@ import (
 	"github.com/satori/go.uuid"
 	"reflect"
 	"runtime/debug"
+	"strconv"
 	"strings"
-	"time"
 )
 
 type triggerFactory func(event interface{}, metadataOnly bool) *protocol.Event
@@ -31,7 +31,7 @@ func mapParametersToString(params map[string]string) string {
 			Type:      "trigger-creation",
 			Message:   fmt.Sprintf("Failed to serialize %v", params),
 			Traceback: string(debug.Stack()),
-			Time:      float64(time.Now().UTC().Unix()),
+			Time:      GetTimestamp(),
 		})
 		return ""
 	}
@@ -46,14 +46,14 @@ func triggerAPIGatewayProxyRequest(rawEvent interface{}, metadataOnly bool) *pro
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.APIGatewayProxyRequest %v",
 				rawEvent),
-			Time: float64(time.Now().UTC().Unix()),
+			Time: GetTimestamp(),
 		})
 		return nil
 	}
 	triggerEvent := &protocol.Event{
 		Id:        event.RequestContext.RequestID,
 		Origin:    "trigger",
-		StartTime: float64(time.Now().UTC().Unix()),
+		StartTime: GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      event.Resource,
 			Type:      "api_gateway",
@@ -71,7 +71,7 @@ func triggerAPIGatewayProxyRequest(rawEvent interface{}, metadataOnly bool) *pro
 				Type:      "trigger-creation",
 				Message:   fmt.Sprintf("Failed to serialize body %s", event.Body),
 				Traceback: string(debug.Stack()),
-				Time:      float64(time.Now().UTC().Unix()),
+				Time:      GetTimestamp(),
 			})
 			triggerEvent.Resource.Metadata["body"] = ""
 		} else {
@@ -91,7 +91,7 @@ func triggerS3Event(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.S3Event %v",
 				rawEvent),
-			Time: float64(time.Now().UTC().Unix()),
+			Time: GetTimestamp(),
 		})
 		return nil
 	}
@@ -99,7 +99,7 @@ func triggerS3Event(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	triggerEvent := &protocol.Event{
 		Id:         fmt.Sprintf("s3-trigger-%s", event.Records[0].ResponseElements["x-amz-request-id"]),
 		Origin:    "trigger",
-		StartTime: float64(time.Now().UTC().Unix()),
+		StartTime: GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      event.Records[0].S3.Bucket.Name,
 			Type:      "s3",
@@ -107,7 +107,7 @@ func triggerS3Event(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 			Metadata: map[string]string{
 				"region": event.Records[0].AWSRegion,
 				"object_key": event.Records[0].S3.Object.Key,
-				"object_size": string(event.Records[0].S3.Object.Size),
+				"object_size": strconv.FormatInt(event.Records[0].S3.Object.Size, 10),
 				"object_etag": event.Records[0].S3.Object.ETag,
 				"object_sequencer": event.Records[0].S3.Object.Sequencer,
 				"x-amz-request-id": event.Records[0].ResponseElements["x-amz-request-id"],
@@ -126,7 +126,7 @@ func triggerKinesisEvent(rawEvent interface{}, metadataOnly bool) *protocol.Even
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.KinesisEvent %v",
 				rawEvent),
-			Time: float64(time.Now().UTC().Unix()),
+			Time: GetTimestamp(),
 		})
 		return nil
 	}
@@ -136,7 +136,7 @@ func triggerKinesisEvent(rawEvent interface{}, metadataOnly bool) *protocol.Even
 	triggerEvent := &protocol.Event{
 		Id:         event.Records[0].EventID,
 		Origin:    "trigger",
-		StartTime: float64(time.Now().UTC().Unix()),
+		StartTime: GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      eventSourceArnSlice[len(eventSourceArnSlice)-1],
 			Type:      "kinesis",
@@ -161,7 +161,7 @@ func triggerSNSEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.SNSEvent %v",
 				rawEvent),
-			Time: float64(time.Now().UTC().Unix()),
+			Time: GetTimestamp(),
 		})
 		return nil
 	}
@@ -172,7 +172,7 @@ func triggerSNSEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	triggerEvent := &protocol.Event{
 		Id:         event.Records[0].SNS.MessageID,
 		Origin:    "trigger",
-		StartTime: float64(time.Now().UTC().Unix()),
+		StartTime: GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      eventSubscriptionArnSlice[len(eventSubscriptionArnSlice)-2],
 			Type:      "sns",
@@ -198,7 +198,7 @@ func triggerSQSEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.SQSEvent %v",
 				rawEvent),
-			Time: float64(time.Now().UTC().Unix()),
+			Time: GetTimestamp(),
 		})
 		return nil
 	}
@@ -208,7 +208,7 @@ func triggerSQSEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	triggerEvent := &protocol.Event{
 		Id:         event.Records[0].MessageId,
 		Origin:    "trigger",
-		StartTime: float64(time.Now().UTC().Unix()),
+		StartTime: GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      eventSourceArnSlice[len(eventSourceArnSlice)-1],
 			Type:      "sqs",
@@ -237,7 +237,7 @@ func triggerJSONEvent(rawEvent json.RawMessage, metadataOnly bool) *protocol.Eve
 	triggerEvent := &protocol.Event{
 		Id: uuid.NewV4().String(),
 		Origin:    "trigger",
-		StartTime: float64(time.Now().UTC().Unix()),
+		StartTime: GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      fmt.Sprintf("trigger-%s", lambdaContext.FunctionName),
 			Type:      "json",
@@ -321,7 +321,7 @@ func guessTriggerSource(payload json.RawMessage) string {
 			Type:      "trigger-identification",
 			Message:   fmt.Sprintf("Failed to unmarshal json %v\n", err),
 			Traceback: string(debug.Stack()),
-			Time:      float64(time.Now().UTC().Unix()),
+			Time:      GetTimestamp(),
 		})
 		return ""
 	}
