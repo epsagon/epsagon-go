@@ -2,6 +2,11 @@
 
 [![Build Status][1]][2] [![GoDoc][3]][4]
 
+[1]: https://travis-ci.com/epsagon/epsagon-go.svg?branch=master
+[2]: https://travis-ci.com/epsagon/epsagon-go
+[3]: https://godoc.org/github.com/epsagon/epsagon-go?status.svg
+[4]: https://godoc.org/github.com/epsagon/epsagon-go
+
 ## Installing
 ```
 go get github.com/epsagon/com
