@@ -16,3 +16,7 @@ package:
 functions:
   hello:
     handler: main
+  events:
+    - http:
+        path: hello
+        method: post
