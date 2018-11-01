@@ -9,11 +9,11 @@
 
 ## Installing
 ```
-go get github.com/epsagon/com
+go get github.com/epsagon/epsagon-go
 ```
 Or using `dep`:
 ```
-dep ensure -add github.com/epsagon/com
+dep ensure -add github.com/epsagon/epsagon-go
 ```
 ## Usage
 
