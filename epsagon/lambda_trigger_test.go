@@ -64,8 +64,8 @@ var _ = Describe("epsagon trigger suite", func() {
 			}
 		})
 
-		Context("handling of knonwn trigger", func() {
-			It("identifies the first known handler", func() {
+		Context("Handling of known trigger", func() {
+			It("Identifies the first known handler", func() {
 				exampleJSON, err := json.Marshal(exampleAPIGateWay)
 				if err != nil {
 					Fail("Failed to marshal json")
@@ -76,8 +76,8 @@ var _ = Describe("epsagon trigger suite", func() {
 			})
 		})
 
-		Context("handling of knonwn trigger with extra fields", func() {
-			It("identifies the first known handler", func() {
+		Context("Handling of known trigger with extra fields", func() {
+			It("Identifies the first known handler", func() {
 				exampleJSON, err := json.Marshal(exampleAPIGateWay)
 				if err != nil {
 					Fail("Failed to marshal json")
@@ -98,14 +98,15 @@ var _ = Describe("epsagon trigger suite", func() {
 			})
 		})
 
-		Context("handling of unknown trigger", func() {
-			It("doesn't add any events", func() {
+		Context("Handling of unknown trigger", func() {
+			It("Adds a JSON Event", func() {
 				exampleJSON, err := json.Marshal(exampleInventedEvent)
 				if err != nil {
 					Fail("Failed to marshal json")
 				}
 				addLambdaTrigger(json.RawMessage(exampleJSON), false, triggerFactories)
-				Expect(len(events)).To(BeNumerically("==", 0))
+				Expect(len(events)).To(BeNumerically("==", 1))
+				Expect(events[0].Resource.Type).To(Equal("json"))
 			})
 		})
 	})

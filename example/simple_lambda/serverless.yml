@@ -1,4 +1,4 @@
-service: erez-example-go-application
+service: example-go-app
 
 provider:
   name: aws
@@ -7,16 +7,10 @@ provider:
   environment:
     EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
 
-package:
-  exclude:
-    - ./**
-  include:
-    - ./bin/**
-
 functions:
   hello:
-    handler: bin/hello
+    handler: main
     events:
-      - http:
-          path: hello
-          method: post
+    - http:
+        path: hello
+        method: post
