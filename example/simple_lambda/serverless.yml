@@ -7,16 +7,10 @@ provider:
   environment:
     EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
 
-package:
-  exclude:
-    - ./**
-  include:
-    - ./bin/**
-
 functions:
   hello:
     handler: main
-  events:
+    events:
     - http:
         path: hello
         method: post
