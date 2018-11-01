@@ -58,6 +58,7 @@ func (tracer *epsagonTracer) sendTraces() {
 		return
 	}
 	client := &http.Client{Timeout: time.Duration(time.Second)}
+
 	resp, err := client.Post(tracer.Config.CollectorURL, "application/json", tracesReader)
 	if err != nil {
 		var respBody []byte
@@ -82,6 +83,9 @@ func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	traceJSON, err := marshaler.MarshalToString(&trace)
 	if err != nil {
 		return nil, err
+	}
+	if tracer.Config.Debug {
+		log.Printf("Final Traces: %s ", traceJSON)
 	}
 	return bytes.NewBuffer([]byte(traceJSON)), nil
 }
