@@ -17,7 +17,7 @@ func myHandler(request events.APIGatewayProxyRequest) (Response, error) {
 func main() {
 	log.Println("enter main")
 	config := epsagon.Config{
-		ApplicationName: "erez-test-go",
+		ApplicationName: "epsagon-test-go",
 		CollectorURL:    "http://dev.tc.epsagon.com"}
 	lambda.Start(epsagon.WrapLambdaHandler(&config, myHandler))
 }
