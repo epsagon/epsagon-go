@@ -4,7 +4,7 @@ import (
 	// "fmt"
 	"encoding/json"
 	lambdaEvents "github.com/aws/aws-lambda-go/events"
-	protocol "github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/protocol"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"testing"
@@ -58,9 +58,9 @@ var _ = Describe("epsagon trigger suite", func() {
 		BeforeEach(func() {
 			events = make([]*protocol.Event, 0)
 			exceptions = make([]*protocol.Exception, 0)
-			globalTracer = &mockedEpsagonTracer{
-				events:     &events,
-				exceptions: &exceptions,
+			GlobalTracer = &MockedEpsagonTracer{
+				Events:     &events,
+				Exceptions: &exceptions,
 			}
 		})
 

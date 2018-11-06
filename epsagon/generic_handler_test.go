@@ -11,27 +11,6 @@ import (
 	"testing"
 )
 
-// will not send traces if closed
-type mockedEpsagonTracer struct {
-	exceptions *[]*protocol.Exception
-	events     *[]*protocol.Event
-}
-
-func (t *mockedEpsagonTracer) Run() {}
-func (t *mockedEpsagonTracer) Running() bool {
-	return false
-}
-func (t *mockedEpsagonTracer) Stop() {}
-func (t *mockedEpsagonTracer) Stopped() bool {
-	return false
-}
-func (t *mockedEpsagonTracer) AddEvent(e *protocol.Event) {
-	*t.events = append(*t.events, e)
-}
-func (t *mockedEpsagonTracer) AddException(e *protocol.Exception) {
-	*t.exceptions = append(*t.exceptions, e)
-}
-
 func TestGenericHandler(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "GenericHandler suite")
@@ -139,9 +118,9 @@ var _ = Describe("GenericHandler suite", func() {
 		BeforeEach(func() {
 			events = make([]*protocol.Event, 0)
 			exceptions = make([]*protocol.Exception, 0)
-			globalTracer = &mockedEpsagonTracer{
-				events:     &events,
-				exceptions: &exceptions,
+			GlobalTracer = &MockedEpsagonTracer{
+				Events:     &events,
+				Exceptions: &exceptions,
 			}
 		})
 
