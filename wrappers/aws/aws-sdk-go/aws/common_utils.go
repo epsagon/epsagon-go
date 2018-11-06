@@ -1,9 +1,13 @@
 package epsagonawswrapper
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"reflect"
+	"strconv"
 )
 
 type specificOperationHandler func(r *request.Request, res *protocol.Resource, metadataOnly bool)
@@ -22,4 +26,27 @@ func updateMetadataFromValue(
 	if ok {
 		metadata[targetKey] = fieldValue
 	}
+}
+
+func updateMetadataFromInt64(
+	value reflect.Value, fieldName string, targetKey string, metadata map[string]string) {
+	field := value.FieldByName(fieldName)
+	if field == (reflect.Value{}) {
+		return
+	}
+	metadata[targetKey] = strconv.FormatInt(field.Elem().Int(), 10)
+}
+
+func updateMetadataWithFieldToJSON(
+	value reflect.Value, fieldName string, targetKey string, metadata map[string]string) {
+	field := value.FieldByName(fieldName)
+	if field == (reflect.Value{}) {
+		return
+	}
+	stream, err := json.Marshal(field.Interface())
+	if err != nil {
+		epsagon.AddExceptionTypeAndMessage("aws-sdk-go", fmt.Sprintf("%v", err))
+		return
+	}
+	metadata[targetKey] = string(stream)
 }

@@ -12,16 +12,20 @@ func GetTimestamp() float64 {
 	return float64(time.Now().UnixNano()) / float64(time.Millisecond) / float64(time.Nanosecond) / 1000.0
 }
 
+func AddExceptionTypeAndMessage(exceptionType, msg string) {
+	stack := debug.Stack()
+	AddException(&protocol.Exception{
+		Type:      exceptionType,
+		Message:   msg,
+		Traceback: string(stack),
+		Time:      GetTimestamp(),
+	})
+}
+
 // GeneralEpsagonRecover recover function that will send exception to epsagon
-func GeneralEpsagonRecover(kind, msg string) {
+func GeneralEpsagonRecover(exceptionType, msg string) {
 	if r := recover(); r != nil {
-		stack := debug.Stack()
-		AddException(&protocol.Exception{
-			Type:      kind,
-			Message:   fmt.Sprintf("%s:%+v", msg, r),
-			Traceback: string(stack),
-			Time:      GetTimestamp(),
-		})
+		AddExceptionTypeAndMessage(exceptionType, fmt.Sprintf("%s:%+v", msg, r))
 	}
 }
 

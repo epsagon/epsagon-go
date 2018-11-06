@@ -52,8 +52,9 @@ func completeEventData(r *request.Request) {
 type factory func(*request.Request, *protocol.Resource, bool)
 
 var awsResourceEventFactories = map[string]factory{
-	"sqs": sqsEventDataFactory,
-	"s3":  s3EventDataFactory,
+	"sqs":      sqsEventDataFactory,
+	"s3":       s3EventDataFactory,
+	"dynamodb": dynamodbEventDataFactory,
 }
 
 func extractResourceInformation(r *request.Request) *protocol.Resource {
