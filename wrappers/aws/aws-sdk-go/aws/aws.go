@@ -55,6 +55,7 @@ var awsResourceEventFactories = map[string]factory{
 	"sqs":      sqsEventDataFactory,
 	"s3":       s3EventDataFactory,
 	"dynamodb": dynamodbEventDataFactory,
+	"kinesis":  kinesisEventDataFactory,
 }
 
 func extractResourceInformation(r *request.Request) *protocol.Resource {

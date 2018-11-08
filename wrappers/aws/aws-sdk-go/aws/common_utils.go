@@ -12,6 +12,18 @@ import (
 
 type specificOperationHandler func(r *request.Request, res *protocol.Resource, metadataOnly bool)
 
+func handleSpecificOperation(
+	r *request.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	handlers map[string]specificOperationHandler,
+) {
+	handler := handlers[res.Operation]
+	if handler != nil {
+		handler(r, res, metadataOnly)
+	}
+}
+
 func getFieldStringPtr(value reflect.Value, fieldName string) (string, bool) {
 	field := value.FieldByName(fieldName)
 	if field == (reflect.Value{}) {
