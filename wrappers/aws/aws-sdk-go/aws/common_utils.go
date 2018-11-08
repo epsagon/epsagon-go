@@ -36,6 +36,15 @@ func getFieldStringPtr(value reflect.Value, fieldName string) (string, bool) {
 	return field.Elem().String(), true
 }
 
+func updateMetadataFromBytes(
+	value reflect.Value, fieldName string, targetKey string, metadata map[string]string) {
+	field := value.FieldByName(fieldName)
+	if field == (reflect.Value{}) {
+		return
+	}
+	metadata[targetKey] = string(field.Bytes())
+}
+
 func updateMetadataFromValue(
 	value reflect.Value, fieldName string, targetKey string, metadata map[string]string) {
 	fieldValue, ok := getFieldStringPtr(value, fieldName)
