@@ -25,7 +25,7 @@ func kinesisEventDataFactory(r *request.Request, res *protocol.Resource, metadat
 	handleSpecificOperation(r, res, metadataOnly,
 		map[string]specificOperationHandler{
 			"PutRecord": handleKinesisPutRecord,
-		},
+		}, nil,
 	)
 }
 

@@ -11,6 +11,7 @@ func sesEventDataFactory(r *request.Request, res *protocol.Resource, metadataOnl
 		map[string]specificOperationHandler{
 			"SendEmail": handleSESSendEmail,
 		},
+		nil,
 	)
 }
 

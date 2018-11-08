@@ -17,8 +17,12 @@ func handleSpecificOperation(
 	res *protocol.Resource,
 	metadataOnly bool,
 	handlers map[string]specificOperationHandler,
+	defaultHandler specificOperationHandler,
 ) {
 	handler := handlers[res.Operation]
+	if handler == nil {
+		handler = defaultHandler
+	}
 	if handler != nil {
 		handler(r, res, metadataOnly)
 	}
