@@ -8,13 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"reflect"
-	"testing"
 )
-
-func TestGenericHandler(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "GenericHandler suite")
-}
 
 var _ = Describe("GenericHandler suite", func() {
 	Describe("validateArguments", func() {

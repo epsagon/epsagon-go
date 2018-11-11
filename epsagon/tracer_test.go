@@ -12,7 +12,7 @@ import (
 
 func TestEpsagonTracer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "epsagonTracer suite")
+	RunSpecs(t, "Epsagon Core Suite")
 }
 
 var _ = Describe("epsagonTracer suite", func() {
