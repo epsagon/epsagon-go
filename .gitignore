@@ -15,5 +15,6 @@ test
 # vendor directory are not needed here
 vendor
 example/simple_lambda/bin/hello
+example/simple_lambda/main
 example/sqs_trigger/hello/main
 example/sqs_trigger/triggered/main

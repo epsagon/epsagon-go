@@ -55,6 +55,15 @@ import (
 	sess := epsagonawswrapper.WrapSession(session.Must(session.NewSession()))
 	svcSQS := sqs.New(sess)
 ```
+#### net/http
+Wrapping http requests using the net/http library can be done by wraping the client:
+```go
+import (
+	"github.com/epsagon/epsagon-go/wrappers/net/http"
+...
+	client := epsagonhttp.Wrap(http.Client{})
+	resp, err := client.Get(anyurl)
+```
 
 ## Configuration
 The epsagon.Config structure that is sent to `WraphLambdaHandler` has some fields to customize epsagons behaviour:
