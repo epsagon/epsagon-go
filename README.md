@@ -1,4 +1,4 @@
-# Epsagon Go Instrumentation
+# Epsagon Instrumentation for Go
 
 [![Build Status][1]][2] [![GoDoc][3]][4]
 
