@@ -7,14 +7,8 @@ import (
 	"github.com/epsagon/epsagon-go/protocol"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"testing"
 	"time"
 )
-
-func TestEpsagonLambdaTrigger(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "epsagon trigger suite")
-}
 
 type inventedEvent struct {
 	Name        string
