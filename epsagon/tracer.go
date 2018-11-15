@@ -85,7 +85,7 @@ func (tracer *epsagonTracer) sendTraces() {
 }
 
 func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
-	version := runtime.Version()
+	version := "go " + runtime.Version()
 	trace := protocol.Trace{
 		AppName:    tracer.Config.ApplicationName,
 		Token:      tracer.Config.Token,
