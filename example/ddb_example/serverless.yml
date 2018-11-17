@@ -1,0 +1,60 @@
+service: example-go-app-ddb
+
+custom:
+  TableName: golang-test-table
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: eu-west-1
+  environment:
+    EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
+    EPSAGON_COLLECTOR_URL: ${env:EPSAGON_COLLECTOR_URL}
+
+  iamRoleStatements:
+  - Effect: "Allow"
+    Action:
+    - "*"
+    Resource: "arn:aws:dynamodb:eu-west-1:*:table/golang-test-table"
+
+functions:
+  write:
+    handler: write/main
+    events:
+    - http:
+        path: write
+        method: post
+    environment:
+      TABLE_NAME: ${self:custom.TableName}
+  triggered:
+    handler: triggered/main
+    events:
+    - stream:
+        type: dynamodb
+        batchSize: 20
+        startingPosition: TRIM_HORIZON
+        arn:
+          Fn::GetAtt:
+          - GoLangTestTable
+          - StreamArn
+
+resources:
+  Resources:
+    GoLangTestTable:
+      Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Delete
+      Properties:
+        AttributeDefinitions:
+        -
+          AttributeName: item
+          AttributeType: S
+        KeySchema:
+        -
+          AttributeName: item
+          KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
+        TableName: ${self:custom.TableName}
