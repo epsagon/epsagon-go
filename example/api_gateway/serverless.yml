@@ -1,0 +1,17 @@
+service: example-go-app
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: eu-west-1
+  environment:
+    EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
+    EPSAGON_COLLECTOR_URL: ${env:EPSAGON_COLLECTOR_URL}
+
+functions:
+  hello:
+    handler: main
+    events:
+    - http:
+        path: hello
+        method: post

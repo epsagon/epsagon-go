@@ -212,6 +212,11 @@ func AddEvent(event *protocol.Event) {
 
 // AddException adds an exception to the tracer
 func AddException(exception *protocol.Exception) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Epsagon: Failed to add exception")
+		}
+	}()
 	if GlobalTracer == nil || GlobalTracer.Stopped() {
 		// TODO
 		log.Println("The tracer is not initialized!")
