@@ -16,7 +16,7 @@ import (
 )
 
 type Item struct {
-	item string`json:"item"`
+	item string
 }
 
 func ddbHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
