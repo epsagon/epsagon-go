@@ -16,6 +16,7 @@ func main() {
 	log.Println("enter main")
 	config := epsagon.Config{
 		ApplicationName: "ddb-test-go",
+		Debug: true,
 	}
 	lambda.Start(epsagon.WrapLambdaHandler(&config, ddbHandler))
 	log.Println("exit main")

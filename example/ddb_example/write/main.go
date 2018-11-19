@@ -16,7 +16,7 @@ import (
 )
 
 type Item struct {
-	item string
+	Item string `json:"item"`
 }
 
 func ddbHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -29,7 +29,7 @@ func ddbHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRe
 	svc := dynamodb.New(session)
 
 	item := Item{
-		item: uuid.NewV4().String(),
+		Item: uuid.NewV4().String(),
 	}
 
 	av, marshalErr := dynamodbattribute.MarshalMap(item)

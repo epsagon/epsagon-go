@@ -27,7 +27,7 @@ functions:
     environment:
       TABLE_NAME: ${self:custom.TableName}
   triggered:
-    handler: triggered/main
+    handler: trigger/main
     events:
     - stream:
         type: dynamodb

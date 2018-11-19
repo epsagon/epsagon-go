@@ -3,6 +3,7 @@ package epsagon
 import (
 	"bytes"
 	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	lambdaEvents "github.com/aws/aws-lambda-go/events"
@@ -297,7 +298,7 @@ func triggerDynamoDBEvent(rawEvent interface{}, metadataOnly bool) *protocol.Eve
 
 	h := md5.New()
 	h.Write(itemBytes)
-	triggerEvent.Resource.Metadata["item_hash"] = string(h.Sum(nil))
+	triggerEvent.Resource.Metadata["item_hash"] = hex.EncodeToString(h.Sum(nil))
 
 	if !metadataOnly {
 		triggerEvent.Resource.Metadata["New Image"] = string(itemBytes)
