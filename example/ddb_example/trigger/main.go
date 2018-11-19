@@ -8,7 +8,7 @@ import (
 )
 
 func ddbHandler(ddbEvent events.DynamoDBEvent) error {
-	log.Println("In mySQSHandler, received body: ", ddbEvent)
+	log.Println("In ddbHandler, received body: ", ddbEvent)
 	return nil
 }
 
