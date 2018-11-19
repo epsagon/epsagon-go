@@ -57,11 +57,11 @@ func (handler *epsagonLambdaWrapper) preInvokeOps(
 		if r := recover(); r != nil {
 			AddExceptionTypeAndMessage("LambdaWrapper",
 				fmt.Sprintf("preInvokeOps:%+v", r))
-		}
-		info = &preInvokeData{
-			LambdaContext:      lc,
-			StartTime:          startTime,
-			InvocationMetadata: map[string]string{},
+			info = &preInvokeData{
+				LambdaContext:      lc,
+				StartTime:          startTime,
+				InvocationMetadata: map[string]string{},
+			}
 		}
 	}()
 

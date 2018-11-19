@@ -10,6 +10,7 @@
 test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
+Gopkg.lock
 *.out
 
 # vendor directory are not needed here
