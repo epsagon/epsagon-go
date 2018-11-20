@@ -423,7 +423,6 @@ func addLambdaTrigger(
 	metadataOnly bool,
 	triggerFactories map[string]factoryAndType,
 	) {
-
 	var triggerEvent *protocol.Event
 
 	triggerSource := guessTriggerSource(payload)
