@@ -1,7 +1,7 @@
 service: s3-example-go-app
 
 custom:
-  BucketName: s3-example-go
+  BucketName: s3-golang-test-bucket
 
 provider:
   name: aws
@@ -10,8 +10,13 @@ provider:
   environment:
     EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
     EPSAGON_COLLECTOR_URL: ${env:EPSAGON_COLLECTOR_URL}
+    BUCKET_NAME: ${self:custom.BucketName}
 
   iamRoleStatements:
+  - Effect: Allow
+    Action:
+    - s3:*
+    Resource: "arn:aws:s3::*:${self:custom.BucketName}/*"
   - Effect: Allow
     Action:
     - s3:*
@@ -24,11 +29,9 @@ functions:
     - http:
         path: write
         method: post
-    environment:
-      BUCKET_NAME: ${self:custom.BucketName}
-  hello:
+  trigger:
     handler: trigger/main
     events:
     - s3:
-        bucket: s3-example-go
+        bucket: ${self:custom.BucketName}
         event: s3:ObjectCreated:*
