@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/wrappers/aws/aws-sdk-go/aws"
-	"github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"log"
 	"os"
 )
@@ -26,7 +26,7 @@ func s3WriteHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPro
 
 	byteData := []byte("Hello World")
 	myBucket := os.Getenv("BUCKET_NAME")
-	key := uuid.NewV4().String()
+	key := uuid.New().String()
 
 	if len(myBucket) == 0 {
 		errMsg := "ERROR: You need to assign BUCKET_NAME env"

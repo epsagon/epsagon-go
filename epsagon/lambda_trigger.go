@@ -10,7 +10,7 @@ import (
 	lambdaContext "github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/epsagon/epsagon-go/protocol"
-	"github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"reflect"
 	"runtime/debug"
 	"strconv"
@@ -310,7 +310,7 @@ func triggerDynamoDBEvent(rawEvent interface{}, metadataOnly bool) *protocol.Eve
 
 func triggerJSONEvent(rawEvent json.RawMessage, metadataOnly bool) *protocol.Event {
 	triggerEvent := &protocol.Event{
-		Id: uuid.NewV4().String(),
+		Id: uuid.New().String(),
 		Origin:    "trigger",
 		StartTime: GetTimestamp(),
 		Resource: &protocol.Resource{
