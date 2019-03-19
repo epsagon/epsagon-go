@@ -77,14 +77,10 @@ func (tracer *epsagonTracer) sendTraces() {
 
 	resp, err := client.Post(tracer.Config.CollectorURL, "application/json", tracesReader)
 	if err != nil {
-		if resp != nil {
-			var respBody []byte
-			resp.Body.Read(respBody)
-			resp.Body.Close()
-			log.Printf("Error while sending traces \n%v\n%+v\n", err, respBody)
-		} else {
-			log.Printf("Error while sending traces \n%v\n", err)
-		}
+		var respBody []byte
+		resp.Body.Read(respBody)
+		resp.Body.Close()
+		log.Printf("Error while sending traces \n%v\n%+v\n", err, respBody)
 	}
 }
 
