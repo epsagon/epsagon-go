@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
-	"github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -124,7 +124,7 @@ func createHTTPEvent(url, method string, err error) *protocol.Event {
 		errorcode = protocol.ErrorCode_ERROR
 	}
 	return &protocol.Event{
-		Id:        "http.Client-" + uuid.NewV4().String(),
+		Id:        "http.Client-" + uuid.New().String(),
 		Origin:    "http.Client",
 		ErrorCode: errorcode,
 		Resource: &protocol.Resource{

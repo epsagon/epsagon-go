@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/wrappers/aws/aws-sdk-go/aws"
-	"github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"log"
 	"os"
 )
@@ -29,7 +29,7 @@ func ddbHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRe
 	svc := dynamodb.New(session)
 
 	item := Item{
-		Item: uuid.NewV4().String(),
+		Item: uuid.New().String(),
 	}
 
 	av, marshalErr := dynamodbattribute.MarshalMap(item)
