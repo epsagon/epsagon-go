@@ -56,7 +56,7 @@ import (
 	svcSQS := sqs.New(sess)
 ```
 #### net/http
-Wrapping http requests using the net/http library can be done by wraping the client:
+Wrapping http requests using the net/http library can be done by wrapping the client:
 ```go
 import (
 	"github.com/epsagon/epsagon-go/wrappers/net/http"
