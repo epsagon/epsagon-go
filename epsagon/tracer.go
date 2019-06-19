@@ -6,6 +6,7 @@ import (
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/golang/protobuf/jsonpb"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -75,12 +76,19 @@ func (tracer *epsagonTracer) sendTraces() {
 	}
 	client := &http.Client{Timeout: time.Duration(time.Second)}
 
-	resp, err := client.Post(tracer.Config.CollectorURL, "application/json", tracesReader)
+	handleSendTracesResponse(client.Post(tracer.Config.CollectorURL, "application/json", tracesReader))
+}
+
+func handleSendTracesResponse(resp *http.Response, err error) {
 	if err != nil {
-		var respBody []byte
-		resp.Body.Read(respBody)
-		resp.Body.Close()
-		log.Printf("Error while sending traces \n%v\n%+v\n", err, respBody)
+		log.Printf("Error while sending traces \n%v", err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= http.StatusInternalServerError {
+		//safe to ignore the error here
+		respBody, _ := ioutil.ReadAll(resp.Body)
+		log.Printf("Error while sending traces \n%v", string(respBody))
 	}
 }
 
