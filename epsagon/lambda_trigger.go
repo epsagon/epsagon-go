@@ -58,13 +58,14 @@ func triggerAPIGatewayProxyRequest(rawEvent interface{}, metadataOnly bool) *pro
 		Origin:    "trigger",
 		StartTime: GetTimestamp(),
 		Resource: &protocol.Resource{
-			Name:      event.Resource,
+			Name:      event.Headers["Host"],
 			Type:      "api_gateway",
 			Operation: event.HTTPMethod,
 			Metadata: map[string]string{
 				"stage":                   event.RequestContext.Stage,
 				"query_string_parameters": mapParametersToString(event.QueryStringParameters),
 				"path_parameters":         mapParametersToString(event.PathParameters),
+				"path":                    event.Resource,
 			},
 		},
 	}
