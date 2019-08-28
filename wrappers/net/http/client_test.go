@@ -63,19 +63,6 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 			})
 		})
-		Context("sending a request to NON existing server", func() {
-			It("adds an event with error", func() {
-				client := Wrap(http.Client{})
-				req, err := http.NewRequest(http.MethodGet, testServer.URL+"blabla", nil)
-				if err != nil {
-					Fail("WTF couldn't create request")
-				}
-				client.Do(req)
-				Expect(requests).To(HaveLen(0))
-				Expect(events).To(HaveLen(1))
-				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
-			})
-		})
 	})
 	Describe(".Get", func() {
 		BeforeEach(func() {
