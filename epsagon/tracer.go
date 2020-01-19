@@ -32,6 +32,16 @@ type Tracer interface {
 	GetConfig() *Config
 }
 
+// NewTracerConfig creates a new tracer Config
+func NewTracerConfig(applicationName, token string) *Config {
+	return &Config{
+		ApplicationName: applicationName,
+		Token:           token,
+		MetadataOnly:    true,
+		Debug:           false,
+	}
+}
+
 // Config is the configuration for Epsagon's tracer
 type Config struct {
 	ApplicationName string
