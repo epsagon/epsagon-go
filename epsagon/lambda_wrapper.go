@@ -41,10 +41,15 @@ type preInvokeData struct {
 
 type invocationData struct {
 	ExceptionInfo *protocol.Exception
-	errorStatus protocol.ErrorCode
-	result interface{}
-	err error
-	thrownError interface{}
+	errorStatus   protocol.ErrorCode
+	result        interface{}
+	err           error
+	thrownError   interface{}
+}
+
+type userError struct {
+	exception interface{}
+	stack     string
 }
 
 func getAWSAccount(lc *lambdacontext.LambdaContext) string {
@@ -131,7 +136,7 @@ func (handler *epsagonLambdaWrapper) postInvokeOps(
 
 // Invoke calls the handler, and creates a tracer for that duration.
 func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.RawMessage) (result interface{}, err error) {
-	invokeInfo := &invocationData {}
+	invokeInfo := &invocationData{}
 	handler.invoked = false
 	handler.invoking = false
 	defer func() {
@@ -143,7 +148,10 @@ func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Ra
 			result, err = handler.handler(ctx, payload)
 		}
 		if invokeInfo.thrownError != nil {
-			panic(invokeInfo.thrownError)
+			panic(userError{
+				exception: invokeInfo.thrownError,
+				stack:     invokeInfo.ExceptionInfo.Traceback,
+			})
 		}
 	}()
 
@@ -163,8 +171,8 @@ func (handler *epsagonLambdaWrapper) InvokeClientLambda(
 		invokeInfo.thrownError = recover()
 		if invokeInfo.thrownError != nil {
 			invokeInfo.ExceptionInfo = &protocol.Exception{
-				Type: "Runtime Error",
-				Message: fmt.Sprintf("%v", invokeInfo.thrownError),
+				Type:      "Runtime Error",
+				Message:   fmt.Sprintf("%v", invokeInfo.thrownError),
 				Traceback: string(debug.Stack()),
 				Time:      GetTimestamp(),
 			}
