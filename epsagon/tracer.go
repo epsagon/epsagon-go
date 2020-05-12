@@ -35,22 +35,22 @@ type Tracer interface {
 // NewTracerConfig creates a new tracer Config
 func NewTracerConfig(applicationName, token string) *Config {
 	return &Config{
-		ApplicationName:     applicationName,
-		Token:               token,
-		MetadataOnly:        true,
-		Debug:               false,
-		HttpClientTimeout:   "1s",
+		ApplicationName: applicationName,
+		Token:           token,
+		MetadataOnly:    true,
+		Debug:           false,
+		SendTimeout:     "1s",
 	}
 }
 
 // Config is the configuration for Epsagon's tracer
 type Config struct {
-	ApplicationName     string
-	Token               string
-	CollectorURL        string
-	MetadataOnly        bool
-	Debug               bool
-	HttpClientTimeout   string
+	ApplicationName string
+	Token           string
+	CollectorURL    string
+	MetadataOnly    bool
+	Debug           bool
+	SendTimeout     string
 }
 
 type epsagonTracer struct {
@@ -86,13 +86,13 @@ func (tracer *epsagonTracer) sendTraces() {
 		log.Printf("Epsagon: Encountered an error while marshaling the traces: %v\n", err)
 		return
 	}
-	clientTimeout, err := time.ParseDuration(tracer.Config.HttpClientTimeout)
+	sendTimeout, err := time.ParseDuration(tracer.Config.SendTimeout)
 	if err != nil {
-		log.Printf("Epsagon: Encountered an error while parsing http client timeout: %v\n", err)
+		log.Printf("Epsagon: Encountered an error while parsing send timeout: %v\n", err)
 		return
 	}
 
-	client := &http.Client{Timeout: clientTimeout}
+	client := &http.Client{Timeout: sendTimeout}
 
 	handleSendTracesResponse(client.Post(tracer.Config.CollectorURL, "application/json", tracesReader))
 }
@@ -183,11 +183,11 @@ func fillConfigDefaults(config *Config) {
 			log.Printf("EPSAGON DEBUG: setting collector url to %s\n", config.CollectorURL)
 		}
 	}
-	httpClientTimeout := os.Getenv("EPSAGON_HTTP_CLIENT_TIMEOUT")
-	if len(httpClientTimeout) != 0 {
-		config.HttpClientTimeout = httpClientTimeout
+	sendTimeout := os.Getenv("EPSAGON_SEND_TIMEOUT_SEC")
+	if len(sendTimeout) != 0 {
+		config.SendTimeout = sendTimeout
 		if config.Debug {
-			log.Println("EPSAGON DEBUG: setting http client timeout from environment variable")
+			log.Println("EPSAGON DEBUG: setting send timeout from environment variable")
 		}
 	}
 }
