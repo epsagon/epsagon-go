@@ -88,7 +88,7 @@ func (tracer *epsagonTracer) sendTraces() {
 	}
 	clientTimeout, err := time.ParseDuration(tracer.Config.HttpClientTimeout)
 	if err != nil {
-		log.Printf("Epsagon: Encountered an error while parsing client timeout: %v\n", err)
+		log.Printf("Epsagon: Encountered an error while parsing http client timeout: %v\n", err)
 		return
 	}
 
