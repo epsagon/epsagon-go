@@ -119,6 +119,7 @@ Advanced options can be configured as a parameter to the `Config` struct to the 
 |MetadataOnly          |EPSAGON_METADATA              |Boolean|`true`       |Whether to send only the metadata (`True`) or also the payloads (`False`)          |
 |CollectorURL          |EPSAGON_COLLECTOR_URL         |String |-            |The address of the trace collector to send trace to                                |
 |Debug                 |EPSAGON_DEBUG                 |Boolean|`False`      |Enable debug prints for troubleshooting                                            |
+|HttpClientTimeout     |EPSAGON_HTTP_CLIENT_TIMEOUT   |String |`1s`         |Default http client timeout                                                        |
 
 
 
