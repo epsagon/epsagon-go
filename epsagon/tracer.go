@@ -39,6 +39,7 @@ func NewTracerConfig(applicationName, token string) *Config {
 		Token:           token,
 		MetadataOnly:    true,
 		Debug:           false,
+		SendTimeout:     "1s",
 	}
 }
 
@@ -49,6 +50,7 @@ type Config struct {
 	CollectorURL    string
 	MetadataOnly    bool
 	Debug           bool
+	SendTimeout     string
 }
 
 type epsagonTracer struct {
@@ -84,7 +86,13 @@ func (tracer *epsagonTracer) sendTraces() {
 		log.Printf("Epsagon: Encountered an error while marshaling the traces: %v\n", err)
 		return
 	}
-	client := &http.Client{Timeout: time.Duration(time.Second)}
+	sendTimeout, err := time.ParseDuration(tracer.Config.SendTimeout)
+	if err != nil {
+		log.Printf("Epsagon: Encountered an error while parsing send timeout: %v\n", err)
+		return
+	}
+
+	client := &http.Client{Timeout: sendTimeout}
 
 	handleSendTracesResponse(client.Post(tracer.Config.CollectorURL, "application/json", tracesReader))
 }
@@ -173,6 +181,13 @@ func fillConfigDefaults(config *Config) {
 		}
 		if config.Debug {
 			log.Printf("EPSAGON DEBUG: setting collector url to %s\n", config.CollectorURL)
+		}
+	}
+	sendTimeout := os.Getenv("EPSAGON_SEND_TIMEOUT_SEC")
+	if len(sendTimeout) != 0 {
+		config.SendTimeout = sendTimeout
+		if config.Debug {
+			log.Println("EPSAGON DEBUG: setting send timeout from environment variable")
 		}
 	}
 }
