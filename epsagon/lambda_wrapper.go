@@ -188,6 +188,12 @@ func (handler *epsagonLambdaWrapper) InvokeClientLambda(
 	handler.invoking = false
 	if err != nil {
 		invokeInfo.errorStatus = protocol.ErrorCode_ERROR
+		invokeInfo.ExceptionInfo = &protocol.Exception{
+			Type:      "Error Result",
+			Message:   err.Error(),
+			Traceback: "",
+			Time:      GetTimestamp(),
+		}
 	}
 	invokeInfo.result = result
 	invokeInfo.err = err

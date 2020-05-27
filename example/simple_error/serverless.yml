@@ -1,0 +1,18 @@
+service: example-go-simple-error
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: eu-west-1
+  environment:
+    EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
+    EPSAGON_COLLECTOR_URL: ${env:EPSAGON_COLLECTOR_URL}
+    EPSAGON_DEBUG: "TRUE"
+
+functions:
+  simple_error:
+    handler: main
+    events:
+    - http:
+        path: hello
+        method: post
