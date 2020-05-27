@@ -16,10 +16,7 @@ func expHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRe
 
 func main() {
 	log.Println("enter main")
-	config := epsagon.Config{
-		ApplicationName: "exp-test-go",
-		Debug:           true,
-	}
-	lambda.Start(epsagon.WrapLambdaHandler(&config, expHandler))
+	config := epsagon.NewTracerConfig("exp-test-go", "")
+	lambda.Start(epsagon.WrapLambdaHandler(config, expHandler))
 	log.Println("exit main")
 }
