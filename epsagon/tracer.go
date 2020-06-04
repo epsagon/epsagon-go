@@ -88,7 +88,9 @@ func (tracer *epsagonTracer) sendTraces() {
 	}
 	sendTimeout, err := time.ParseDuration(tracer.Config.SendTimeout)
 	if err != nil {
-		log.Printf("Epsagon: Encountered an error while parsing send timeout: %v, using '1s'\n", err)
+		if tracer.Config.Debug {
+			log.Printf("Epsagon: Encountered an error while parsing send timeout: %v, using '1s'\n", err)
+		}
 		sendTimeout, _ = time.ParseDuration("1s")
 	}
 
