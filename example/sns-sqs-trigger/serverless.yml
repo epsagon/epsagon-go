@@ -1,0 +1,92 @@
+service: example-go-app-sqs-sqs
+
+custom:
+  TopicName: GoExampleTestSNS-${self:service}
+  QueueName: GoExampleTestQueue
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: eu-west-1
+  environment:
+    EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
+    EPSAGON_COLLECTOR_URL: ${env:EPSAGON_COLLECTOR_URL}
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "sqs:ListQueues"
+      Resource:
+        Fn::Join:
+          - ":"
+          - - "arn:aws:sqs"
+            - ${self:provider.region}
+            - Ref: AWS::AccountId
+            - "*"
+    - Effect: "Allow"
+      Action:
+        - "sns:*"
+      Resource:
+        - Ref: ExampleSNSTopic
+
+
+functions:
+  hello:
+    handler: hello/main
+    events:
+      - http:
+          path: hello
+          method: post
+    environment:
+      SNS_ARN:
+        Ref: ExampleSNSTopic
+  triggered:
+    handler: triggered/main
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - ExampleTestQueue
+              - Arn
+          batchSize: 1
+
+resources:
+  Resources:
+    ExampleSNSTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:custom.TopicName}
+
+    ExampleTestQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.QueueName}
+
+    snsToFirstQueueSqsPolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Sid: "allow-sns-messages"
+              Effect: Allow
+              Principal: "*"
+              Resource: !GetAtt
+                - ExampleTestQueue
+                - Arn
+              Action: "SQS:SendMessage"
+              Condition:
+                ArnEquals:
+                  "aws:SourceArn": !Ref ExampleSNSTopic
+        Queues:
+          - Ref: ExampleTestQueue
+
+    firstQueueSubscription:
+      Type: 'AWS::SNS::Subscription'
+      Properties:
+        TopicArn: !Ref ExampleSNSTopic
+        Endpoint: !GetAtt
+          - ExampleTestQueue
+          - Arn
+        Protocol: sqs
+        RawMessageDelivery: 'true'
