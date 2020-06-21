@@ -41,5 +41,5 @@ func handleSNSCreateTopic(r *request.Request, res *protocol.Resource, metadataOn
 func handlerSNSPublish(r *request.Request, res *protocol.Resource, metadataOnly bool) {
 	handleSNSdefault(r, res, metadataOnly)
 	outputValue := reflect.ValueOf(r.Data).Elem()
-	updateMetadataFromValue(outputValue, "MessageId", "message_id", res.Metadata)
+	updateMetadataFromValue(outputValue, "MessageId", "Message ID", res.Metadata)
 }
