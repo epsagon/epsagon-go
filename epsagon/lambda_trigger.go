@@ -232,7 +232,6 @@ func triggerSQSEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 
 	if !metadataOnly {
 		triggerEvent.Resource.Metadata["Message Body"] = event.Records[0].Body
-		json.Unmarshal(bytes, &dbAttr)
 		if strings.Contains(event.Records[0].Body, "TopicArn") {
 			triggerEvent.Resource.Metadata["SNS Trigger"] = event.Records[0].Body
 		}
