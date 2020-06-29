@@ -1,13 +1,16 @@
 language: go
 go:
-  - "1.10"
+  - "1.11.x"
   - "tip"
+
+env:
+  - GO111MODULE=on
 
 before_install:
   - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
 install:
-  - dep ensure
+  - go mod download
   - go get golang.org/x/lint/golint
 
 script:

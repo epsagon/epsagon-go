@@ -1,23 +1,60 @@
-package epsagon
+package epsagon_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 
-	// "fmt"
-	"github.com/epsagon/epsagon-go/internal"
+	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"testing"
 	"time"
 )
+
+// FakeCollector implements a fake trace collector that will
+// listen on an endpoint untill a trace is received and then will
+// return that parsed trace
+type FakeCollector struct {
+	Endpoint string
+}
+
+// Listen on the endpoint for one trace and push it to outChannel
+func (fc *FakeCollector) Listen(outChannel chan *protocol.Trace) {
+	ln, err := net.Listen("tcp", fc.Endpoint)
+	if err != nil {
+		outChannel <- nil
+		return
+	}
+	defer ln.Close()
+	conn, err := ln.Accept()
+	if err != nil {
+		outChannel <- nil
+		return
+	}
+	defer conn.Close()
+	var buf = make([]byte, 0)
+	_, err = conn.Read(buf)
+	if err != nil {
+		outChannel <- nil
+		return
+	}
+	var receivedTrace protocol.Trace
+	err = json.Unmarshal(buf, &receivedTrace)
+	if err != nil {
+		outChannel <- nil
+		return
+	}
+	outChannel <- &receivedTrace
+}
 
 func TestEpsagonTracer(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -36,10 +73,10 @@ var _ = Describe("epsagonTracer suite", func() {
 })
 
 func runWithTracer(endpoint string, operations func()) {
-	CreateTracer(&Config{
+	epsagon.CreateTracer(&epsagon.Config{
 		CollectorURL: endpoint,
 	})
-	defer StopTracer()
+	defer epsagon.StopTracer()
 	operations()
 }
 
@@ -47,7 +84,7 @@ func runWithTracer(endpoint string, operations func()) {
 func testWithTracer(timeout *time.Duration, operations func()) *protocol.Trace {
 	endpoint := "localhost:547698"
 	traceChannel := make(chan *protocol.Trace)
-	fc := internal.FakeCollector{Endpoint: endpoint}
+	fc := FakeCollector{Endpoint: endpoint}
 	go fc.Listen(traceChannel)
 	go runWithTracer(endpoint, operations)
 	if timeout == nil {
@@ -124,7 +161,7 @@ func Test_handleSendTracesResponse(t *testing.T) {
 			}))
 			defer server.Close()
 			resp, err := test.httpClient.Post(server.URL, "application/json", nil)
-			handleSendTracesResponse(resp, err)
+			epsagon.HandleSendTracesResponse(resp, err)
 
 			if !strings.Contains(buf.String(), test.expectedLog) {
 				t.Errorf("Unexpected log: expected %s got %s", test.expectedLog, buf.String())

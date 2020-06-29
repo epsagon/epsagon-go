@@ -96,10 +96,11 @@ func (tracer *epsagonTracer) sendTraces() {
 
 	client := &http.Client{Timeout: sendTimeout}
 
-	handleSendTracesResponse(client.Post(tracer.Config.CollectorURL, "application/json", tracesReader))
+	HandleSendTracesResponse(client.Post(tracer.Config.CollectorURL, "application/json", tracesReader))
 }
 
-func handleSendTracesResponse(resp *http.Response, err error) {
+// HandleSendTracesResponse handles responses from the trace collector
+func HandleSendTracesResponse(resp *http.Response, err error) {
 	if err != nil {
 		log.Printf("Error while sending traces \n%v", err)
 		return
