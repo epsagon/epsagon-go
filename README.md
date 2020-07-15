@@ -10,7 +10,7 @@
 
 # Epsagon Tracing for Go
 
-This package provides tracing to Go applications for the collection of distributed tracing and performance metrics in [Epsagon](https://dashboard.epsagon.com/?utm_source=github).
+This package provides tracing to Go applications for the collection of distributed tracing and performance metrics in [Epsagon](https://app.epsagon.com/?utm_source=github).
 
 
 ## Contents
