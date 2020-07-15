@@ -18,11 +18,11 @@ var (
 	coldStart = true
 )
 
-type genericHandler func(context.Context, json.RawMessage) (interface{}, error)
+type genericLambdaHandler func(context.Context, json.RawMessage) (interface{}, error)
 
 // epsagonLambdaWrapper is a generic lambda function type
 type epsagonLambdaWrapper struct {
-	handler  genericHandler
+	handler  genericLambdaHandler
 	config   *Config
 	invoked  bool
 	invoking bool
