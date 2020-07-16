@@ -3,14 +3,13 @@ package epsagon
 import (
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/google/uuid"
+	"reflect"
+	"runtime"
 )
-
-// GenericFunction type to represent any function
-type GenericFunction func(args ...interface{}) []interface{}
 
 // epsagonGenericWrapper is a generic lambda function type
 type epsagonGenericWrapper struct {
-	handler  GenericFunction
+	handler  reflect.Value
 	config   *Config
 	invoked  bool
 	invoking bool
@@ -24,7 +23,7 @@ func (wrapper *epsagonGenericWrapper) createTracer() {
 }
 
 // Call the wrapped function
-func (wrapper *epsagonGenericWrapper) Call(args ...interface{}) []interface{} {
+func (wrapper *epsagonGenericWrapper) Call(args ...interface{}) []reflect.Value {
 	wrapper.createTracer()
 	defer StopTracer()
 
@@ -33,23 +32,34 @@ func (wrapper *epsagonGenericWrapper) Call(args ...interface{}) []interface{} {
 		Origin:    "runner",
 		StartTime: GetTimestamp(),
 		Resource: &protocol.Resource{
-			Name:      "test-go-generic-wrapper",
-			Type:      "go-wrapper",
+			Name:      runtime.FuncForPC(wrapper.handler.Pointer()).Name(),
+			Type:      "go-function",
 			Operation: "invoke",
 		},
 	}
 	AddEvent(simpleEvent)
 
+	if wrapper.handler.Type().NumIn() != len(args) {
+		panic("wrong number of args")
+	}
+	inputs := make([]reflect.Value, len(args))
+	for k, in := range args {
+		inputs[k] = reflect.ValueOf(in)
+	}
+
 	wrapper.invoked = true
-	return wrapper.handler(args...)
+	return wrapper.handler.Call(inputs)
 }
 
+// GenericFunction type
+type GenericFunction func(args ...interface{}) []reflect.Value
+
 // GoWrapper wraps the function with epsagon's tracer
-func GoWrapper(config *Config, wrappedFunction GenericFunction) GenericFunction {
-	return func(args ...interface{}) []interface{} {
+func GoWrapper(config *Config, wrappedFunction interface{}) GenericFunction {
+	return func(args ...interface{}) []reflect.Value {
 		wrapper := &epsagonGenericWrapper{
 			config:  config,
-			handler: wrappedFunction,
+			handler: reflect.ValueOf(wrappedFunction),
 		}
 		return wrapper.Call(args...)
 	}
