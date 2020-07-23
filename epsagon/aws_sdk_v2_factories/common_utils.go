@@ -75,3 +75,10 @@ func updateMetadataWithFieldToJSON(
 	}
 	metadata[targetKey] = string(stream)
 }
+
+func getResourceNameFromField(res *protocol.Resource, value reflect.Value, fieldName string) {
+	fieldValue, ok := getFieldStringPtr(value, fieldName)
+	if ok {
+		res.Name = fieldValue
+	}
+}
