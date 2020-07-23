@@ -44,9 +44,7 @@ func myHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRes
 
 func main() {
 	log.Println("enter main")
-	config := epsagon.Config{
-		ApplicationName: "sqs-test-go",
-		Debug:           true,
-	}
-	lambda.Start(epsagon.WrapLambdaHandler(&config, myHandler))
+	config := epsagon.NewTracerConfig("sqs-test-go", "")
+	config.Debug = true
+	lambda.Start(epsagon.WrapLambdaHandler(config, myHandler))
 }

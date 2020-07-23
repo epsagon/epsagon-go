@@ -2,8 +2,8 @@ package epsagonawswrapper
 
 import (
 	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 )
 
@@ -11,7 +11,7 @@ func kinesisEventDataFactory(r *request.Request, res *protocol.Resource, metadat
 	inputValue := reflect.ValueOf(r.Params).Elem()
 	streamName, ok := getFieldStringPtr(inputValue, "StreamName")
 	if !ok {
-		epsagon.AddExceptionTypeAndMessage("aws-sdk-go",
+		tracer.AddExceptionTypeAndMessage("aws-sdk-go",
 			"kinesisEventDataFactory: couldn't find StreamName")
 	}
 	res.Name = streamName

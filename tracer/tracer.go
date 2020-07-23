@@ -1,4 +1,4 @@
-package epsagon
+package tracer
 
 import (
 	"bytes"
@@ -32,25 +32,14 @@ type Tracer interface {
 	GetConfig() *Config
 }
 
-// NewTracerConfig creates a new tracer Config
-func NewTracerConfig(applicationName, token string) *Config {
-	return &Config{
-		ApplicationName: applicationName,
-		Token:           token,
-		MetadataOnly:    true,
-		Debug:           false,
-		SendTimeout:     "1s",
-	}
-}
-
 // Config is the configuration for Epsagon's tracer
 type Config struct {
-	ApplicationName string
-	Token           string
-	CollectorURL    string
-	MetadataOnly    bool
-	Debug           bool
-	SendTimeout     string
+	ApplicationName string // Application name in Epsagon
+	Token           string // Epsgaon Token
+	CollectorURL    string // Epsagon collector url
+	MetadataOnly    bool   // Only send metadata about the event
+	Debug           bool   // Print Epsagon debug information
+	SendTimeout     string // Timeout for sending traces to Epsagon
 }
 
 type epsagonTracer struct {

@@ -52,10 +52,8 @@ func s3WriteHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPro
 
 func main() {
 	log.Println("enter main")
-	config := epsagon.Config{
-		ApplicationName: "s3-test-go",
-		Debug:           true,
-	}
-	lambda.Start(epsagon.WrapLambdaHandler(&config, s3WriteHandler))
+	config := epsagon.NewTracerConfig("s3-test-go", "")
+	config.Debug = true
+	lambda.Start(epsagon.WrapLambdaHandler(config, s3WriteHandler))
 	log.Println("exit main")
 }
