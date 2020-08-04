@@ -21,7 +21,6 @@ func ddbHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRe
 	}
 	cfg.Region = "eu-west-1"
 	svc := epsagon.WrapAwsV2Service(dynamodb.New(cfg)).(*dynamodb.Client)
-	// svc.Client = epagonClient{}
 	putItemInput := dynamodb.PutItemInput{
 		Item: map[string]dynamodb.AttributeValue{
 			"item":    {S: aws.String(uuid.New().String())},
