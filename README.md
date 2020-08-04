@@ -108,6 +108,21 @@ import (
 	svcSQS := sqs.New(sess)
 ```
 
+
+### aws-sdk-go-v2
+
+Wrapping of aws-sdk-go-v2 is done through the service object:
+```go
+import (
+...
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/epsagon/epsagon-go/epsagon"
+)
+
+	svc := epsagon.WrapAwsV2Service(dynamodb.New(cfg)).(*dynamodb.Client)
+    ...
+```
+
 ## Configuration
 
 Advanced options can be configured as a parameter to the `Config` struct to the `WrapLambdaHandler` or as environment variables.
