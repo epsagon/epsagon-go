@@ -2,6 +2,7 @@ package epsagon
 
 import (
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
 	"reflect"
 	"runtime"
@@ -19,25 +20,25 @@ func (wrapper *epsagonGenericWrapper) createTracer() {
 	if wrapper.config == nil {
 		wrapper.config = &Config{}
 	}
-	CreateTracer(wrapper.config)
+	tracer.CreateTracer(&wrapper.config.Config)
 }
 
 // Call the wrapped function
 func (wrapper *epsagonGenericWrapper) Call(args ...interface{}) []reflect.Value {
 	wrapper.createTracer()
-	defer StopTracer()
+	defer tracer.StopTracer()
 
 	simpleEvent := &protocol.Event{
 		Id:        uuid.New().String(),
 		Origin:    "runner",
-		StartTime: GetTimestamp(),
+		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      runtime.FuncForPC(wrapper.handler.Pointer()).Name(),
 			Type:      "go-function",
 			Operation: "invoke",
 		},
 	}
-	AddEvent(simpleEvent)
+	tracer.AddEvent(simpleEvent)
 
 	if wrapper.handler.Type().NumIn() != len(args) {
 		panic("wrong number of args")
