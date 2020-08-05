@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 )
 
@@ -48,7 +48,7 @@ func jsonAttributeMap(inputField reflect.Value) string {
 	formattedMap := deserializeAttributeMap(inputField)
 	stream, err := json.Marshal(formattedMap)
 	if err != nil {
-		epsagon.AddExceptionTypeAndMessage("aws-sdk-go", fmt.Sprintf("%v", err))
+		tracer.AddExceptionTypeAndMessage("aws-sdk-go", fmt.Sprintf("%v", err))
 		return ""
 	}
 	return string(stream)
@@ -125,7 +125,7 @@ func deserializeItems(itemsField reflect.Value) string {
 	}
 	formattedItemsStream, err := json.Marshal(formattedItems)
 	if err != nil {
-		epsagon.AddExceptionTypeAndMessage("aws-sdk-go",
+		tracer.AddExceptionTypeAndMessage("aws-sdk-go",
 			fmt.Sprintf("sederializeItems: %v", err))
 	}
 	return string(formattedItemsStream)
@@ -148,7 +148,7 @@ func handleDynamoDBBatchWriteItem(r *request.Request, res *protocol.Resource, me
 		var tableName string
 		requestItems, ok := requestItemsField.Interface().(map[string][]*dynamodb.WriteRequest)
 		if !ok {
-			epsagon.AddExceptionTypeAndMessage("aws-sdk-go",
+			tracer.AddExceptionTypeAndMessage("aws-sdk-go",
 				"handleDynamoDBBatchWriteItem: Failed to cast RequestItems")
 			return
 		}

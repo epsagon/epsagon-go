@@ -12,8 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/sqs"
 
-	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 )
 
 const (
@@ -34,14 +34,14 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 		BeforeEach(func() {
 			events = make([]*protocol.Event, 0)
 			exceptions = make([]*protocol.Exception, 0)
-			epsagon.GlobalTracer = &epsagon.MockedEpsagonTracer{
+			tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 				Events:     &events,
 				Exceptions: &exceptions,
-				Config:     &epsagon.Config{},
+				Config:     &tracer.Config{},
 			}
 		})
 		AfterEach(func() {
-			epsagon.GlobalTracer = nil
+			tracer.GlobalTracer = nil
 		})
 
 		Context("use of known aws operation", func() {

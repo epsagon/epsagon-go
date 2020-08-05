@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"reflect"
@@ -23,7 +24,7 @@ var _ = Describe("lambda_wrapper", func() {
 				Expect(err).To(BeNil())
 			})
 			It("calls the wrapped function", func() {
-				GlobalTracer = nil
+				tracer.GlobalTracer = nil
 				called := false
 				wrapper := WrapLambdaHandler(nil, func() {
 					called = true
@@ -57,7 +58,7 @@ var _ = Describe("lambda_wrapper", func() {
 			BeforeEach(func() {
 				events = make([]*protocol.Event, 0)
 				exceptions = make([]*protocol.Exception, 0)
-				GlobalTracer = &MockedEpsagonTracer{
+				tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 					Events:     &events,
 					Exceptions: &exceptions,
 				}
@@ -96,10 +97,10 @@ var _ = Describe("lambda_wrapper", func() {
 			})
 			Context("Failed to add event", func() {
 				It("Recovers and adds exception", func() {
-					GlobalTracer = &MockedEpsagonTracer{
+					tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 						Events:        &events,
 						Exceptions:    &exceptions,
-						panicAddEvent: true,
+						PanicAddEvent: true,
 					}
 					wrapper.Invoke(context.Background(), json.RawMessage("{}"))
 					Expect(called).To(Equal(true))
@@ -109,11 +110,11 @@ var _ = Describe("lambda_wrapper", func() {
 			})
 			Context("Failed to add exception and event", func() {
 				It("Recovers and does nothing becuase it can't", func() {
-					GlobalTracer = &MockedEpsagonTracer{
+					tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 						Events:            &events,
 						Exceptions:        &exceptions,
-						panicAddEvent:     true,
-						panicAddException: true,
+						PanicAddEvent:     true,
+						PanicAddException: true,
 					}
 					wrapper.Invoke(context.Background(), json.RawMessage("{}"))
 					Expect(called).To(Equal(true))
@@ -123,10 +124,10 @@ var _ = Describe("lambda_wrapper", func() {
 			})
 			Context("Failed to stop tracer", func() {
 				It("Recovers and does nothing because it can't", func() {
-					GlobalTracer = &MockedEpsagonTracer{
+					tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 						Events:     &events,
 						Exceptions: &exceptions,
-						panicStop:  true,
+						PanicStop:  true,
 					}
 					wrapper.Invoke(context.Background(), json.RawMessage("{}"))
 					Expect(called).To(Equal(true))

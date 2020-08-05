@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"log"
 	"time"
 )
@@ -30,7 +31,7 @@ func getTimeStampFromRequest(r *request.Request) float64 {
 
 func completeEventData(r *request.Request) {
 	defer epsagon.GeneralEpsagonRecover("aws-sdk-go wrapper", "")
-	if epsagon.GetGlobalTracerConfig().Debug {
+	if tracer.GetGlobalTracerConfig().Debug {
 		log.Printf("EPSAGON DEBUG OnComplete request response: %+v\n", r.HTTPResponse)
 		log.Printf("EPSAGON DEBUG OnComplete request Operation: %+v\n", r.Operation)
 		log.Printf("EPSAGON DEBUG OnComplete request ClientInfo: %+v\n", r.ClientInfo)
@@ -38,7 +39,7 @@ func completeEventData(r *request.Request) {
 		log.Printf("EPSAGON DEBUG OnComplete request Data: %+v\n", r.Data)
 	}
 
-	endTime := epsagon.GetTimestamp()
+	endTime := tracer.GetTimestamp()
 	event := protocol.Event{
 		Id:        r.RequestID,
 		StartTime: getTimeStampFromRequest(r),
@@ -46,7 +47,7 @@ func completeEventData(r *request.Request) {
 		Resource:  extractResourceInformation(r),
 	}
 	event.Duration = endTime - event.StartTime
-	epsagon.AddEvent(&event)
+	tracer.AddEvent(&event)
 }
 
 type factory func(*request.Request, *protocol.Resource, bool)
@@ -70,15 +71,15 @@ func extractResourceInformation(r *request.Request) *protocol.Resource {
 	}
 	factory := awsResourceEventFactories[res.Type]
 	if factory != nil {
-		factory(r, &res, epsagon.GetGlobalTracerConfig().MetadataOnly)
+		factory(r, &res, tracer.GetGlobalTracerConfig().MetadataOnly)
 	} else {
-		defaultFactory(r, &res, epsagon.GetGlobalTracerConfig().MetadataOnly)
+		defaultFactory(r, &res, tracer.GetGlobalTracerConfig().MetadataOnly)
 	}
 	return &res
 }
 
 func defaultFactory(r *request.Request, res *protocol.Resource, metadataOnly bool) {
-	if epsagon.GetGlobalTracerConfig().Debug {
+	if tracer.GetGlobalTracerConfig().Debug {
 		log.Println("EPSAGON DEBUG:: entering defaultFactory")
 	}
 	if !metadataOnly {

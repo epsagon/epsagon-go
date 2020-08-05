@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	protocol "github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"reflect"
@@ -112,7 +113,7 @@ var _ = Describe("GenericHandler suite", func() {
 		BeforeEach(func() {
 			events = make([]*protocol.Event, 0)
 			exceptions = make([]*protocol.Exception, 0)
-			GlobalTracer = &MockedEpsagonTracer{
+			tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 				Events:     &events,
 				Exceptions: &exceptions,
 			}

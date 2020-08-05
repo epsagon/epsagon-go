@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 	"strconv"
 )
@@ -70,7 +70,7 @@ func updateMetadataWithFieldToJSON(
 	}
 	stream, err := json.Marshal(field.Interface())
 	if err != nil {
-		epsagon.AddExceptionTypeAndMessage("aws-sdk-go", fmt.Sprintf("%v", err))
+		tracer.AddExceptionTypeAndMessage("aws-sdk-go", fmt.Sprintf("%v", err))
 		return
 	}
 	metadata[targetKey] = string(stream)

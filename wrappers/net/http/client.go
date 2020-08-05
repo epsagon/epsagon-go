@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
 	"io"
 	"io/ioutil"
@@ -28,26 +29,26 @@ func Wrap(c http.Client) ClientWrapper {
 func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
 
-	startTime := epsagon.GetTimestamp()
+	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err)
-	if !epsagon.GetGlobalTracerConfig().MetadataOnly {
+	if !tracer.GetGlobalTracerConfig().MetadataOnly {
 		updateRequestData(req, event.Resource.Metadata)
 	}
-	epsagon.AddEvent(event)
+	tracer.AddEvent(event)
 	return
 }
 
 // Get wraps http.Client.Get
 func (c *ClientWrapper) Get(url string) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
-	startTime := epsagon.GetTimestamp()
+	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Get(url)
 	event := postSuperCall(startTime, url, http.MethodPost, resp, err)
-	if resp != nil && !epsagon.GetGlobalTracerConfig().MetadataOnly {
+	if resp != nil && !tracer.GetGlobalTracerConfig().MetadataOnly {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
-	epsagon.AddEvent(event)
+	tracer.AddEvent(event)
 	return
 }
 
@@ -56,13 +57,13 @@ func (c *ClientWrapper) Post(
 	url string, contentType string, body io.Reader) (resp *http.Response, err error) {
 
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
-	startTime := epsagon.GetTimestamp()
+	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Post(url, contentType, body)
 	event := postSuperCall(startTime, url, http.MethodPost, resp, err)
-	if resp != nil && !epsagon.GetGlobalTracerConfig().MetadataOnly {
+	if resp != nil && !tracer.GetGlobalTracerConfig().MetadataOnly {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
-	epsagon.AddEvent(event)
+	tracer.AddEvent(event)
 	return
 }
 
@@ -71,17 +72,17 @@ func (c *ClientWrapper) PostForm(
 	url string, data url.Values) (resp *http.Response, err error) {
 
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
-	startTime := epsagon.GetTimestamp()
+	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.PostForm(url, data)
 	event := postSuperCall(startTime, url, http.MethodPost, resp, err)
-	if resp != nil && !epsagon.GetGlobalTracerConfig().MetadataOnly {
+	if resp != nil && !tracer.GetGlobalTracerConfig().MetadataOnly {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 		dataBytes, err := json.Marshal(data)
 		if err == nil {
 			event.Resource.Metadata["body"] = string(dataBytes)
 		}
 	}
-	epsagon.AddEvent(event)
+	tracer.AddEvent(event)
 	return
 }
 
@@ -89,13 +90,13 @@ func (c *ClientWrapper) PostForm(
 func (c *ClientWrapper) Head(url string) (resp *http.Response, err error) {
 
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
-	startTime := epsagon.GetTimestamp()
+	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Head(url)
 	event := postSuperCall(startTime, url, http.MethodPost, resp, err)
-	if resp != nil && !epsagon.GetGlobalTracerConfig().MetadataOnly {
+	if resp != nil && !tracer.GetGlobalTracerConfig().MetadataOnly {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
-	epsagon.AddEvent(event)
+	tracer.AddEvent(event)
 	return
 }
 
@@ -106,7 +107,7 @@ func postSuperCall(
 	resp *http.Response,
 	err error) *protocol.Event {
 
-	endTime := epsagon.GetTimestamp()
+	endTime := tracer.GetTimestamp()
 	duration := endTime - startTime
 
 	event := createHTTPEvent(url, method, err)
@@ -143,7 +144,7 @@ func updateResponseData(resp *http.Response, resource *protocol.Resource) {
 		resource.Name = resp.Request.URL.Path
 		resource.Metadata["request_trace_id"] = resp.Header["x-amzn-requestid"][0]
 	}
-	if epsagon.GetGlobalTracerConfig().MetadataOnly {
+	if tracer.GetGlobalTracerConfig().MetadataOnly {
 		return
 	}
 	headers, err := json.Marshal(resp.Header)

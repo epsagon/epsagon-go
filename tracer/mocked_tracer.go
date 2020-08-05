@@ -1,4 +1,4 @@
-package epsagon
+package tracer
 
 import (
 	"github.com/epsagon/epsagon-go/protocol"
@@ -10,15 +10,15 @@ type MockedEpsagonTracer struct {
 	Events     *[]*protocol.Event
 	Config     *Config
 
-	panicStart        bool
-	panicAddEvent     bool
-	panicAddException bool
-	panicStop         bool
+	PanicStart        bool
+	PanicAddEvent     bool
+	PanicAddException bool
+	PanicStop         bool
 }
 
 // Start implementes mocked Start
 func (t *MockedEpsagonTracer) Start() {
-	if t.panicStart {
+	if t.PanicStart {
 		panic("panic in Start()")
 	}
 }
@@ -30,7 +30,7 @@ func (t *MockedEpsagonTracer) Running() bool {
 
 // Stop implementes mocked Stop
 func (t *MockedEpsagonTracer) Stop() {
-	if t.panicStop {
+	if t.PanicStop {
 		panic("panic in Stop()")
 	}
 }
@@ -42,7 +42,7 @@ func (t *MockedEpsagonTracer) Stopped() bool {
 
 // AddEvent implementes mocked AddEvent
 func (t *MockedEpsagonTracer) AddEvent(e *protocol.Event) {
-	if t.panicAddEvent {
+	if t.PanicAddEvent {
 		panic("panic in AddEvent()")
 	}
 	*t.Events = append(*t.Events, e)
@@ -50,7 +50,7 @@ func (t *MockedEpsagonTracer) AddEvent(e *protocol.Event) {
 
 // AddException implementes mocked AddEvent
 func (t *MockedEpsagonTracer) AddException(e *protocol.Exception) {
-	if t.panicAddException {
+	if t.PanicAddException {
 		panic("panic in AddException()")
 	}
 	*t.Exceptions = append(*t.Exceptions, e)

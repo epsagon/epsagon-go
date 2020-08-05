@@ -10,6 +10,7 @@ import (
 	lambdaContext "github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
 	"reflect"
 	"runtime/debug"
@@ -30,11 +31,11 @@ func getReflectType(i interface{}) reflect.Type {
 func mapParametersToString(params map[string]string) string {
 	buf, err := json.Marshal(params)
 	if err != nil {
-		AddException(&protocol.Exception{
+		tracer.AddException(&protocol.Exception{
 			Type:      "trigger-creation",
 			Message:   fmt.Sprintf("Failed to serialize %v", params),
 			Traceback: string(debug.Stack()),
-			Time:      GetTimestamp(),
+			Time:      tracer.GetTimestamp(),
 		})
 		return ""
 	}
@@ -44,19 +45,19 @@ func mapParametersToString(params map[string]string) string {
 func triggerAPIGatewayProxyRequest(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	event, ok := rawEvent.(lambdaEvents.APIGatewayProxyRequest)
 	if !ok {
-		AddException(&protocol.Exception{
+		tracer.AddException(&protocol.Exception{
 			Type: "trigger-creation",
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.APIGatewayProxyRequest %v",
 				rawEvent),
-			Time: GetTimestamp(),
+			Time: tracer.GetTimestamp(),
 		})
 		return nil
 	}
 	triggerEvent := &protocol.Event{
 		Id:        event.RequestContext.RequestID,
 		Origin:    "trigger",
-		StartTime: GetTimestamp(),
+		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      event.Headers["Host"],
 			Type:      "api_gateway",
@@ -71,11 +72,11 @@ func triggerAPIGatewayProxyRequest(rawEvent interface{}, metadataOnly bool) *pro
 	}
 	if !metadataOnly {
 		if bodyJSON, err := json.Marshal(event.Body); err != nil {
-			AddException(&protocol.Exception{
+			tracer.AddException(&protocol.Exception{
 				Type:      "trigger-creation",
 				Message:   fmt.Sprintf("Failed to serialize body %s", event.Body),
 				Traceback: string(debug.Stack()),
-				Time:      GetTimestamp(),
+				Time:      tracer.GetTimestamp(),
 			})
 			triggerEvent.Resource.Metadata["body"] = ""
 		} else {
@@ -90,29 +91,29 @@ func triggerAPIGatewayProxyRequest(rawEvent interface{}, metadataOnly bool) *pro
 func triggerS3Event(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	event, ok := rawEvent.(lambdaEvents.S3Event)
 	if !ok {
-		AddException(&protocol.Exception{
+		tracer.AddException(&protocol.Exception{
 			Type: "trigger-creation",
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.S3Event %v",
 				rawEvent),
-			Time: GetTimestamp(),
+			Time: tracer.GetTimestamp(),
 		})
 		return nil
 	}
 
 	triggerEvent := &protocol.Event{
-		Id:         fmt.Sprintf("s3-trigger-%s", event.Records[0].ResponseElements["x-amz-request-id"]),
+		Id:        fmt.Sprintf("s3-trigger-%s", event.Records[0].ResponseElements["x-amz-request-id"]),
 		Origin:    "trigger",
-		StartTime: GetTimestamp(),
+		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      event.Records[0].S3.Bucket.Name,
 			Type:      "s3",
 			Operation: event.Records[0].EventName,
 			Metadata: map[string]string{
-				"region": event.Records[0].AWSRegion,
-				"object_key": event.Records[0].S3.Object.Key,
-				"object_size": strconv.FormatInt(event.Records[0].S3.Object.Size, 10),
-				"object_etag": event.Records[0].S3.Object.ETag,
+				"region":           event.Records[0].AWSRegion,
+				"object_key":       event.Records[0].S3.Object.Key,
+				"object_size":      strconv.FormatInt(event.Records[0].S3.Object.Size, 10),
+				"object_etag":      event.Records[0].S3.Object.ETag,
 				"object_sequencer": event.Records[0].S3.Object.Sequencer,
 				"x-amz-request-id": event.Records[0].ResponseElements["x-amz-request-id"],
 			},
@@ -125,12 +126,12 @@ func triggerS3Event(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 func triggerKinesisEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	event, ok := rawEvent.(lambdaEvents.KinesisEvent)
 	if !ok {
-		AddException(&protocol.Exception{
+		tracer.AddException(&protocol.Exception{
 			Type: "trigger-creation",
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.KinesisEvent %v",
 				rawEvent),
-			Time: GetTimestamp(),
+			Time: tracer.GetTimestamp(),
 		})
 		return nil
 	}
@@ -138,18 +139,18 @@ func triggerKinesisEvent(rawEvent interface{}, metadataOnly bool) *protocol.Even
 	eventSourceArnSlice := strings.Split(event.Records[0].EventSourceArn, "/")
 
 	triggerEvent := &protocol.Event{
-		Id:         event.Records[0].EventID,
+		Id:        event.Records[0].EventID,
 		Origin:    "trigger",
-		StartTime: GetTimestamp(),
+		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      eventSourceArnSlice[len(eventSourceArnSlice)-1],
 			Type:      "kinesis",
 			Operation: strings.Replace(event.Records[0].EventName, "aws:kinesis:", "", -1),
 			Metadata: map[string]string{
-				"region": event.Records[0].AwsRegion,
+				"region":          event.Records[0].AwsRegion,
 				"invoke_identity": event.Records[0].InvokeIdentityArn,
 				"sequence_number": event.Records[0].Kinesis.SequenceNumber,
-				"partition_key": event.Records[0].Kinesis.PartitionKey,
+				"partition_key":   event.Records[0].Kinesis.PartitionKey,
 			},
 		},
 	}
@@ -160,23 +161,22 @@ func triggerKinesisEvent(rawEvent interface{}, metadataOnly bool) *protocol.Even
 func triggerSNSEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	event, ok := rawEvent.(lambdaEvents.SNSEvent)
 	if !ok {
-		AddException(&protocol.Exception{
+		tracer.AddException(&protocol.Exception{
 			Type: "trigger-creation",
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.SNSEvent %v",
 				rawEvent),
-			Time: GetTimestamp(),
+			Time: tracer.GetTimestamp(),
 		})
 		return nil
 	}
 
 	eventSubscriptionArnSlice := strings.Split(event.Records[0].EventSubscriptionArn, ":")
 
-
 	triggerEvent := &protocol.Event{
-		Id:         event.Records[0].SNS.MessageID,
+		Id:        event.Records[0].SNS.MessageID,
 		Origin:    "trigger",
-		StartTime: GetTimestamp(),
+		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      eventSubscriptionArnSlice[len(eventSubscriptionArnSlice)-2],
 			Type:      "sns",
@@ -197,12 +197,12 @@ func triggerSNSEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 func triggerSQSEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	event, ok := rawEvent.(lambdaEvents.SQSEvent)
 	if !ok {
-		AddException(&protocol.Exception{
+		tracer.AddException(&protocol.Exception{
 			Type: "trigger-creation",
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.SQSEvent %v",
 				rawEvent),
-			Time: GetTimestamp(),
+			Time: tracer.GetTimestamp(),
 		})
 		return nil
 	}
@@ -210,22 +210,19 @@ func triggerSQSEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	eventSourceArnSlice := strings.Split(event.Records[0].EventSourceARN, ":")
 
 	triggerEvent := &protocol.Event{
-		Id:         event.Records[0].MessageId,
+		Id:        event.Records[0].MessageId,
 		Origin:    "trigger",
-		StartTime: GetTimestamp(),
+		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      eventSourceArnSlice[len(eventSourceArnSlice)-1],
 			Type:      "sqs",
 			Operation: "ReceiveMessage",
 			Metadata: map[string]string{
-				"MD5 Of Message Body": event.Records[0].Md5OfBody,
-				"Sender ID": event.Records[0].Attributes["SenderId"],
-				"Approximate Receive Count":
-					event.Records[0].Attributes["ApproximateReceiveCount"],
-				"Sent Timestamp":
-					event.Records[0].Attributes["SentTimestamp"],
-				"Approximate First Receive Timestamp":
-					event.Records[0].Attributes["ApproximateFirstReceiveTimestamp"],
+				"MD5 Of Message Body":                 event.Records[0].Md5OfBody,
+				"Sender ID":                           event.Records[0].Attributes["SenderId"],
+				"Approximate Receive Count":           event.Records[0].Attributes["ApproximateReceiveCount"],
+				"Sent Timestamp":                      event.Records[0].Attributes["SentTimestamp"],
+				"Approximate First Receive Timestamp": event.Records[0].Attributes["ApproximateFirstReceiveTimestamp"],
 			},
 		},
 	}
@@ -244,7 +241,8 @@ func unmarshalToStringMap(dav map[string]lambdaEvents.DynamoDBAttributeValue) (m
 	dbAttrMap := make(map[string]*dynamodb.AttributeValue)
 	for k, v := range dav {
 		var dbAttr dynamodb.AttributeValue
-		bytes, marshalErr := v.MarshalJSON(); if marshalErr != nil {
+		bytes, marshalErr := v.MarshalJSON()
+		if marshalErr != nil {
 			return nil, marshalErr
 		}
 		json.Unmarshal(bytes, &dbAttr)
@@ -260,12 +258,12 @@ func unmarshalToStringMap(dav map[string]lambdaEvents.DynamoDBAttributeValue) (m
 func triggerDynamoDBEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	event, ok := rawEvent.(lambdaEvents.DynamoDBEvent)
 	if !ok {
-		AddException(&protocol.Exception{
+		tracer.AddException(&protocol.Exception{
 			Type: "trigger-creation",
 			Message: fmt.Sprintf(
 				"failed to convert rawEvent to lambdaEvents.DynamoDBEvent %v",
 				rawEvent),
-			Time: GetTimestamp(),
+			Time: tracer.GetTimestamp(),
 		})
 		return nil
 	}
@@ -273,17 +271,17 @@ func triggerDynamoDBEvent(rawEvent interface{}, metadataOnly bool) *protocol.Eve
 	eventSourceArnSlice := strings.Split(event.Records[0].EventSourceArn, "/")
 
 	triggerEvent := &protocol.Event{
-		Id:         event.Records[0].EventID,
+		Id:        event.Records[0].EventID,
 		Origin:    "trigger",
-		StartTime: GetTimestamp(),
+		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      eventSourceArnSlice[len(eventSourceArnSlice)-3],
 			Type:      "dynamodb",
 			Operation: event.Records[0].EventName,
 			Metadata: map[string]string{
-				"region": event.Records[0].AWSRegion,
+				"region":          event.Records[0].AWSRegion,
 				"sequence_number": event.Records[0].Change.SequenceNumber,
-				"item_hash": "",
+				"item_hash":       "",
 			},
 		},
 	}
@@ -308,21 +306,19 @@ func triggerDynamoDBEvent(rawEvent interface{}, metadataOnly bool) *protocol.Eve
 		triggerEvent.Resource.Metadata["New Image"] = string(itemBytes)
 	}
 
-
 	return triggerEvent
 }
 
 func triggerJSONEvent(rawEvent json.RawMessage, metadataOnly bool) *protocol.Event {
 	triggerEvent := &protocol.Event{
-		Id: uuid.New().String(),
+		Id:        uuid.New().String(),
 		Origin:    "trigger",
-		StartTime: GetTimestamp(),
+		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
 			Name:      fmt.Sprintf("trigger-%s", lambdaContext.FunctionName),
 			Type:      "json",
 			Operation: "json",
-			Metadata: map[string]string{
-			},
+			Metadata:  map[string]string{},
 		},
 	}
 
@@ -361,8 +357,8 @@ var (
 			Factory:   triggerSQSEvent,
 		},
 		"aws:dynamodb": {
-			EventType: 	reflect.TypeOf(lambdaEvents.DynamoDBEvent{}),
-			Factory:	triggerDynamoDBEvent,
+			EventType: reflect.TypeOf(lambdaEvents.DynamoDBEvent{}),
+			Factory:   triggerDynamoDBEvent,
 		},
 	}
 )
@@ -400,11 +396,11 @@ func guessTriggerSource(payload json.RawMessage) string {
 	var rawEvent interestingFields
 	err := json.Unmarshal(payload, &rawEvent)
 	if err != nil {
-		AddException(&protocol.Exception{
+		tracer.AddException(&protocol.Exception{
 			Type:      "trigger-identification",
 			Message:   fmt.Sprintf("Failed to unmarshal json %v\n", err),
 			Traceback: string(debug.Stack()),
-			Time:      GetTimestamp(),
+			Time:      tracer.GetTimestamp(),
 		})
 		return ""
 	}
@@ -426,7 +422,7 @@ func addLambdaTrigger(
 	payload json.RawMessage,
 	metadataOnly bool,
 	triggerFactories map[string]factoryAndType,
-	) {
+) {
 	var triggerEvent *protocol.Event
 
 	triggerSource := guessTriggerSource(payload)
@@ -445,6 +441,6 @@ func addLambdaTrigger(
 
 	// If a trigger was found
 	if triggerEvent != nil {
-		AddEvent(triggerEvent)
+		tracer.AddEvent(triggerEvent)
 	}
 }
