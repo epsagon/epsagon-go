@@ -26,6 +26,14 @@ functions:
         method: post
     environment:
       TABLE_NAME: ${self:custom.TableName}
+  write-v2:
+    handler: write_sdk_v2/main
+    events:
+    - http:
+        path: write_v2
+        method: post
+    environment:
+      TABLE_NAME: ${self:custom.TableName}
   triggered:
     handler: trigger/main
     events:

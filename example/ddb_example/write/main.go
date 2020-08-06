@@ -15,6 +15,7 @@ import (
 	"os"
 )
 
+// Item example
 type Item struct {
 	Item string `json:"item"`
 }
