@@ -14,8 +14,6 @@ func mySQSHandler(sqsEvents events.SQSEvent) error {
 
 func main() {
 	log.Println("enter main")
-	config := epsagon.Config{
-		ApplicationName: "sqs-test-go",
-	}
-	lambda.Start(epsagon.WrapLambdaHandler(&config, mySQSHandler))
+	config := epsagon.NewTracerConfig("sqs-test-go", "")
+	lambda.Start(epsagon.WrapLambdaHandler(config, mySQSHandler))
 }

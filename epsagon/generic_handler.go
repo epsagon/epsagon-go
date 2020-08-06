@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 )
 
 func errorHandler(e error) genericHandler {
 	return func(ctx context.Context, payload json.RawMessage) (interface{}, error) {
-		AddException(&protocol.Exception{
+		tracer.AddException(&protocol.Exception{
 			Type:    "wrapper",
 			Message: fmt.Sprintf("Error in wrapper: %v", e),
-			Time:    GetTimestamp(),
+			Time:    tracer.GetTimestamp(),
 		})
 		return nil, e
 	}
@@ -85,10 +86,10 @@ func makeGenericHandler(handlerSymbol interface{}) genericHandler {
 			arg := reflect.New(argType)
 
 			if err := json.Unmarshal(payload, arg.Interface()); err != nil {
-				AddException(&protocol.Exception{
+				tracer.AddException(&protocol.Exception{
 					Type:    "wrapper",
 					Message: fmt.Sprintf("Error in wrapper: failed to convert arguments: %v", err),
-					Time:    GetTimestamp(),
+					Time:    tracer.GetTimestamp(),
 				})
 				return nil, err
 			}

@@ -1,7 +1,7 @@
 service: s3-example-go-app
 
 custom:
-  BucketName: s3-golang-test-bucket
+  BucketName: s3-golang-test-bucket-epsagon
 
 provider:
   name: aws
@@ -28,6 +28,12 @@ functions:
     events:
     - http:
         path: write
+        method: post
+  write_v2:
+    handler: write_v2/main
+    events:
+    - http:
+        path: write_v2
         method: post
   trigger:
     handler: trigger/main

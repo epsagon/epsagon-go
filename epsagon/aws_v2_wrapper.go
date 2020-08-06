@@ -1,40 +1,40 @@
-package epsagonawswrapper
+package epsagon
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"log"
+	"reflect"
 	"time"
 )
 
-// WrapSession wraps an aws session.Session with epsgaon traces
-func WrapSession(s *session.Session) *session.Session {
-	if s == nil {
-		return s
-	}
-	s.Handlers.Complete.PushFrontNamed(
-		request.NamedHandler{
-			Name: "github.com/epsagon/epsagon-go/wrappers/aws/aws-sdk-go/aws/aws.go",
+// WrapAwsV2Service wrap aws service with epsgon
+// svc := epsagon.WrapAwsV2Service(dynamodb.New(cfg)).(*dynamodb.Client)
+func WrapAwsV2Service(svcClient interface{}) interface{} {
+	awsClient := reflect.ValueOf(svcClient).Elem().FieldByName("Client").Interface().(*aws.Client)
+	awsClient.Handlers.Complete.PushFrontNamed(
+		aws.NamedHandler{
+			Name: "epsagon-aws-sdk-v2",
 			Fn:   completeEventData,
-		})
-	return s
+		},
+	)
+	return svcClient
 }
 
-func getTimeStampFromRequest(r *request.Request) float64 {
+func getTimeStampFromRequest(r *aws.Request) float64 {
 	return float64(r.Time.UTC().UnixNano()) / float64(time.Millisecond) / float64(time.Nanosecond) / 1000.0
 }
 
-func completeEventData(r *request.Request) {
-	defer epsagon.GeneralEpsagonRecover("aws-sdk-go wrapper", "")
+func completeEventData(r *aws.Request) {
+	defer GeneralEpsagonRecover("aws-sdk-go wrapper", "")
 	if tracer.GetGlobalTracerConfig().Debug {
 		log.Printf("EPSAGON DEBUG OnComplete request response: %+v\n", r.HTTPResponse)
 		log.Printf("EPSAGON DEBUG OnComplete request Operation: %+v\n", r.Operation)
-		log.Printf("EPSAGON DEBUG OnComplete request ClientInfo: %+v\n", r.ClientInfo)
+		log.Printf("EPSAGON DEBUG OnComplete request Endpoint: %+v\n", r.Endpoint)
 		log.Printf("EPSAGON DEBUG OnComplete request Params: %+v\n", r.Params)
 		log.Printf("EPSAGON DEBUG OnComplete request Data: %+v\n", r.Data)
 	}
@@ -50,22 +50,16 @@ func completeEventData(r *request.Request) {
 	tracer.AddEvent(&event)
 }
 
-type factory func(*request.Request, *protocol.Resource, bool)
+type factory func(*aws.Request, *protocol.Resource, bool)
 
 var awsResourceEventFactories = map[string]factory{
-	"sqs":      sqsEventDataFactory,
-	"s3":       s3EventDataFactory,
-	"dynamodb": dynamodbEventDataFactory,
-	"kinesis":  kinesisEventDataFactory,
-	"ses":      sesEventDataFactory,
-	"sns":      snsEventDataFactory,
-	"lambda":   lambdaEventDataFactory,
-	"sfn":      sfnEventDataFactory,
+	"s3":       epsagonawsv2factories.S3EventDataFactory,
+	"dynamodb": epsagonawsv2factories.DynamodbEventDataFactory,
 }
 
-func extractResourceInformation(r *request.Request) *protocol.Resource {
+func extractResourceInformation(r *aws.Request) *protocol.Resource {
 	res := protocol.Resource{
-		Type:      r.ClientInfo.ServiceName,
+		Type:      r.Endpoint.SigningName,
 		Operation: r.Operation.Name,
 		Metadata:  make(map[string]string),
 	}
@@ -78,7 +72,7 @@ func extractResourceInformation(r *request.Request) *protocol.Resource {
 	return &res
 }
 
-func defaultFactory(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func defaultFactory(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
 	if tracer.GetGlobalTracerConfig().Debug {
 		log.Println("EPSAGON DEBUG:: entering defaultFactory")
 	}

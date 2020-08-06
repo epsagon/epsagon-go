@@ -1,4 +1,4 @@
-package epsagon_test
+package tracer_test
 
 import (
 	"bytes"
@@ -12,8 +12,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"testing"
@@ -73,10 +73,10 @@ var _ = Describe("epsagonTracer suite", func() {
 })
 
 func runWithTracer(endpoint string, operations func()) {
-	epsagon.CreateTracer(&epsagon.Config{
+	tracer.CreateTracer(&tracer.Config{
 		CollectorURL: endpoint,
 	})
-	defer epsagon.StopTracer()
+	defer tracer.StopTracer()
 	operations()
 }
 
@@ -161,7 +161,7 @@ func Test_handleSendTracesResponse(t *testing.T) {
 			}))
 			defer server.Close()
 			resp, err := test.httpClient.Post(server.URL, "application/json", nil)
-			epsagon.HandleSendTracesResponse(resp, err)
+			tracer.HandleSendTracesResponse(resp, err)
 
 			if !strings.Contains(buf.String(), test.expectedLog) {
 				t.Errorf("Unexpected log: expected %s got %s", test.expectedLog, buf.String())

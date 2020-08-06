@@ -1,19 +1,19 @@
-package epsagonawswrapper
+package epsagonawsv2factories
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 	"strconv"
 )
 
-type specificOperationHandler func(r *request.Request, res *protocol.Resource, metadataOnly bool)
+type specificOperationHandler func(r *aws.Request, res *protocol.Resource, metadataOnly bool)
 
 func handleSpecificOperation(
-	r *request.Request,
+	r *aws.Request,
 	res *protocol.Resource,
 	metadataOnly bool,
 	handlers map[string]specificOperationHandler,
@@ -74,4 +74,11 @@ func updateMetadataWithFieldToJSON(
 		return
 	}
 	metadata[targetKey] = string(stream)
+}
+
+func getResourceNameFromField(res *protocol.Resource, value reflect.Value, fieldName string) {
+	fieldValue, ok := getFieldStringPtr(value, fieldName)
+	if ok {
+		res.Name = fieldValue
+	}
 }

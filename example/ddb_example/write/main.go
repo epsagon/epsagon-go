@@ -15,6 +15,7 @@ import (
 	"os"
 )
 
+// Item example
 type Item struct {
 	Item string `json:"item"`
 }
@@ -41,7 +42,7 @@ func ddbHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRe
 	}
 
 	input := &dynamodb.PutItemInput{
-		Item: av,
+		Item:      av,
 		TableName: aws.String(os.Getenv("TABLE_NAME")),
 	}
 
@@ -59,10 +60,8 @@ func ddbHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRe
 
 func main() {
 	log.Println("enter main")
-	config := epsagon.Config{
-		ApplicationName: "ddb-test-go",
-		Debug:           true,
-	}
-	lambda.Start(epsagon.WrapLambdaHandler(&config, ddbHandler))
+	config := epsagon.NewTracerConfig("ddb-test-go-v2", "")
+	config.Debug = true
+	lambda.Start(epsagon.WrapLambdaHandler(config, ddbHandler))
 	log.Println("exit main")
 }

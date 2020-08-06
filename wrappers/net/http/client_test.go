@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"net/http"
 	"net/http/httptest"
 )
@@ -28,10 +28,10 @@ var _ = Describe("ClientWrapper", func() {
 		requests = make([]*http.Request, 0)
 		events = make([]*protocol.Event, 0)
 		exceptions = make([]*protocol.Exception, 0)
-		epsagon.GlobalTracer = &epsagon.MockedEpsagonTracer{
+		tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 			Events:     &events,
 			Exceptions: &exceptions,
-			Config:     &epsagon.Config{},
+			Config:     &tracer.Config{},
 		}
 		testServer = httptest.NewServer(http.HandlerFunc(
 			func(res http.ResponseWriter, req *http.Request) {
@@ -40,7 +40,7 @@ var _ = Describe("ClientWrapper", func() {
 			}))
 	})
 	AfterEach(func() {
-		epsagon.GlobalTracer = nil
+		tracer.GlobalTracer = nil
 		testServer.Close()
 	})
 

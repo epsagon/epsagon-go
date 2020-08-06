@@ -2,33 +2,31 @@ package epsagon
 
 import (
 	"fmt"
-	"github.com/epsagon/epsagon-go/protocol"
-	"runtime/debug"
-	"time"
+	"github.com/epsagon/epsagon-go/tracer"
 )
 
-// GetTimestamp returns the current time in miliseconds
-func GetTimestamp() float64 {
-	return float64(time.Now().UnixNano()) / float64(time.Millisecond) / float64(time.Nanosecond) / 1000.0
-}
-
-// AddExceptionTypeAndMessage adds an exception to the current tracer with
-// the current stack and time.
-// exceptionType, msg are strings that will be added to the exception
-func AddExceptionTypeAndMessage(exceptionType, msg string) {
-	stack := debug.Stack()
-	AddException(&protocol.Exception{
-		Type:      exceptionType,
-		Message:   msg,
-		Traceback: string(stack),
-		Time:      GetTimestamp(),
-	})
+// Config is the configuration for Epsagon's tracer
+type Config struct {
+	tracer.Config
 }
 
 // GeneralEpsagonRecover recover function that will send exception to epsagon
 // exceptionType, msg are strings that will be added to the exception
 func GeneralEpsagonRecover(exceptionType, msg string) {
 	if r := recover(); r != nil {
-		AddExceptionTypeAndMessage(exceptionType, fmt.Sprintf("%s:%+v", msg, r))
+		tracer.AddExceptionTypeAndMessage(exceptionType, fmt.Sprintf("%s:%+v", msg, r))
+	}
+}
+
+// NewTracerConfig creates a new tracer Config
+func NewTracerConfig(applicationName, token string) *Config {
+	return &Config{
+		Config: tracer.Config{
+			ApplicationName: applicationName,
+			Token:           token,
+			MetadataOnly:    true,
+			Debug:           false,
+			SendTimeout:     "1s",
+		},
 	}
 }

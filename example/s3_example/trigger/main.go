@@ -18,10 +18,8 @@ func s3Handler(s3Event events.S3Event) {
 
 func main() {
 	log.Println("enter main")
-	config := epsagon.Config{
-		ApplicationName: "s3-test-go",
-		Debug: true,
-	}
-	lambda.Start(epsagon.WrapLambdaHandler(&config, s3Handler))
+	config := epsagon.NewTracerConfig("s3-test-go", "")
+	config.Debug = true
+	lambda.Start(epsagon.WrapLambdaHandler(config, s3Handler))
 	log.Println("exit main")
 }
