@@ -21,7 +21,7 @@ func handleSFNStartExecution(r *request.Request, res *protocol.Resource, metadat
 	arn, ok := getFieldStringPtr(inputValue, "StateMachineArn")
 	if ok {
 		arnParts := strings.Split(arn, ":")
-		res.Name = arnParts[len(arnParts)]
+		res.Name = arnParts[len(arnParts)-1]
 		res.Metadata["State Machine ARN"] = arn
 	}
 	updateMetadataFromValue(inputValue, "Name", "Execution Name", res.Metadata)
