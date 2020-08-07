@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -149,7 +150,7 @@ func (tracer *epsagonTracer) Stopped() bool {
 
 func fillConfigDefaults(config *Config) {
 	if !config.Debug {
-		if os.Getenv("EPSAGON_DEBUG") == "TRUE" {
+		if strings.ToUpper(os.Getenv("EPSAGON_DEBUG")) == "TRUE" {
 			config.Debug = true
 		}
 	}
@@ -157,6 +158,11 @@ func fillConfigDefaults(config *Config) {
 		config.Token = os.Getenv("EPSAGON_TOKEN")
 		if config.Debug {
 			log.Println("EPSAGON DEBUG: setting token from environment variable")
+		}
+	}
+	if config.MetadataOnly {
+		if strings.ToUpper(os.Getenv("EPSAGON_METADATA")) == "FALSE" {
+	           	config.MetadataOnly = false
 		}
 	}
 	if len(config.CollectorURL) == 0 {
