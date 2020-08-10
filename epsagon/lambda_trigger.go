@@ -374,7 +374,6 @@ func decodeAndUnpackEvent(
 	decoder := json.NewDecoder(bytes.NewReader(payload))
 
 	if err := decoder.Decode(event.Interface()); err != nil {
-		// fmt.Printf("DEBUG: addLambdaTrigger error in json decoder: %v\n", err)
 		return nil
 	}
 	return factory(event.Elem().Interface(), metadataOnly)

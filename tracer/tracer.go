@@ -191,12 +191,12 @@ func fillConfigDefaults(config *Config) {
 }
 
 // CreateTracer will initiallize a global epsagon tracer
-func CreateTracer(config *Config) {
+func CreateTracer(config *Config) Tracer {
 	mutex.Lock()
 	defer mutex.Unlock()
 	if GlobalTracer != nil && !GlobalTracer.Stopped() {
-		log.Println("The tracer is already created")
-		return
+		log.Println("The tracer is already created, Closing and Creating.")
+		GlobalTracer.Stop()
 	}
 	if config == nil {
 		config = &Config{}
@@ -215,7 +215,7 @@ func CreateTracer(config *Config) {
 	if config.Debug {
 		log.Println("EPSAGON DEBUG: Created a new tracer")
 	}
-	GlobalTracer.Start()
+	return GlobalTracer
 }
 
 // AddException adds a tracing exception to the tracer

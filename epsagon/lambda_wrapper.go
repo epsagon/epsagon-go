@@ -53,11 +53,6 @@ type invocationData struct {
 	thrownError   interface{}
 }
 
-type userError struct {
-	exception interface{}
-	stack     string
-}
-
 func getAWSAccount(lc *lambdacontext.LambdaContext) string {
 	arnParts := strings.Split(lc.InvokedFunctionArn, ":")
 	if len(arnParts) >= 4 {
@@ -148,7 +143,6 @@ func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Ra
 	defer func() {
 		if !handler.invoking {
 			recover()
-			// In the future might attempt to send basic data
 		}
 		if !handler.invoked {
 			result, err = handler.handler(ctx, payload)
