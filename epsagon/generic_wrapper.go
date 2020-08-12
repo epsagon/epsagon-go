@@ -17,13 +17,14 @@ type userError struct {
 
 // epsagonGenericWrapper is a generic lambda function type
 type epsagonGenericWrapper struct {
-	handler     reflect.Value
-	config      *Config
-	tracer      tracer.Tracer
-	runner      *protocol.Event
-	thrownError interface{}
-	invoked     bool
-	invoking    bool
+	handler       reflect.Value
+	config        *Config
+	tracer        tracer.Tracer
+	runner        *protocol.Event
+	thrownError   interface{}
+	invoked       bool
+	invoking      bool
+	dontAddRunner bool
 }
 
 // createRunner creates a runner event but does not add it to the tracer
@@ -42,7 +43,10 @@ func (wrapper *epsagonGenericWrapper) createRunner() {
 	}
 }
 
-func (wrapper *epsagonGenericWrapper) addRunner() {
+func (wrapper *epsagonGenericWrapper) addRunnerEvent() {
+	if wrapper.dontAddRunner {
+		return
+	}
 	endTime := tracer.GetTimestamp()
 	wrapper.runner.Duration = endTime - wrapper.runner.StartTime
 	wrapper.tracer.AddEvent(wrapper.runner)
@@ -52,7 +56,7 @@ func (wrapper *epsagonGenericWrapper) addRunner() {
 func (wrapper *epsagonGenericWrapper) transformArguments(args ...interface{}) []reflect.Value {
 	if wrapper.handler.Type().NumIn() != len(args) {
 		msg := fmt.Sprintf(
-			"Wrong number of arguments %d, expected %d",
+			"Wrong number of args: %d, expected: %d",
 			len(args), wrapper.handler.Type().NumIn())
 		wrapper.createRunner()
 		wrapper.runner.Exception = &protocol.Exception{
@@ -60,7 +64,7 @@ func (wrapper *epsagonGenericWrapper) transformArguments(args ...interface{}) []
 			Message: fmt.Sprintf("%v", msg),
 			Time:    tracer.GetTimestamp(),
 		}
-		wrapper.addRunner()
+		wrapper.addRunnerEvent()
 		panic(msg)
 	}
 	inputs := make([]reflect.Value, len(args))
@@ -72,7 +76,7 @@ func (wrapper *epsagonGenericWrapper) transformArguments(args ...interface{}) []
 
 // Call the wrapped function
 func (wrapper *epsagonGenericWrapper) Call(args ...interface{}) (results []reflect.Value) {
-	inputs := wrapper.transformArguments(args)
+	inputs := wrapper.transformArguments(args...)
 	defer func() {
 		wrapper.thrownError = recover()
 		if wrapper.thrownError != nil {
@@ -92,7 +96,7 @@ func (wrapper *epsagonGenericWrapper) Call(args ...interface{}) (results []refle
 			} else {
 				exception.Type = "GenericEpsagonWrapper"
 				wrapper.tracer.AddException(exception)
-				if !wrapper.invoked {
+				if !wrapper.invoked { // attempt to run the user's function untraced
 					results = wrapper.handler.Call(inputs)
 				}
 			}
@@ -100,11 +104,11 @@ func (wrapper *epsagonGenericWrapper) Call(args ...interface{}) (results []refle
 	}()
 
 	wrapper.createRunner()
-	wrapper.invoked = true
 	wrapper.invoking = true
+	wrapper.invoked = true
 	results = wrapper.handler.Call(inputs)
 	wrapper.invoking = false
-	wrapper.addRunner()
+	wrapper.addRunnerEvent()
 	return results
 }
 

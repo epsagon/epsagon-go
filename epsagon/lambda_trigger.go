@@ -421,6 +421,7 @@ func addLambdaTrigger(
 	payload json.RawMessage,
 	metadataOnly bool,
 	triggerFactories map[string]factoryAndType,
+	currentTracer tracer.Tracer,
 ) {
 	var triggerEvent *protocol.Event
 
