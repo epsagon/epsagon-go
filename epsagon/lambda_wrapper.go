@@ -18,25 +18,15 @@ var (
 	coldStart = true
 )
 
-type genericHandler func(context.Context, json.RawMessage) (interface{}, error)
+type genericLambdaHandler func(context.Context, json.RawMessage) (interface{}, error)
 
 // epsagonLambdaWrapper is a generic lambda function type
 type epsagonLambdaWrapper struct {
-	handler  genericHandler
+	handler  genericLambdaHandler
 	config   *Config
+	tracer   tracer.Tracer
 	invoked  bool
 	invoking bool
-}
-
-func (handler *epsagonLambdaWrapper) createTracer() {
-	if handler.config == nil {
-		handler.config = &Config{}
-	}
-	tracer.CreateTracer(castConfig(handler.config))
-}
-
-func castConfig(cfg *Config) *tracer.Config {
-	return &cfg.Config
 }
 
 type preInvokeData struct {
@@ -53,11 +43,6 @@ type invocationData struct {
 	thrownError   interface{}
 }
 
-type userError struct {
-	exception interface{}
-	stack     string
-}
-
 func getAWSAccount(lc *lambdacontext.LambdaContext) string {
 	arnParts := strings.Split(lc.InvokedFunctionArn, ":")
 	if len(arnParts) >= 4 {
@@ -66,7 +51,7 @@ func getAWSAccount(lc *lambdacontext.LambdaContext) string {
 	return ""
 }
 
-func (handler *epsagonLambdaWrapper) preInvokeOps(
+func (wrapper *epsagonLambdaWrapper) preInvokeOps(
 	ctx context.Context, payload json.RawMessage) (info *preInvokeData) {
 	startTime := tracer.GetTimestamp()
 	metadata := map[string]string{}
@@ -76,7 +61,7 @@ func (handler *epsagonLambdaWrapper) preInvokeOps(
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			tracer.AddExceptionTypeAndMessage("LambdaWrapper",
+			wrapper.tracer.AddExceptionTypeAndMessage("LambdaWrapper",
 				fmt.Sprintf("preInvokeOps:%+v", r))
 			info = &preInvokeData{
 				LambdaContext:      lc,
@@ -97,7 +82,7 @@ func (handler *epsagonLambdaWrapper) preInvokeOps(
 	}
 	coldStart = false
 
-	addLambdaTrigger(payload, handler.config.MetadataOnly, triggerFactories)
+	addLambdaTrigger(payload, wrapper.config.MetadataOnly, triggerFactories, wrapper.tracer)
 
 	return &preInvokeData{
 		InvocationMetadata: metadata,
@@ -106,12 +91,12 @@ func (handler *epsagonLambdaWrapper) preInvokeOps(
 	}
 }
 
-func (handler *epsagonLambdaWrapper) postInvokeOps(
+func (wrapper *epsagonLambdaWrapper) postInvokeOps(
 	preInvokeInfo *preInvokeData,
 	invokeInfo *invocationData) {
 	defer func() {
 		if r := recover(); r != nil {
-			tracer.AddExceptionTypeAndMessage("LambdaWrapper", fmt.Sprintf("postInvokeOps:%+v", r))
+			wrapper.tracer.AddExceptionTypeAndMessage("LambdaWrapper", fmt.Sprintf("postInvokeOps:%+v", r))
 		}
 	}()
 
@@ -133,25 +118,24 @@ func (handler *epsagonLambdaWrapper) postInvokeOps(
 		Exception: invokeInfo.ExceptionInfo,
 	}
 
-	if !handler.config.MetadataOnly {
+	if !wrapper.config.MetadataOnly {
 		lambdaEvent.Resource.Metadata["return_value"] = fmt.Sprintf("%+v", invokeInfo.result)
 	}
 
-	tracer.AddEvent(lambdaEvent)
+	wrapper.tracer.AddEvent(lambdaEvent)
 }
 
-// Invoke calls the handler, and creates a tracer for that duration.
-func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.RawMessage) (result interface{}, err error) {
+// Invoke calls the wrapper, and creates a tracer for that duration.
+func (wrapper *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.RawMessage) (result interface{}, err error) {
 	invokeInfo := &invocationData{}
-	handler.invoked = false
-	handler.invoking = false
+	wrapper.invoked = false
+	wrapper.invoking = false
 	defer func() {
-		if !handler.invoking {
+		if !wrapper.invoking {
 			recover()
-			// In the future might attempt to send basic data
 		}
-		if !handler.invoked {
-			result, err = handler.handler(ctx, payload)
+		if !wrapper.invoked {
+			result, err = wrapper.handler(ctx, payload)
 		}
 		if invokeInfo.thrownError != nil {
 			panic(userError{
@@ -161,17 +145,14 @@ func (handler *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Ra
 		}
 	}()
 
-	handler.createTracer()
-	defer tracer.StopTracer()
-
-	preInvokeInfo := handler.preInvokeOps(ctx, payload)
-	handler.InvokeClientLambda(ctx, payload, invokeInfo)
-	handler.postInvokeOps(preInvokeInfo, invokeInfo)
+	preInvokeInfo := wrapper.preInvokeOps(ctx, payload)
+	wrapper.InvokeClientLambda(ctx, payload, invokeInfo)
+	wrapper.postInvokeOps(preInvokeInfo, invokeInfo)
 
 	return invokeInfo.result, invokeInfo.err
 }
 
-func (handler *epsagonLambdaWrapper) InvokeClientLambda(
+func (wrapper *epsagonLambdaWrapper) InvokeClientLambda(
 	ctx context.Context, payload json.RawMessage, invokeInfo *invocationData) {
 	defer func() {
 		invokeInfo.thrownError = recover()
@@ -188,10 +169,10 @@ func (handler *epsagonLambdaWrapper) InvokeClientLambda(
 
 	invokeInfo.errorStatus = protocol.ErrorCode_OK
 	// calling the actual function:
-	handler.invoked = true
-	handler.invoking = true
-	result, err := handler.handler(ctx, payload)
-	handler.invoking = false
+	wrapper.invoked = true
+	wrapper.invoking = true
+	result, err := wrapper.handler(ctx, payload)
+	wrapper.invoking = false
 	if err != nil {
 		invokeInfo.errorStatus = protocol.ErrorCode_ERROR
 		invokeInfo.ExceptionInfo = &protocol.Exception{
@@ -205,12 +186,16 @@ func (handler *epsagonLambdaWrapper) InvokeClientLambda(
 	invokeInfo.err = err
 }
 
-// WrapLambdaHandler wraps a generic handler for lambda function with epsagon tracing
+// WrapLambdaHandler wraps a generic wrapper for lambda function with epsagon tracing
 func WrapLambdaHandler(config *Config, handler interface{}) interface{} {
 	return func(ctx context.Context, payload json.RawMessage) (interface{}, error) {
+		wrapperTracer := tracer.CreateTracer(&config.Config)
+		wrapperTracer.Start()
+		defer wrapperTracer.Stop()
 		wrapper := &epsagonLambdaWrapper{
 			config:  config,
 			handler: makeGenericHandler(handler),
+			tracer:  wrapperTracer,
 		}
 		return wrapper.Invoke(ctx, payload)
 	}

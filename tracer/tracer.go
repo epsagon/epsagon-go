@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -26,6 +27,7 @@ var (
 type Tracer interface {
 	AddEvent(*protocol.Event)
 	AddException(*protocol.Exception)
+	AddExceptionTypeAndMessage(string, string)
 	Start()
 	Running() bool
 	Stop()
@@ -41,6 +43,7 @@ type Config struct {
 	MetadataOnly    bool   // Only send metadata about the event
 	Debug           bool   // Print Epsagon debug information
 	SendTimeout     string // Timeout for sending traces to Epsagon
+	Disable         bool   // Disable sending traces
 }
 
 type epsagonTracer struct {
@@ -86,7 +89,9 @@ func (tracer *epsagonTracer) sendTraces() {
 
 	client := &http.Client{Timeout: sendTimeout}
 
-	HandleSendTracesResponse(client.Post(tracer.Config.CollectorURL, "application/json", tracesReader))
+	if !tracer.Config.Disable {
+		HandleSendTracesResponse(client.Post(tracer.Config.CollectorURL, "application/json", tracesReader))
+	}
 }
 
 // HandleSendTracesResponse handles responses from the trace collector
@@ -162,7 +167,7 @@ func fillConfigDefaults(config *Config) {
 	}
 	if config.MetadataOnly {
 		if strings.ToUpper(os.Getenv("EPSAGON_METADATA")) == "FALSE" {
-	           	config.MetadataOnly = false
+			config.MetadataOnly = false
 		}
 	}
 	if len(config.CollectorURL) == 0 {
@@ -191,12 +196,12 @@ func fillConfigDefaults(config *Config) {
 }
 
 // CreateTracer will initiallize a global epsagon tracer
-func CreateTracer(config *Config) {
+func CreateTracer(config *Config) Tracer {
 	mutex.Lock()
 	defer mutex.Unlock()
 	if GlobalTracer != nil && !GlobalTracer.Stopped() {
-		log.Println("The tracer is already created")
-		return
+		log.Println("The tracer is already created, Closing and Creating.")
+		GlobalTracer.Stop()
 	}
 	if config == nil {
 		config = &Config{}
@@ -215,11 +220,14 @@ func CreateTracer(config *Config) {
 	if config.Debug {
 		log.Println("EPSAGON DEBUG: Created a new tracer")
 	}
-	GlobalTracer.Start()
+	return GlobalTracer
 }
 
 // AddException adds a tracing exception to the tracer
 func (tracer *epsagonTracer) AddException(exception *protocol.Exception) {
+	defer func() {
+		recover()
+	}()
 	tracer.exceptionsPipe <- exception
 }
 
@@ -316,4 +324,17 @@ func GetGlobalTracerConfig() *Config {
 		return &Config{}
 	}
 	return GlobalTracer.GetConfig()
+}
+
+// AddExceptionTypeAndMessage adds an exception to the current tracer with
+// the current stack and time.
+// exceptionType, msg are strings that will be added to the exception
+func (tracer *epsagonTracer) AddExceptionTypeAndMessage(exceptionType, msg string) {
+	stack := debug.Stack()
+	tracer.AddException(&protocol.Exception{
+		Type:      exceptionType,
+		Message:   msg,
+		Traceback: string(stack),
+		Time:      GetTimestamp(),
+	})
 }

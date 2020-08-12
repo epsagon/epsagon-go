@@ -65,7 +65,7 @@ var _ = Describe("epsagon trigger suite", func() {
 				if err != nil {
 					Fail("Failed to marshal json")
 				}
-				addLambdaTrigger(json.RawMessage(exampleJSON), false, triggerFactories)
+				addLambdaTrigger(json.RawMessage(exampleJSON), false, triggerFactories, tracer.GlobalTracer)
 				Expect(len(events)).To(BeNumerically("==", 1))
 				Expect(events[0].Resource.Type).To(Equal("api_gateway"))
 			})
@@ -87,7 +87,7 @@ var _ = Describe("epsagon trigger suite", func() {
 				if err != nil {
 					Fail("Failed to marshal json from rawEvent")
 				}
-				addLambdaTrigger(json.RawMessage(exampleJSON), false, triggerFactories)
+				addLambdaTrigger(json.RawMessage(exampleJSON), false, triggerFactories, tracer.GlobalTracer)
 				Expect(len(events)).To(BeNumerically("==", 1))
 				Expect(events[0].Resource.Type).To(Equal("api_gateway"))
 			})
@@ -99,7 +99,7 @@ var _ = Describe("epsagon trigger suite", func() {
 				if err != nil {
 					Fail("Failed to marshal json")
 				}
-				addLambdaTrigger(json.RawMessage(exampleJSON), false, triggerFactories)
+				addLambdaTrigger(json.RawMessage(exampleJSON), false, triggerFactories, tracer.GlobalTracer)
 				Expect(len(events)).To(BeNumerically("==", 1))
 				Expect(events[0].Resource.Type).To(Equal("json"))
 			})
