@@ -60,3 +60,12 @@ func (t *MockedEpsagonTracer) AddException(e *protocol.Exception) {
 func (t *MockedEpsagonTracer) GetConfig() *Config {
 	return t.Config
 }
+
+// AddExceptionTypeAndMessage implements AddExceptionTypeAndMessage
+func (t *MockedEpsagonTracer) AddExceptionTypeAndMessage(exceptionType, msg string) {
+	t.AddException(&protocol.Exception{
+		Type:    exceptionType,
+		Message: msg,
+		Time:    GetTimestamp(),
+	})
+}
