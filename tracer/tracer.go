@@ -115,7 +115,7 @@ func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 		Token:      tracer.Config.Token,
 		Events:     tracer.events,
 		Exceptions: tracer.exceptions,
-		Version:    "1.0.0",
+		Version:    VERSION,
 		Platform:   version,
 	}
 	if tracer.Config.Debug {
