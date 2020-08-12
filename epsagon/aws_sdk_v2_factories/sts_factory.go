@@ -14,13 +14,6 @@ func StsDataFactory(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
 	handleSpecificOperation(r, res, metadataOnly, handleSpecificOperations, nil)
 }
 
-func updateMetadataField(data reflect.Value, key string, res *protocol.Resource) {
-	value, ok := getFieldStringPtr(data, key)
-	if ok {
-		res.Metadata[key] = value
-	}
-}
-
 func handleStsGetCallerIdentityRequest(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
 	outputValue := reflect.ValueOf(r.Data).Elem()
 	if !metadataOnly {
