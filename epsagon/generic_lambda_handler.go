@@ -9,7 +9,7 @@ import (
 	"reflect"
 )
 
-func errorHandler(e error) genericHandler {
+func errorHandler(e error) genericLambdaHandler {
 	return func(ctx context.Context, payload json.RawMessage) (interface{}, error) {
 		tracer.AddException(&protocol.Exception{
 			Type:    "wrapper",
@@ -56,7 +56,7 @@ func validateReturns(handler reflect.Type) error {
 	return nil
 }
 
-func makeGenericHandler(handlerSymbol interface{}) genericHandler {
+func makeGenericHandler(handlerSymbol interface{}) genericLambdaHandler {
 	if handlerSymbol == nil {
 		return errorHandler(fmt.Errorf("handler is nil"))
 	}

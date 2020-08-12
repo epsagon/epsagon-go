@@ -40,9 +40,10 @@ dep ensure -add github.com/epsagon/epsagon-go
 
 The following frameworks are supported by Epsagon:
 
-|Framework                               |Supported Version          |Auto-tracing Supported                               |
-|----------------------------------------|---------------------------|-----------------------------------------------------|
-|[AWS Lambda](#aws-lambda)               |All                        |<ul><li>- [ ]</li></ul> |
+|Framework                               |Supported Version          |
+|----------------------------------------|---------------------------|
+|[AWS Lambda](#aws-lambda)               |All                        |
+|[Generic Function](#generic)            |All                        |
 
 
 ### AWS Lambda
@@ -72,6 +73,25 @@ func main() {
 }
 ```
 
+### Generic
+
+You can instrument a single function, this function can use go routines inside and their operations will still be traced,
+but currently we don't support more than one function being traced in the same environment.
+
+```go
+func doTask(a int, b string) (int, error) {
+	log.Printf("inside doTask: b = %s", b)
+	return a + 1, fmt.Errorf("boom")
+}
+func main() {
+	// With Epsagon instrumentation
+	config := epsagon.NewTracerConfig("generic-go-wrapper", "")
+	config.Debug = true
+	response := epsagon.GoWrapper(config, doTask)(5, "hello")
+	res2 := response[0].Int()
+	errInterface := response[1].Interface()
+}
+```
 
 ## Integrations
 
@@ -81,6 +101,7 @@ Epsagon provides out-of-the-box instrumentation (tracing) for many popular frame
 |--------------------|---------------------------|
 |net/http            |Fully supported            |
 |aws-sdk-go          |`>=1.10.0`                 |
+|aws-sdk-go-v2       |`>=0.23.0`                 |
 
 ### net/http
 
