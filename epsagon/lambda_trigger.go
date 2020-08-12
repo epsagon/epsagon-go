@@ -441,6 +441,6 @@ func addLambdaTrigger(
 
 	// If a trigger was found
 	if triggerEvent != nil {
-		tracer.AddEvent(triggerEvent)
+		currentTracer.AddEvent(triggerEvent)
 	}
 }

@@ -43,6 +43,14 @@ func (wrapper *epsagonGenericWrapper) createRunner() {
 	}
 }
 
+// For instances when you want to add event but can't risk exception
+func (wrapper *epsagonGenericWrapper) safeAddRunnerEvent() {
+	defer func() {
+		recover()
+	}()
+	wrapper.addRunnerEvent()
+}
+
 func (wrapper *epsagonGenericWrapper) addRunnerEvent() {
 	if wrapper.dontAddRunner {
 		return
@@ -64,7 +72,7 @@ func (wrapper *epsagonGenericWrapper) transformArguments(args ...interface{}) []
 			Message: fmt.Sprintf("%v", msg),
 			Time:    tracer.GetTimestamp(),
 		}
-		wrapper.addRunnerEvent()
+		wrapper.safeAddRunnerEvent()
 		panic(msg)
 	}
 	inputs := make([]reflect.Value, len(args))
@@ -89,6 +97,7 @@ func (wrapper *epsagonGenericWrapper) Call(args ...interface{}) (results []refle
 			if wrapper.invoking {
 				wrapper.runner.Exception = exception
 				wrapper.runner.ErrorCode = protocol.ErrorCode_EXCEPTION
+				wrapper.safeAddRunnerEvent()
 				panic(userError{
 					exception: wrapper.thrownError,
 					stack:     exception.Traceback,
