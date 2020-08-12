@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-// DynamodbEventDataFactory to create epsagon Resource from aws.Request to DynamoDB
+// STSEventDataFactory to create epsagon Resource from aws.Request to STS
 func StsDataFactory(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
 	handleSpecificOperations := map[string]specificOperationHandler{
 		"GetCallerIdentity": handleStsGetCallerIdentityRequest,
