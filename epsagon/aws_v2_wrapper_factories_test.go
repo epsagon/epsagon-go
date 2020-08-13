@@ -56,6 +56,7 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 					UserId:  &user_id_data,
 				}
 				epsagonawsv2factories.StsDataFactory(request, resource, false)
+				Expect(len(resource.Metadata)).To(Equal(3))
 				Expect(resource.Metadata["Account"]).To(Equal(TEST_ACCOUNT))
 				Expect(resource.Metadata["Arn"]).To(Equal(TEST_ARN))
 				Expect(resource.Metadata["UserId"]).To(Equal(TEST_USER_ID))
@@ -70,9 +71,7 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 					UserId:  &user_id_data,
 				}
 				epsagonawsv2factories.StsDataFactory(request, resource, true)
-				Expect(resource.Metadata["Account"]).To(Equal(""))
-				Expect(resource.Metadata["Arn"]).To(Equal(""))
-				Expect(resource.Metadata["UserId"]).To(Equal(""))
+				Expect(len(resource.Metadata)).To(Equal(0))
 			})
 		})
 	})
