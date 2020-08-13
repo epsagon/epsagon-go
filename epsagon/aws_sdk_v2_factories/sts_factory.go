@@ -15,8 +15,8 @@ func StsDataFactory(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
 }
 
 func handleStsGetCallerIdentityRequest(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
-	outputValue := reflect.ValueOf(r.Data).Elem()
 	if !metadataOnly {
+		outputValue := reflect.ValueOf(r.Data).Elem()
 		for _, key := range []string{"Account", "Arn", "UserId"} {
 			updateMetadataField(outputValue, key, res)
 		}
