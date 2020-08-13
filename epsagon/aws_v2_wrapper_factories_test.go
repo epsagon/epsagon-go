@@ -19,9 +19,9 @@ type CallerIdentityMock struct {
 	UserId  *string
 }
 
-func TestEpsagonTracer(t *testing.T) {
+func TestEpsagonFactoriesTracer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "AWS V2 Wrapper Factories")
+	RunSpecs(t, "AWS SDK V2 Factories")
 }
 
 var _ = Describe("aws_sdk_v2_factories", func() {
