@@ -1,21 +1,5 @@
 package epsagon
 
-/**
-test cases:
-  1. GetCallerIdentitySucess (real aws? mock of request?)
-  2. GetCallerIdentity Partial Sucess (real aws? mock of request?)
-  3. GetCallerIdentityFailure (no values returned)
-Metadata!!!
-For that need:
-  setup of GoWrapper
-  Mock to request or something
-
-What to validate?
-  len of events (two events?)
-  events[1]: metadata + resource: type + operation + origin?
-
-   failure: still check events, validate no metadata
-*/
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
