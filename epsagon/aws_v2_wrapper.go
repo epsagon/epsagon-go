@@ -55,6 +55,7 @@ type factory func(*aws.Request, *protocol.Resource, bool)
 var awsResourceEventFactories = map[string]factory{
 	"s3":       epsagonawsv2factories.S3EventDataFactory,
 	"dynamodb": epsagonawsv2factories.DynamodbEventDataFactory,
+	"sts":      epsagonawsv2factories.StsDataFactory,
 }
 
 func extractResourceInformation(r *aws.Request) *protocol.Resource {
