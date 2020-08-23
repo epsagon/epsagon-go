@@ -18,11 +18,18 @@ import (
 // ClientWrapper is Epsagon's wrapper for http.Client
 type ClientWrapper struct {
 	http.Client
+
+	// MetadataOnly flag overriding the configuration
+	MetadataOnly bool
 }
 
 // Wrap wraps an http.Client to Epsagon's ClientWrapper
 func Wrap(c http.Client) ClientWrapper {
-	return ClientWrapper{c}
+	return ClientWrapper{c, false}
+}
+
+func (c *ClientWrapper) getMetadataOnly() bool {
+	return c.MetadataOnly || tracer.GetGlobalTracerConfig().MetadataOnly
 }
 
 // Do wraps http.Client's Do
@@ -31,8 +38,8 @@ func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Do(req)
-	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err)
-	if !tracer.GetGlobalTracerConfig().MetadataOnly {
+	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, c.getMetadataOnly())
+	if !c.getMetadataOnly() {
 		updateRequestData(req, event.Resource.Metadata)
 	}
 	tracer.AddEvent(event)
@@ -44,8 +51,8 @@ func (c *ClientWrapper) Get(url string) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Get(url)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err)
-	if resp != nil && !tracer.GetGlobalTracerConfig().MetadataOnly {
+	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
+	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
 	tracer.AddEvent(event)
@@ -59,8 +66,8 @@ func (c *ClientWrapper) Post(
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Post(url, contentType, body)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err)
-	if resp != nil && !tracer.GetGlobalTracerConfig().MetadataOnly {
+	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
+	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
 	tracer.AddEvent(event)
@@ -74,8 +81,8 @@ func (c *ClientWrapper) PostForm(
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.PostForm(url, data)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err)
-	if resp != nil && !tracer.GetGlobalTracerConfig().MetadataOnly {
+	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
+	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 		dataBytes, err := json.Marshal(data)
 		if err == nil {
@@ -92,8 +99,8 @@ func (c *ClientWrapper) Head(url string) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Head(url)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err)
-	if resp != nil && !tracer.GetGlobalTracerConfig().MetadataOnly {
+	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
+	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
 	tracer.AddEvent(event)
@@ -105,7 +112,8 @@ func postSuperCall(
 	url string,
 	method string,
 	resp *http.Response,
-	err error) *protocol.Event {
+	err error,
+	metadataOnly bool) *protocol.Event {
 
 	endTime := tracer.GetTimestamp()
 	duration := endTime - startTime
@@ -114,7 +122,7 @@ func postSuperCall(
 	event.StartTime = startTime
 	event.Duration = duration
 	if resp != nil {
-		updateResponseData(resp, event.Resource)
+		updateResponseData(resp, event.Resource, metadataOnly)
 	}
 	return event
 }
@@ -137,14 +145,14 @@ func createHTTPEvent(url, method string, err error) *protocol.Event {
 	}
 }
 
-func updateResponseData(resp *http.Response, resource *protocol.Resource) {
+func updateResponseData(resp *http.Response, resource *protocol.Resource, metadataOnly bool) {
 	resource.Metadata["error_code"] = strconv.Itoa(resp.StatusCode)
 	if _, ok := resp.Header["x-amzn-requestid"]; ok {
 		resource.Type = "api_gateway"
 		resource.Name = resp.Request.URL.Path
 		resource.Metadata["request_trace_id"] = resp.Header["x-amzn-requestid"][0]
 	}
-	if tracer.GetGlobalTracerConfig().MetadataOnly {
+	if metadataOnly {
 		return
 	}
 	headers, err := json.Marshal(resp.Header)

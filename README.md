@@ -115,6 +115,8 @@ import (
 	resp, err := client.Get(anyurl)
 ```
 
+If you want to disable data collection only for the calls made by this client set  `client.MetadataOnly = true`
+
 ### aws-sdk-go
 
 Wrapping of aws-sdk-go is done through the Session object that has to be created to communicate with AWS:

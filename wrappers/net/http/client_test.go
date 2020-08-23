@@ -19,15 +19,17 @@ func TestEpsagonHTTPWrappers(t *testing.T) {
 
 var _ = Describe("ClientWrapper", func() {
 	var (
-		events     []*protocol.Event
-		exceptions []*protocol.Exception
-		requests   []*http.Request
-		testServer *httptest.Server
+		events        []*protocol.Event
+		exceptions    []*protocol.Exception
+		requests      []*http.Request
+		testServer    *httptest.Server
+		response_data []byte
 	)
 	BeforeEach(func() {
 		requests = make([]*http.Request, 0)
 		events = make([]*protocol.Event, 0)
 		exceptions = make([]*protocol.Exception, 0)
+		response_data = []byte("body")
 		tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 			Events:     &events,
 			Exceptions: &exceptions,
@@ -36,7 +38,7 @@ var _ = Describe("ClientWrapper", func() {
 		testServer = httptest.NewServer(http.HandlerFunc(
 			func(res http.ResponseWriter, req *http.Request) {
 				requests = append(requests, req)
-				res.Write([]byte("body"))
+				res.Write(response_data)
 			}))
 	})
 	AfterEach(func() {
@@ -76,6 +78,8 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(1))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				Expect(events[0].Resource.Metadata["response_body"]).To(
+					Equal(string(response_data)))
 			})
 		})
 		Context("bad input failing to create request", func() {
@@ -96,13 +100,36 @@ var _ = Describe("ClientWrapper", func() {
 		Context("request created succesfully", func() {
 			It("Adds event", func() {
 				client := Wrap(http.Client{})
+				data := "{\"hello\":\"world\"}"
 				client.Post(
 					testServer.URL,
 					"application/json",
-					strings.NewReader("{\"hello\":\"world\"}"))
+					strings.NewReader(data))
 				Expect(requests).To(HaveLen(1))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				Expect(events[0].Resource.Metadata["response_body"]).To(
+					Equal(string(response_data)))
+				Expect(events[0].Resource.Metadata["request_body"]).To(
+					Equal(data))
+			})
+		})
+		Context("client with metadataOnly", func() {
+			It("Adds event", func() {
+				client := Wrap(http.Client{})
+				client.MetadataOnly = true
+				data := "{\"hello\":\"world\"}"
+				client.Post(
+					testServer.URL,
+					"application/json",
+					strings.NewReader(data))
+				Expect(requests).To(HaveLen(1))
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				Expect(events[0].Resource.Metadata).NotTo(
+					HaveKey("response_body"))
+				Expect(events[0].Resource.Metadata).NotTo(
+					HaveKey("request_body"))
 			})
 		})
 		Context("bad input failing to create request", func() {
