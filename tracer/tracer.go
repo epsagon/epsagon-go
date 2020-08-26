@@ -19,8 +19,8 @@ import (
 
 var (
 	mutex sync.Mutex
-	// GlobalTracer A global Tracer for all internal uses
-	GlobalTracer Tracer
+	// Tracers Global Tracers, mapped by goroutine ID
+	Tracers = map[uint64]Tracer{}
 )
 
 // Tracer is what a general program tracer had to provide
@@ -88,7 +88,6 @@ func (tracer *epsagonTracer) sendTraces() {
 	}
 
 	client := &http.Client{Timeout: sendTimeout}
-
 	if !tracer.Config.Disable {
 		HandleSendTracesResponse(client.Post(tracer.Config.CollectorURL, "application/json", tracesReader))
 	}
@@ -195,19 +194,27 @@ func fillConfigDefaults(config *Config) {
 	}
 }
 
-// CreateTracer will initiallize a global epsagon tracer
+// Gets current goroutine tracer info
+func getCurrentTracerInfo() (tracer Tracer, currentId uint64) {
+	currentId = curGoroutineID()
+	tracer = Tracers[currentId]
+	return
+}
+
+// CreateTracer will initiallize a epsagon tracer for current goroutine
 func CreateTracer(config *Config) Tracer {
 	mutex.Lock()
 	defer mutex.Unlock()
-	if GlobalTracer != nil && !GlobalTracer.Stopped() {
+	tracer, currentId := getCurrentTracerInfo()
+	if tracer != nil && !tracer.Stopped() {
 		log.Println("The tracer is already created, Closing and Creating.")
-		GlobalTracer.Stop()
+		tracer.Stop()
 	}
 	if config == nil {
 		config = &Config{}
 	}
 	fillConfigDefaults(config)
-	GlobalTracer = &epsagonTracer{
+	tracer = &epsagonTracer{
 		Config:         config,
 		eventsPipe:     make(chan *protocol.Event),
 		events:         make([]*protocol.Event, 0, 0),
@@ -217,10 +224,11 @@ func CreateTracer(config *Config) Tracer {
 		stopped:        make(chan struct{}),
 		running:        make(chan struct{}),
 	}
+	Tracers[currentId] = tracer
 	if config.Debug {
 		log.Println("EPSAGON DEBUG: Created a new tracer")
 	}
-	return GlobalTracer
+	return tracer
 }
 
 // AddException adds a tracing exception to the tracer
@@ -241,27 +249,36 @@ func (tracer *epsagonTracer) AddEvent(event *protocol.Event) {
 
 // AddEvent adds an event to the tracer
 func AddEvent(event *protocol.Event) {
-	if GlobalTracer == nil || GlobalTracer.Stopped() {
-		// TODO
+	mutex.Lock()
+	defer mutex.Unlock()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Epsagon: Failed to add event")
+		}
+	}()
+	tracer, _ := getCurrentTracerInfo()
+	if tracer == nil || tracer.Stopped() {
 		log.Println("The tracer is not initialized!")
 		return
 	}
-	GlobalTracer.AddEvent(event)
+	tracer.AddEvent(event)
 }
 
 // AddException adds an exception to the tracer
 func AddException(exception *protocol.Exception) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("Epsagon: Failed to add exception")
 		}
 	}()
-	if GlobalTracer == nil || GlobalTracer.Stopped() {
-		// TODO
+	tracer, _ := getCurrentTracerInfo()
+	if tracer == nil || tracer.Stopped() {
 		log.Println("The tracer is not initialized!")
 		return
 	}
-	GlobalTracer.AddException(exception)
+	tracer.AddException(exception)
 }
 
 // Stop stops the tracer running routine
@@ -277,12 +294,16 @@ func (tracer *epsagonTracer) Stop() {
 
 // StopTracer will close the tracer and send all the data to the collector
 func StopTracer() {
-	if GlobalTracer == nil || GlobalTracer.Stopped() {
-		// TODO
+	mutex.Lock()
+	defer mutex.Unlock()
+	tracer, currentId := getCurrentTracerInfo()
+	if tracer == nil || tracer.Stopped() {
 		log.Println("The tracer is not initialized!")
 		return
 	}
-	GlobalTracer.Stop()
+	tracer.Stop()
+	delete(Tracers, currentId)
+
 }
 
 // Run starts the runner background routine that will
@@ -297,7 +318,6 @@ func (tracer *epsagonTracer) Run() {
 	close(tracer.running)
 	defer func() { tracer.running = make(chan struct{}) }()
 	defer close(tracer.stopped)
-
 	for {
 		select {
 		case event := <-tracer.eventsPipe:
@@ -318,12 +338,15 @@ func (tracer *epsagonTracer) GetConfig() *Config {
 	return tracer.Config
 }
 
-// GetGlobalTracerConfig returns the configuration of the global tracer
+// GetGlobalTracerConfig returns the configuration of the global tracer of the current goroutine
 func GetGlobalTracerConfig() *Config {
-	if GlobalTracer == nil || GlobalTracer.Stopped() {
+	mutex.Lock()
+	defer mutex.Unlock()
+	tracer, _ := getCurrentTracerInfo()
+	if tracer == nil || tracer.Stopped() {
 		return &Config{}
 	}
-	return GlobalTracer.GetConfig()
+	return tracer.GetConfig()
 }
 
 // AddExceptionTypeAndMessage adds an exception to the current tracer with
