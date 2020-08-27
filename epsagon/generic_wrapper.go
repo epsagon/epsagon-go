@@ -132,7 +132,7 @@ func GoWrapper(config *Config, wrappedFunction interface{}) GenericFunction {
 		}
 		wrapperTracer := tracer.CreateTracer(&config.Config)
 		wrapperTracer.Start()
-		defer wrapperTracer.Stop()
+		defer tracer.StopTracer()
 
 		wrapper := &epsagonGenericWrapper{
 			config:  config,
