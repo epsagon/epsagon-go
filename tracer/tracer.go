@@ -18,9 +18,11 @@ import (
 )
 
 var (
-	mutex sync.Mutex
+	mutex        sync.Mutex
+	GlobalTracer Tracer
 	// Tracers Global Tracers, mapped by goroutine ID
-	Tracers = map[uint64]Tracer{}
+	Tracers        = map[uint64]Tracer{}
+	useSingleTrace = true
 )
 
 // Tracer is what a general program tracer had to provide
@@ -196,9 +198,12 @@ func fillConfigDefaults(config *Config) {
 
 // Gets current goroutine tracer info
 func getCurrentTracerInfo() (tracer Tracer, currentId uint64) {
+	if useSingleTrace {
+		return GlobalTracer, 0
+	}
 	currentId = curGoroutineID()
 	tracer = Tracers[currentId]
-	return
+	return tracer, currentId
 }
 
 // CreateTracer will initiallize a epsagon tracer for current goroutine
@@ -224,7 +229,12 @@ func CreateTracer(config *Config) Tracer {
 		stopped:        make(chan struct{}),
 		running:        make(chan struct{}),
 	}
-	Tracers[currentId] = tracer
+	if !useSingleTrace {
+		Tracers[currentId] = tracer
+	} else {
+		GlobalTracer = tracer
+	}
+
 	if config.Debug {
 		log.Println("EPSAGON DEBUG: Created a new tracer")
 	}
@@ -249,8 +259,10 @@ func (tracer *epsagonTracer) AddEvent(event *protocol.Event) {
 
 // AddEvent adds an event to the tracer
 func AddEvent(event *protocol.Event) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	if !useSingleTrace {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("Epsagon: Failed to add event")
@@ -266,8 +278,10 @@ func AddEvent(event *protocol.Event) {
 
 // AddException adds an exception to the tracer
 func AddException(exception *protocol.Exception) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	if !useSingleTrace {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("Epsagon: Failed to add exception")
@@ -294,16 +308,19 @@ func (tracer *epsagonTracer) Stop() {
 
 // StopTracer will close the tracer and send all the data to the collector
 func StopTracer() {
-	mutex.Lock()
-	defer mutex.Unlock()
+	if !useSingleTrace {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	tracer, currentId := getCurrentTracerInfo()
 	if tracer == nil || tracer.Stopped() {
 		log.Println("The tracer is not initialized!")
 		return
 	}
 	tracer.Stop()
-	delete(Tracers, currentId)
-
+	if !useSingleTrace {
+		delete(Tracers, currentId)
+	}
 }
 
 // Run starts the runner background routine that will
@@ -340,8 +357,10 @@ func (tracer *epsagonTracer) GetConfig() *Config {
 
 // GetGlobalTracerConfig returns the configuration of the global tracer of the current goroutine
 func GetGlobalTracerConfig() *Config {
-	mutex.Lock()
-	defer mutex.Unlock()
+	if !useSingleTrace {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	tracer, _ := getCurrentTracerInfo()
 	if tracer == nil || tracer.Stopped() {
 		return &Config{}
@@ -360,4 +379,11 @@ func (tracer *epsagonTracer) AddExceptionTypeAndMessage(exceptionType, msg strin
 		Traceback: string(stack),
 		Time:      GetTimestamp(),
 	})
+}
+
+// SwitchToMultipleTraces switches tracer status to support multiple tracers
+func SwitchToMultipleTraces() {
+	mutex.Lock()
+	defer mutex.Unlock()
+	useSingleTrace = false
 }

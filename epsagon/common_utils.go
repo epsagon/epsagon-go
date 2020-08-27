@@ -30,3 +30,8 @@ func NewTracerConfig(applicationName, token string) *Config {
 		},
 	}
 }
+
+// SwitchToMultipleTraces switches tracer status to support multiple tracers
+func SwitchToMultipleTraces() {
+	tracer.SwitchToMultipleTraces()
+}
