@@ -44,7 +44,7 @@ var _ = Describe("multiple_traces", func() {
 				testServer = httptest.NewServer(http.HandlerFunc(
 					func(res http.ResponseWriter, req *http.Request) {
 						epsagon.GoWrapper(
-							&epsagon.Config{tracer.Config{Disable: true}},
+							&epsagon.Config{Config: tracer.Config{Disable: true}},
 							func(res http.ResponseWriter, req *http.Request) {
 								_, ok := tracer.Tracers[tracer.CurGoroutineID()]
 								// validate a new Trace has been created for current goroutine ID
