@@ -210,6 +210,9 @@ func getCurrentTracerInfo() (tracer Tracer, currentId uint64) {
 func CreateTracer(config *Config) Tracer {
 	mutex.Lock()
 	defer mutex.Unlock()
+	if strings.ToUpper(os.Getenv("EPSAGON_MULTIPLE_TRACES")) == "TRUE" {
+		useSingleTrace = false
+	}
 	tracer, currentId := getCurrentTracerInfo()
 	if tracer != nil && !tracer.Stopped() {
 		log.Println("The tracer is already created, Closing and Creating.")
