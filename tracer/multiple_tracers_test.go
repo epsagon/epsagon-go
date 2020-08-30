@@ -1,10 +1,15 @@
-package tracer
+package tracer_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/wrappers/net/http"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -31,29 +36,67 @@ func sendRequest(wg *sync.WaitGroup, path string, testServer *httptest.Server) {
 	Expect(responseString).To(Equal(path))
 }
 
-func validateTraceExists() {
-	mutex.Lock()
-	defer mutex.Unlock()
-	current_tracer, _ := getCurrentTracerInfo()
-	Expect(current_tracer != nil).To(Equal(true))
-	Expect(current_tracer.Stopped()).To(Equal(false))
+func waitForTraces(start uint, end uint, traceChannel chan *protocol.Trace, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var trace *protocol.Trace
+	ticker := time.NewTicker(10 * time.Second)
+	count := 0
+	for {
+		select {
+		case trace = <-traceChannel:
+			func() {
+				log.Printf("test")
+				Expect(len(trace.Events)).To(Equal(2))
+				count += 1
+			}()
+		case <-ticker.C:
+			panic("timeout while receiving traces")
+		}
+	}
+	log.Println("Got %d", count)
 }
 
 var _ = Describe("multiple_traces", func() {
 	Describe("http_server_tests", func() {
 		Context("Happy Flows", func() {
 			var (
-				testServer *httptest.Server
+				traceCollectorServer *httptest.Server
+				testServer           *httptest.Server
+				config               *epsagon.Config
+				traceChannel         chan *protocol.Trace
 			)
 			BeforeEach(func() {
+				traceChannel = make(chan *protocol.Trace)
+				traceCollectorServer = httptest.NewServer(http.HandlerFunc(
+					func(res http.ResponseWriter, req *http.Request) {
+						//res.Write([]byte(req.RequestURI))
+						log.Printf("boom trah")
+						buf, err := ioutil.ReadAll(req.Body)
+						if err != nil {
+							panic(err)
+						}
+						var receivedTrace protocol.Trace
+						err = json.Unmarshal(buf, &receivedTrace)
+						if err != nil {
+							panic(err)
+						}
+						traceChannel <- &receivedTrace
+						//Expect(len(receivedTrace.Events)).To(Equal(2))
+
+						res.Write([]byte(""))
+					},
+				))
+				config = epsagon.NewTracerConfig("test", "test token")
+				config.CollectorURL = traceCollectorServer.URL
 				epsagon.SwitchToMultipleTraces()
 				testServer = httptest.NewServer(http.HandlerFunc(
 					func(res http.ResponseWriter, req *http.Request) {
 						epsagon.GoWrapper(
-							nil,
+							config,
 							func(res http.ResponseWriter, req *http.Request) {
-								// validate a new Trace has been created for current goroutine ID
-								validateTraceExists()
+
+								client := epsagonhttp.Wrap(http.Client{})
+								client.Get(fmt.Sprintf("https://www.google.com/%s", req.RequestURI))
 								res.Write([]byte(req.RequestURI))
 							},
 						)(res, req)
@@ -63,28 +106,27 @@ var _ = Describe("multiple_traces", func() {
 			})
 			AfterEach(func() {
 				testServer.Close()
+				traceCollectorServer.Close()
 			})
 			It("Multiple requests to test server", func() {
 				var wg sync.WaitGroup
-				for i := 0; i < 30; i++ {
+				go waitForTraces(0, 50, traceChannel, &wg)
+				for i := 0; i < 50; i++ {
 					wg.Add(1)
 					go sendRequest(&wg, fmt.Sprintf("/%d", i), testServer)
 
 				}
 				wg.Wait()
-				time.Sleep(3 * time.Second)
-				mutex.Lock()
-				Expect(0).To(Equal(len(Tracers)))
-				mutex.Unlock()
-				for i := 90; i < 100; i++ {
+				//go waitForTraces(0, 50, traceChannel)
+				//time.Sleep(3 * time.Second)
+				go waitForTraces(51, 100, traceChannel, &wg)
+				for i := 51; i < 100; i++ {
 					wg.Add(1)
 					go sendRequest(&wg, fmt.Sprintf("/%d", i), testServer)
 				}
 				wg.Wait()
-				time.Sleep(1 * time.Second)
-				mutex.Lock()
-				Expect(0).To(Equal(len(Tracers)))
-				mutex.Unlock()
+				//time.Sleep(1 * time.Second)
+				//waitForTraces(51, 100, traceChannel, &wg)
 			})
 		})
 	})
