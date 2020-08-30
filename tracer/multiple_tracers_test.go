@@ -30,6 +30,7 @@ func sendRequest(wg *sync.WaitGroup, path string, testServer *httptest.Server) {
 	responseData, err := ioutil.ReadAll(response.Body)
 	Expect(err == nil).To(Equal(true))
 	responseString := string(responseData)
+	Expect(responseString).To(Equal(path))
 }
 
 var _ = Describe("multiple_traces", func() {
@@ -67,6 +68,14 @@ var _ = Describe("multiple_traces", func() {
 				}
 				wg.Wait()
 				time.Sleep(3 * time.Second)
+				Expect(0).To(Equal(len(tracer.Tracers)))
+				for i := 90; i < 100; i++ {
+					wg.Add(1)
+					go sendRequest(&wg, fmt.Sprintf("/%d", i), testServer)
+
+				}
+				wg.Wait()
+				time.Sleep(1 * time.Second)
 				Expect(0).To(Equal(len(tracer.Tracers)))
 			})
 		})
