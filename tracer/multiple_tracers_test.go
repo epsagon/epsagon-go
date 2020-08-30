@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func TestEpsagonTracer(t *testing.T) {
+func TestEpsagonMultipleTracers(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Multiple Traces")
 }
