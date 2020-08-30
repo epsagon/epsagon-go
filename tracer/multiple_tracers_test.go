@@ -1,4 +1,4 @@
-package tracertest
+package tracer_test
 
 import (
 	"fmt"
