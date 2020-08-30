@@ -51,7 +51,7 @@ func (c *ClientWrapper) Get(url string) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Get(url)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
+	event := postSuperCall(startTime, url, http.MethodGet, resp, err, c.getMetadataOnly())
 	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
@@ -99,7 +99,7 @@ func (c *ClientWrapper) Head(url string) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Head(url)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
+	event := postSuperCall(startTime, url, http.MethodHead, resp, err, c.getMetadataOnly())
 	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
