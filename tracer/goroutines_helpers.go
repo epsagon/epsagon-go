@@ -11,7 +11,7 @@ import (
 
 var goroutineSpace = []byte("goroutine ")
 
-func CurGoroutineID() uint64 {
+func curGoroutineID() uint64 {
 	bp := littleBuf.Get().(*[]byte)
 	defer littleBuf.Put(bp)
 	b := *bp

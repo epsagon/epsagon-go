@@ -201,7 +201,7 @@ func getCurrentTracerInfo() (tracer Tracer, currentId uint64) {
 	if useSingleTrace {
 		return GlobalTracer, 0
 	}
-	currentId = CurGoroutineID()
+	currentId = curGoroutineID()
 	tracer = Tracers[currentId]
 	return tracer, currentId
 }

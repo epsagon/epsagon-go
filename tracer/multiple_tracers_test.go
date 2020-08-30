@@ -1,9 +1,8 @@
-package tracer_test
+package tracer
 
 import (
 	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"io/ioutil"
@@ -33,22 +32,32 @@ func sendRequest(wg *sync.WaitGroup, path string, testServer *httptest.Server) {
 	Expect(responseString).To(Equal(path))
 }
 
+func validateTraceExists() {
+	mutex.Lock()
+	defer mutex.Unlock()
+	current_tracer, _ := getCurrentTracerInfo()
+	Expect(current_tracer != nil).To(Equal(true))
+	Expect(current_tracer.Stopped()).To(Equal(false))
+}
+
 var _ = Describe("multiple_traces", func() {
 	Describe("http_server_tests", func() {
 		Context("Happy Flows", func() {
 			var (
 				testServer *httptest.Server
+				config     *epsagon.Config
 			)
 			BeforeEach(func() {
+				config = epsagon.NewTracerConfig("test", "test token")
+				config.Disable = true
 				epsagon.SwitchToMultipleTraces()
 				testServer = httptest.NewServer(http.HandlerFunc(
 					func(res http.ResponseWriter, req *http.Request) {
 						epsagon.GoWrapper(
-							&epsagon.Config{Config: tracer.Config{Disable: true}},
+							config,
 							func(res http.ResponseWriter, req *http.Request) {
-								_, ok := tracer.Tracers[tracer.CurGoroutineID()]
 								// validate a new Trace has been created for current goroutine ID
-								Expect(ok).To(Equal(true))
+								validateTraceExists()
 								res.Write([]byte(req.RequestURI))
 							},
 						)(res, req)
@@ -68,15 +77,18 @@ var _ = Describe("multiple_traces", func() {
 				}
 				wg.Wait()
 				time.Sleep(3 * time.Second)
-				Expect(0).To(Equal(len(tracer.Tracers)))
+				mutex.Lock()
+				Expect(0).To(Equal(len(Tracers)))
+				mutex.Unlock()
 				for i := 90; i < 100; i++ {
 					wg.Add(1)
 					go sendRequest(&wg, fmt.Sprintf("/%d", i), testServer)
-
 				}
 				wg.Wait()
 				time.Sleep(1 * time.Second)
-				Expect(0).To(Equal(len(tracer.Tracers)))
+				mutex.Lock()
+				Expect(0).To(Equal(len(Tracers)))
+				mutex.Unlock()
 			})
 		})
 	})
