@@ -2,7 +2,6 @@ package tracer
 
 import (
 	"fmt"
-	"github.com/epsagon/epsagon-go/epsagon"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"io/ioutil"
@@ -45,16 +44,13 @@ var _ = Describe("multiple_traces", func() {
 		Context("Happy Flows", func() {
 			var (
 				testServer *httptest.Server
-				config     *epsagon.Config
 			)
 			BeforeEach(func() {
-				config = epsagon.NewTracerConfig("test", "test token")
-				config.Disable = true
 				epsagon.SwitchToMultipleTraces()
 				testServer = httptest.NewServer(http.HandlerFunc(
 					func(res http.ResponseWriter, req *http.Request) {
 						epsagon.GoWrapper(
-							config,
+							nil,
 							func(res http.ResponseWriter, req *http.Request) {
 								// validate a new Trace has been created for current goroutine ID
 								validateTraceExists()
