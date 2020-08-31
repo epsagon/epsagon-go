@@ -13,6 +13,8 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -36,24 +38,49 @@ func sendRequest(wg *sync.WaitGroup, path string, testServer *httptest.Server) {
 	Expect(responseString).To(Equal(path))
 }
 
-func waitForTraces(start uint, end uint, traceChannel chan *protocol.Trace, wg *sync.WaitGroup) {
+func parseEventID(event *protocol.Event) (identifier int) {
+	resourceName := event.Resource.GetName()
+	resourceURL, err := url.Parse(resourceName)
+	if err != nil {
+		panic("failed to parse event URL - bad trace")
+	}
+	urlPath := resourceURL.RequestURI()
+	identifier, err = strconv.Atoi(urlPath[1:])
+	if err != nil {
+		panic("failed to parse path - bad trace")
+	}
+	return
+}
+
+func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var trace *protocol.Trace
+	receivedTraces := map[int]bool{}
 	ticker := time.NewTicker(10 * time.Second)
 	count := 0
 	for {
 		select {
 		case trace = <-traceChannel:
 			func() {
-				log.Printf("test")
 				Expect(len(trace.Events)).To(Equal(2))
+				identifier := parseEventID(trace.Events[0])
+				_, exists := receivedTraces[identifier]
+				if exists {
+					panic("received duplicated events")
+				}
+				if identifier < start || identifier > end {
+					log.Printf("%d", identifier)
+					panic("received bad event")
+				}
+				receivedTraces[identifier] = true
+				log.Printf("%d", identifier)
 				count += 1
 			}()
 		case <-ticker.C:
 			panic("timeout while receiving traces")
 		}
 	}
-	log.Println("Got %d", count)
+	log.Printf("Got %d", count)
 }
 
 var _ = Describe("multiple_traces", func() {
@@ -96,7 +123,7 @@ var _ = Describe("multiple_traces", func() {
 							func(res http.ResponseWriter, req *http.Request) {
 
 								client := epsagonhttp.Wrap(http.Client{})
-								client.Get(fmt.Sprintf("https://www.google.com/%s", req.RequestURI))
+								client.Get(fmt.Sprintf("https://www.google.com%s", req.RequestURI))
 								res.Write([]byte(req.RequestURI))
 							},
 						)(res, req)
@@ -111,6 +138,7 @@ var _ = Describe("multiple_traces", func() {
 			It("Multiple requests to test server", func() {
 				var wg sync.WaitGroup
 				go waitForTraces(0, 50, traceChannel, &wg)
+				wg.Add(1)
 				for i := 0; i < 50; i++ {
 					wg.Add(1)
 					go sendRequest(&wg, fmt.Sprintf("/%d", i), testServer)
