@@ -3,12 +3,18 @@ package epsagonawswrapper
 import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
-func sqsEventDataFactory(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func sqsEventDataFactory(
+	r *request.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	currentTracer tracer.Tracer,
+) {
 	inputValue := reflect.ValueOf(r.Params).Elem()
 	identifyQueueName(inputValue, res)
 
@@ -22,7 +28,7 @@ func sqsEventDataFactory(r *request.Request, res *protocol.Resource, metadataOnl
 	}
 	handler := handleSpecificOperations[res.Operation]
 	if handler != nil {
-		handler(r, res, metadataOnly)
+		handler(r, res, metadataOnly, currentTracer)
 	}
 }
 
@@ -53,14 +59,14 @@ func identifyQueueName(inputValue reflect.Value, res *protocol.Resource) {
 	}
 }
 
-func handleSQSSendMessage(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func handleSQSSendMessage(r *request.Request, res *protocol.Resource, metadataOnly bool, _ tracer.Tracer) {
 	outputValue := reflect.ValueOf(r.Data).Elem()
 	updateMetadataFromValue(outputValue, "MessageId", "Message ID", res.Metadata)
 	updateMetadataFromValue(outputValue, "MD5OfMessageBodyMessageId",
 		"MD5 Of Message Body", res.Metadata)
 }
 
-func handleSQSReceiveMessage(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func handleSQSReceiveMessage(r *request.Request, res *protocol.Resource, metadataOnly bool, _ tracer.Tracer) {
 	var numberOfMessages int
 	outputValue := reflect.ValueOf(r.Data).Elem()
 	messages := outputValue.FieldByName("Messages")

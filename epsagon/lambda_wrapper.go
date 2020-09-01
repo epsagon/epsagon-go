@@ -189,7 +189,7 @@ func (wrapper *epsagonLambdaWrapper) InvokeClientLambda(
 // WrapLambdaHandler wraps a generic wrapper for lambda function with epsagon tracing
 func WrapLambdaHandler(config *Config, handler interface{}) interface{} {
 	return func(ctx context.Context, payload json.RawMessage) (interface{}, error) {
-		wrapperTracer := tracer.CreateTracer(&config.Config)
+		wrapperTracer := tracer.CreateGlobalTracer(&config.Config)
 		wrapperTracer.Start()
 		defer wrapperTracer.Stop()
 		wrapper := &epsagonLambdaWrapper{

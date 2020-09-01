@@ -3,20 +3,26 @@ package epsagonawswrapper
 import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 	"strings"
 )
 
-func sfnEventDataFactory(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func sfnEventDataFactory(
+	r *request.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	currentTracer tracer.Tracer,
+) {
 	res.Type = "stepfunctions"
 	handleSpecificOperation(r, res, metadataOnly,
 		map[string]specificOperationHandler{
 			"PutRecord": handleSFNStartExecution,
-		}, nil,
+		}, nil, currentTracer,
 	)
 }
 
-func handleSFNStartExecution(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func handleSFNStartExecution(r *request.Request, res *protocol.Resource, metadataOnly bool, _ tracer.Tracer) {
 	inputValue := reflect.ValueOf(r.Params).Elem()
 	arn, ok := getFieldStringPtr(inputValue, "StateMachineArn")
 	if ok {

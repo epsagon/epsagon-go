@@ -7,11 +7,16 @@ import (
 	"reflect"
 )
 
-func kinesisEventDataFactory(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func kinesisEventDataFactory(
+	r *request.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	currentTracer tracer.Tracer,
+) {
 	inputValue := reflect.ValueOf(r.Params).Elem()
 	streamName, ok := getFieldStringPtr(inputValue, "StreamName")
 	if !ok {
-		tracer.AddExceptionTypeAndMessage("aws-sdk-go",
+		currentTracer.AddExceptionTypeAndMessage("aws-sdk-go",
 			"kinesisEventDataFactory: couldn't find StreamName")
 	}
 	res.Name = streamName
@@ -25,11 +30,16 @@ func kinesisEventDataFactory(r *request.Request, res *protocol.Resource, metadat
 	handleSpecificOperation(r, res, metadataOnly,
 		map[string]specificOperationHandler{
 			"PutRecord": handleKinesisPutRecord,
-		}, nil,
+		}, nil, currentTracer
 	)
 }
 
-func handleKinesisPutRecord(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func handleKinesisPutRecord(
+	r *request.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	currentTracer tracer.Tracer,
+) {
 	outputValue := reflect.ValueOf(r.Data).Elem()
 	updateMetadataFromValue(outputValue, "ShardId", "shared_id", res.Metadata)
 	updateMetadataFromValue(outputValue, "SequenceNumber", "sequence_number", res.Metadata)

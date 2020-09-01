@@ -1,6 +1,7 @@
 package epsagonawswrapper
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -13,7 +14,7 @@ import (
 )
 
 // WrapSession wraps an aws session.Session with epsgaon traces
-func WrapSession(s *session.Session) *session.Session {
+func WrapSession(s *session.Session, args ...context.Context) *session.Session {
 	if s == nil {
 		return s
 	}
@@ -21,6 +22,15 @@ func WrapSession(s *session.Session) *session.Session {
 		request.NamedHandler{
 			Name: "github.com/epsagon/epsagon-go/wrappers/aws/aws-sdk-go/aws/aws.go",
 			Fn:   completeEventData,
+			Fn: func(r *aws.Request) {
+				var currentTracer tracer.Tracer
+				if len(args) == 0 {
+					currentTracer = tracer.GlobalTracer
+				} else {
+					currentTracer = args[0].Value("tracer").(Tracer)
+				}
+				completeEventData(r, currentTracer)
+			},
 		})
 	return s
 }
@@ -29,9 +39,9 @@ func getTimeStampFromRequest(r *request.Request) float64 {
 	return float64(r.Time.UTC().UnixNano()) / float64(time.Millisecond) / float64(time.Nanosecond) / 1000.0
 }
 
-func completeEventData(r *request.Request) {
-	defer epsagon.GeneralEpsagonRecover("aws-sdk-go wrapper", "")
-	if tracer.GetGlobalTracerConfig().Debug {
+func completeEventData(r *request.Request, currentTracer tracer.Tracer) {
+	defer epsagon.GeneralEpsagonRecover("aws-sdk-go wrapper", "", currentTracer)
+	if currentTracer.GetConfig().Debug {
 		log.Printf("EPSAGON DEBUG OnComplete request response: %+v\n", r.HTTPResponse)
 		log.Printf("EPSAGON DEBUG OnComplete request Operation: %+v\n", r.Operation)
 		log.Printf("EPSAGON DEBUG OnComplete request ClientInfo: %+v\n", r.ClientInfo)
@@ -44,13 +54,13 @@ func completeEventData(r *request.Request) {
 		Id:        r.RequestID,
 		StartTime: getTimeStampFromRequest(r),
 		Origin:    "aws-sdk",
-		Resource:  extractResourceInformation(r),
+		Resource:  extractResourceInformation(r, currentTracer),
 	}
 	event.Duration = endTime - event.StartTime
-	tracer.AddEvent(&event)
+	currentTracer.AddEvent(&event)
 }
 
-type factory func(*request.Request, *protocol.Resource, bool)
+type factory func(*request.Request, *protocol.Resource, bool, tracer.Tracer)
 
 var awsResourceEventFactories = map[string]factory{
 	"sqs":      sqsEventDataFactory,
@@ -63,25 +73,27 @@ var awsResourceEventFactories = map[string]factory{
 	"sfn":      sfnEventDataFactory,
 }
 
-func extractResourceInformation(r *request.Request) *protocol.Resource {
+func extractResourceInformation(
+	r *request.Request, currentTracer tracer.Tracer) *protocol.Resource {
 	res := protocol.Resource{
 		Type:      r.ClientInfo.ServiceName,
 		Operation: r.Operation.Name,
 		Metadata:  make(map[string]string),
 	}
 	factory := awsResourceEventFactories[res.Type]
+	config := currentTracer.GetConfig()
 	if factory != nil {
-		factory(r, &res, tracer.GetGlobalTracerConfig().MetadataOnly)
+		factory(r, &res, config.MetadataOnly, currentTracer)
 	} else {
-		defaultFactory(r, &res, tracer.GetGlobalTracerConfig().MetadataOnly)
+		if config.Debug {
+			log.Println("EPSAGON DEBUG:: entering defaultFactory")
+		}
+		defaultFactory(r, &res, config.MetadataOnly)
 	}
 	return &res
 }
 
 func defaultFactory(r *request.Request, res *protocol.Resource, metadataOnly bool) {
-	if tracer.GetGlobalTracerConfig().Debug {
-		log.Println("EPSAGON DEBUG:: entering defaultFactory")
-	}
 	if !metadataOnly {
 		extractInterfaceToMetadata(r.Data, res)
 		extractInterfaceToMetadata(r.Params, res)
