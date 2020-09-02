@@ -164,7 +164,7 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 		Context("unrecognized input", func() {
 			It("calls default factory on unknown service", func() {
 				req.ClientInfo.ServiceName = "Non Existant Service"
-				res := extractResourceInformation(&req)
+				res := extractResourceInformation(&req, tracer.GlobalTracer)
 				Expect(res.Metadata["hello"]).To(Equal("world"))
 				Expect(res.Metadata["params"]).To(Equal("output"))
 			})
@@ -181,7 +181,7 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 					MessageId:        &messageID,
 					MD5OfMessageBody: &mD5OfMessageBody,
 				}
-				res := extractResourceInformation(&req)
+				res := extractResourceInformation(&req, tracer.GlobalTracer)
 				Expect(res.Name).To(Equal("QueueName"))
 			})
 		})

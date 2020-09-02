@@ -44,8 +44,8 @@ func handleSNSCreateTopic(r *request.Request, res *protocol.Resource, metadataOn
 	}
 }
 
-func handlerSNSPublish(r *request.Request, res *protocol.Resource, metadataOnly bool, _ tracer.Tracer) {
-	handleSNSdefault(r, res, metadataOnly)
+func handlerSNSPublish(r *request.Request, res *protocol.Resource, metadataOnly bool, currentTracer tracer.Tracer) {
+	handleSNSdefault(r, res, metadataOnly, currentTracer)
 	outputValue := reflect.ValueOf(r.Data).Elem()
 	updateMetadataFromValue(outputValue, "MessageId", "Message ID", res.Metadata)
 }

@@ -29,7 +29,7 @@ func s3EventDataFactory(
 	}
 	handler := handleSpecificOperations[res.Operation]
 	if handler != nil {
-		handler(r, res, metadataOnly)
+		handler(r, res, metadataOnly, currentTracer)
 	}
 }
 
