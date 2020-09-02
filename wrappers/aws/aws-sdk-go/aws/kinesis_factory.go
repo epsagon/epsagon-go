@@ -30,7 +30,7 @@ func kinesisEventDataFactory(
 	handleSpecificOperation(r, res, metadataOnly,
 		map[string]specificOperationHandler{
 			"PutRecord": handleKinesisPutRecord,
-		}, nil, currentTracer
+		}, nil, currentTracer,
 	)
 }
 
