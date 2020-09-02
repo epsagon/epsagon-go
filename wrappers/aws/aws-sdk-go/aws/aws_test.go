@@ -159,6 +159,9 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 				Data:   map[string]string{"hello": "world"},
 				Params: map[string]string{"params": "output"},
 			}
+			tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
+				Config: &tracer.Config{},
+			}
 		})
 
 		Context("unrecognized input", func() {
