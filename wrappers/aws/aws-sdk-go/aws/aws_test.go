@@ -188,6 +188,6 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 	})
 })
 
-func myFault(*request.Request, *protocol.Resource, bool) {
+func myFault(*request.Request, *protocol.Resource, bool, tracer.Tracer) {
 	panic(TestPanic)
 }
