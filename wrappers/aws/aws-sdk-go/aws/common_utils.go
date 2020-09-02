@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-type specificOperationHandler func(r *request.Request, res *protocol.Resource, metadataOnly bool)
+type specificOperationHandler func(r *request.Request, res *protocol.Resource, metadataOnly bool, currenttracer tracer.Tracer)
 
 func handleSpecificOperation(
 	r *request.Request,
