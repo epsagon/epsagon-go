@@ -1,10 +1,9 @@
-package concurrent_tests
+package epsagon
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/wrappers/net/http"
 	. "github.com/onsi/ginkgo"
@@ -87,7 +86,7 @@ var _ = Describe("multiple_traces", func() {
 			var (
 				traceCollectorServer *httptest.Server
 				testServer           *httptest.Server
-				config               *epsagon.Config
+				config               *Config
 				traceChannel         chan *protocol.Trace
 			)
 			BeforeEach(func() {
@@ -107,11 +106,11 @@ var _ = Describe("multiple_traces", func() {
 						res.Write([]byte(""))
 					},
 				))
-				config = epsagon.NewTracerConfig("test", "test token")
+				config = NewTracerConfig("test", "test token")
 				config.CollectorURL = traceCollectorServer.URL
 				testServer = httptest.NewServer(http.HandlerFunc(
 					func(res http.ResponseWriter, req *http.Request) {
-						epsagon.ConcurrentGoWrapper(
+						ConcurrentGoWrapper(
 							config,
 							func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 
