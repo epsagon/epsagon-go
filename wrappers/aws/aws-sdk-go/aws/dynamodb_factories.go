@@ -12,7 +12,12 @@ import (
 	"reflect"
 )
 
-func dynamodbEventDataFactory(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func dynamodbEventDataFactory(
+	r *request.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	currentTracer tracer.Tracer,
+) {
 	inputValue := reflect.ValueOf(r.Params).Elem()
 	tableName, ok := getFieldStringPtr(inputValue, "TableName")
 	if ok {
@@ -28,7 +33,7 @@ func dynamodbEventDataFactory(r *request.Request, res *protocol.Resource, metada
 	}
 	handler := handleSpecificOperations[res.Operation]
 	if handler != nil {
-		handler(r, res, metadataOnly)
+		handler(r, res, metadataOnly, currentTracer)
 	}
 }
 
