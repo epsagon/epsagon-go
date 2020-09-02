@@ -21,7 +21,7 @@ func WrapSession(s *session.Session, args ...context.Context) *session.Session {
 	s.Handlers.Complete.PushFrontNamed(
 		request.NamedHandler{
 			Name: "github.com/epsagon/epsagon-go/wrappers/aws/aws-sdk-go/aws/aws.go",
-			Fn: func(r *aws.Request) {
+			Fn: func(r *request.Request) {
 				var currentTracer tracer.Tracer
 				if len(args) == 0 {
 					currentTracer = tracer.GlobalTracer
