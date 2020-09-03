@@ -83,7 +83,7 @@ func extractResourceInformation(
 	if factory != nil {
 		factory(r, &res, currentTracer.GetConfig().MetadataOnly, currentTracer)
 	} else {
-		defaultFactory(r, &res, config.MetadataOnly, currentTracer)
+		defaultFactory(r, &res, currentTracer.GetConfig().MetadataOnly, currentTracer)
 	}
 	return &res
 }
