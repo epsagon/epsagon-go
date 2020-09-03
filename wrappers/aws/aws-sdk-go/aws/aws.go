@@ -80,19 +80,18 @@ func extractResourceInformation(
 		Metadata:  make(map[string]string),
 	}
 	factory := awsResourceEventFactories[res.Type]
-	config := currentTracer.GetConfig()
 	if factory != nil {
-		factory(r, &res, config.MetadataOnly, currentTracer)
+		factory(r, &res, currentTracer.GetConfig().MetadataOnly, currentTracer)
 	} else {
-		if config.Debug {
-			log.Println("EPSAGON DEBUG:: entering defaultFactory")
-		}
-		defaultFactory(r, &res, config.MetadataOnly)
+		defaultFactory(r, &res, config.MetadataOnly, currentTracer)
 	}
 	return &res
 }
 
-func defaultFactory(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func defaultFactory(r *request.Request, res *protocol.Resource, metadataOnly bool, currentTracer tracer.Tracer) {
+	if currentTracer.GetConfig().Debug {
+		log.Println("EPSAGON DEBUG:: entering defaultFactory")
+	}
 	if !metadataOnly {
 		extractInterfaceToMetadata(r.Data, res)
 		extractInterfaceToMetadata(r.Params, res)
