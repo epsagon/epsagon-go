@@ -2,7 +2,6 @@ package tracer
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/golang/protobuf/jsonpb"
@@ -22,7 +21,6 @@ var (
 	mutex sync.Mutex
 	// GlobalTracer A global Tracer for all internal uses
 	GlobalTracer Tracer
-	Tracers      = map[*context.Context]Tracer{}
 )
 
 // Tracer is what a general program tracer had to provide
