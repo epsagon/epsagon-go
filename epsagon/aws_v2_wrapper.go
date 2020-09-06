@@ -37,6 +37,7 @@ func getTimeStampFromRequest(r *aws.Request) float64 {
 func completeEventData(r *aws.Request, currentTracer tracer.Tracer) {
 	defer GeneralEpsagonRecover("aws-sdk-go wrapper", "", currentTracer)
 	if currentTracer.GetConfig().Debug {
+		log.Printf("EPSAGON DEBUG OnComplete current tracer: %+v\n", currentTracer)
 		log.Printf("EPSAGON DEBUG OnComplete request response: %+v\n", r.HTTPResponse)
 		log.Printf("EPSAGON DEBUG OnComplete request Operation: %+v\n", r.Operation)
 		log.Printf("EPSAGON DEBUG OnComplete request Endpoint: %+v\n", r.Endpoint)
