@@ -11,5 +11,13 @@ func ExtractTracer(ctx []context.Context) tracer.Tracer {
 	if len(ctx) == 0 {
 		return tracer.GlobalTracer
 	}
-	return ctx[0].Value("tracer").(tracer.Tracer)
+	rawValue := ctx[0].Value("tracer")
+	if rawValue == nil {
+		panic("Invalid context, see Epsagon examples for more info")
+	}
+	tracerValue, ok := rawValue.(tracer.Tracer)
+	if !ok {
+		panic("Invalid context value, see Epsagon examples for more info")
+	}
+	return tracerValue
 }
