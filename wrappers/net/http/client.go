@@ -1,10 +1,12 @@
 package epsagonhttp
 
 import (
+	"context"
 	"encoding/json"
 	// "fmt"
 	"bytes"
 	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
@@ -21,20 +23,22 @@ type ClientWrapper struct {
 
 	// MetadataOnly flag overriding the configuration
 	MetadataOnly bool
+	tracer       tracer.Tracer
 }
 
 // Wrap wraps an http.Client to Epsagon's ClientWrapper
-func Wrap(c http.Client) ClientWrapper {
-	return ClientWrapper{c, false}
+func Wrap(c http.Client, args ...context.Context) ClientWrapper {
+	currentTracer := internal.ExtractTracer(args)
+	return ClientWrapper{c, false, currentTracer}
 }
 
 func (c *ClientWrapper) getMetadataOnly() bool {
-	return c.MetadataOnly || tracer.GetGlobalTracerConfig().MetadataOnly
+	return c.MetadataOnly || c.tracer.GetConfig().MetadataOnly
 }
 
 // Do wraps http.Client's Do
 func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
+	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Do(req)
@@ -42,20 +46,20 @@ func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 	if !c.getMetadataOnly() {
 		updateRequestData(req, event.Resource.Metadata)
 	}
-	tracer.AddEvent(event)
+	c.tracer.AddEvent(event)
 	return
 }
 
 // Get wraps http.Client.Get
 func (c *ClientWrapper) Get(url string) (resp *http.Response, err error) {
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
+	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Get(url)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
+	event := postSuperCall(startTime, url, http.MethodGet, resp, err, c.getMetadataOnly())
 	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
-	tracer.AddEvent(event)
+	c.tracer.AddEvent(event)
 	return
 }
 
@@ -63,14 +67,14 @@ func (c *ClientWrapper) Get(url string) (resp *http.Response, err error) {
 func (c *ClientWrapper) Post(
 	url string, contentType string, body io.Reader) (resp *http.Response, err error) {
 
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
+	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Post(url, contentType, body)
 	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
 	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
-	tracer.AddEvent(event)
+	c.tracer.AddEvent(event)
 	return
 }
 
@@ -78,7 +82,7 @@ func (c *ClientWrapper) Post(
 func (c *ClientWrapper) PostForm(
 	url string, data url.Values) (resp *http.Response, err error) {
 
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
+	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.PostForm(url, data)
 	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
@@ -89,21 +93,21 @@ func (c *ClientWrapper) PostForm(
 			event.Resource.Metadata["body"] = string(dataBytes)
 		}
 	}
-	tracer.AddEvent(event)
+	c.tracer.AddEvent(event)
 	return
 }
 
 // Head wraps http.Client.Head
 func (c *ClientWrapper) Head(url string) (resp *http.Response, err error) {
 
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do")
+	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 	startTime := tracer.GetTimestamp()
 	resp, err = c.Client.Head(url)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
+	event := postSuperCall(startTime, url, http.MethodHead, resp, err, c.getMetadataOnly())
 	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
 	}
-	tracer.AddEvent(event)
+	c.tracer.AddEvent(event)
 	return
 }
 

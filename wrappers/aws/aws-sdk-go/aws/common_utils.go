@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-type specificOperationHandler func(r *request.Request, res *protocol.Resource, metadataOnly bool)
+type specificOperationHandler func(r *request.Request, res *protocol.Resource, metadataOnly bool, currenttracer tracer.Tracer)
 
 func handleSpecificOperation(
 	r *request.Request,
@@ -18,13 +18,14 @@ func handleSpecificOperation(
 	metadataOnly bool,
 	handlers map[string]specificOperationHandler,
 	defaultHandler specificOperationHandler,
+	currentTracer tracer.Tracer,
 ) {
 	handler := handlers[res.Operation]
 	if handler == nil {
 		handler = defaultHandler
 	}
 	if handler != nil {
-		handler(r, res, metadataOnly)
+		handler(r, res, metadataOnly, currentTracer)
 	}
 }
 
@@ -63,14 +64,19 @@ func updateMetadataFromInt64(
 }
 
 func updateMetadataWithFieldToJSON(
-	value reflect.Value, fieldName string, targetKey string, metadata map[string]string) {
+	value reflect.Value,
+	fieldName string,
+	targetKey string,
+	metadata map[string]string,
+	currentTracer tracer.Tracer,
+) {
 	field := value.FieldByName(fieldName)
 	if field == (reflect.Value{}) {
 		return
 	}
 	stream, err := json.Marshal(field.Interface())
 	if err != nil {
-		tracer.AddExceptionTypeAndMessage("aws-sdk-go", fmt.Sprintf("%v", err))
+		currentTracer.AddExceptionTypeAndMessage("aws-sdk-go", fmt.Sprintf("%v", err))
 		return
 	}
 	metadata[targetKey] = string(stream)

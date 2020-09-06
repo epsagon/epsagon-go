@@ -4,6 +4,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"testing"
@@ -43,7 +44,7 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 				request.Data = &CallerIdentityMock{
 					Account: &account_data,
 				}
-				epsagonawsv2factories.StsDataFactory(request, resource, false)
+				epsagonawsv2factories.StsDataFactory(request, resource, false, tracer.GlobalTracer)
 				Expect(resource.Metadata["Account"]).To(Equal(TEST_ACCOUNT))
 			})
 			It("Metadata Only is false, full data", func() {
@@ -55,7 +56,7 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 					Arn:     &arn_data,
 					UserId:  &user_id_data,
 				}
-				epsagonawsv2factories.StsDataFactory(request, resource, false)
+				epsagonawsv2factories.StsDataFactory(request, resource, false, tracer.GlobalTracer)
 				Expect(len(resource.Metadata)).To(Equal(3))
 				Expect(resource.Metadata["Account"]).To(Equal(TEST_ACCOUNT))
 				Expect(resource.Metadata["Arn"]).To(Equal(TEST_ARN))
@@ -70,7 +71,7 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 					Arn:     &arn_data,
 					UserId:  &user_id_data,
 				}
-				epsagonawsv2factories.StsDataFactory(request, resource, true)
+				epsagonawsv2factories.StsDataFactory(request, resource, true, tracer.GlobalTracer)
 				Expect(len(resource.Metadata)).To(Equal(0))
 			})
 		})

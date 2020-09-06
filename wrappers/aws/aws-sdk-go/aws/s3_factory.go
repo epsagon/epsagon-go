@@ -4,12 +4,18 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 	"strings"
 	"time"
 )
 
-func s3EventDataFactory(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func s3EventDataFactory(
+	r *request.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	currentTracer tracer.Tracer,
+) {
 	inputValue := reflect.ValueOf(r.Params).Elem()
 	bucketName, ok := getFieldStringPtr(inputValue, "Bucket")
 	if ok {
@@ -23,7 +29,7 @@ func s3EventDataFactory(r *request.Request, res *protocol.Resource, metadataOnly
 	}
 	handler := handleSpecificOperations[res.Operation]
 	if handler != nil {
-		handler(r, res, metadataOnly)
+		handler(r, res, metadataOnly, currentTracer)
 	}
 }
 
@@ -38,7 +44,7 @@ func commonS3OpertionHandler(r *request.Request, res *protocol.Resource, metadat
 	}
 }
 
-func handleS3GetOrHeadObject(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func handleS3GetOrHeadObject(r *request.Request, res *protocol.Resource, metadataOnly bool, _ tracer.Tracer) {
 	commonS3OpertionHandler(r, res, metadataOnly)
 	outputValue := reflect.ValueOf(r.Data).Elem()
 	updateMetadataFromValue(outputValue, "ContentLength", "file_size", res.Metadata)
@@ -51,7 +57,7 @@ func handleS3GetOrHeadObject(r *request.Request, res *protocol.Resource, metadat
 	res.Metadata["last_modified"] = lastModified.String()
 }
 
-func handleS3PutObject(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func handleS3PutObject(r *request.Request, res *protocol.Resource, metadataOnly bool, _ tracer.Tracer) {
 	commonS3OpertionHandler(r, res, metadataOnly)
 }
 
@@ -61,7 +67,7 @@ type s3File struct {
 	etag string
 }
 
-func handleS3ListObject(r *request.Request, res *protocol.Resource, metadataOnly bool) {
+func handleS3ListObject(r *request.Request, res *protocol.Resource, metadataOnly bool, _ tracer.Tracer) {
 	if metadataOnly {
 		return
 	}

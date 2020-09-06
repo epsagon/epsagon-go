@@ -195,19 +195,13 @@ func fillConfigDefaults(config *Config) {
 	}
 }
 
-// CreateTracer will initiallize a global epsagon tracer
+// CreateTracer will initiallize a new epsagon tracer
 func CreateTracer(config *Config) Tracer {
-	mutex.Lock()
-	defer mutex.Unlock()
-	if GlobalTracer != nil && !GlobalTracer.Stopped() {
-		log.Println("The tracer is already created, Closing and Creating.")
-		GlobalTracer.Stop()
-	}
 	if config == nil {
 		config = &Config{}
 	}
 	fillConfigDefaults(config)
-	GlobalTracer = &epsagonTracer{
+	tracer := &epsagonTracer{
 		Config:         config,
 		eventsPipe:     make(chan *protocol.Event),
 		events:         make([]*protocol.Event, 0, 0),
@@ -220,6 +214,18 @@ func CreateTracer(config *Config) Tracer {
 	if config.Debug {
 		log.Println("EPSAGON DEBUG: Created a new tracer")
 	}
+	return tracer
+}
+
+// CreateTracer will initiallize a global epsagon tracer
+func CreateGlobalTracer(config *Config) Tracer {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if GlobalTracer != nil && !GlobalTracer.Stopped() {
+		log.Println("The tracer is already created, Closing and Creating.")
+		GlobalTracer.Stop()
+	}
+	GlobalTracer = CreateTracer(config)
 	return GlobalTracer
 }
 
@@ -276,7 +282,7 @@ func (tracer *epsagonTracer) Stop() {
 }
 
 // StopTracer will close the tracer and send all the data to the collector
-func StopTracer() {
+func StopGlobalTracer() {
 	if GlobalTracer == nil || GlobalTracer.Stopped() {
 		// TODO
 		log.Println("The tracer is not initialized!")

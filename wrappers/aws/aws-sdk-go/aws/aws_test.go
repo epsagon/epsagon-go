@@ -121,12 +121,15 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 					Data:   &data,
 					Params: &param,
 				}
+				tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
+					Config: &tracer.Config{},
+				}
 			})
 			It("Extracts basic data", func() {
 				res := protocol.Resource{
 					Metadata: make(map[string]string),
 				}
-				defaultFactory(&req, &res, false)
+				defaultFactory(&req, &res, false, tracer.GlobalTracer)
 				Expect(res.Metadata["TableName"]).To(Equal(tableName))
 				Expect(res.Metadata["ExpressionAttributeNames"]).To(
 					Equal(fmt.Sprintf("%v", map[string]string{"hello": "world"})))
@@ -137,7 +140,7 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 				res := protocol.Resource{
 					Metadata: make(map[string]string),
 				}
-				defaultFactory(&req, &res, true)
+				defaultFactory(&req, &res, true, tracer.GlobalTracer)
 				Expect(res.Metadata["TableName"]).To(BeZero())
 				Expect(res.Metadata["ExpressionAttributeNames"]).To(BeZero())
 				Expect(res.Metadata["ConsumedCapacity"]).To(BeZero())
@@ -159,12 +162,15 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 				Data:   map[string]string{"hello": "world"},
 				Params: map[string]string{"params": "output"},
 			}
+			tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
+				Config: &tracer.Config{},
+			}
 		})
 
 		Context("unrecognized input", func() {
 			It("calls default factory on unknown service", func() {
 				req.ClientInfo.ServiceName = "Non Existant Service"
-				res := extractResourceInformation(&req)
+				res := extractResourceInformation(&req, tracer.GlobalTracer)
 				Expect(res.Metadata["hello"]).To(Equal("world"))
 				Expect(res.Metadata["params"]).To(Equal("output"))
 			})
@@ -181,13 +187,13 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 					MessageId:        &messageID,
 					MD5OfMessageBody: &mD5OfMessageBody,
 				}
-				res := extractResourceInformation(&req)
+				res := extractResourceInformation(&req, tracer.GlobalTracer)
 				Expect(res.Name).To(Equal("QueueName"))
 			})
 		})
 	})
 })
 
-func myFault(*request.Request, *protocol.Resource, bool) {
+func myFault(*request.Request, *protocol.Resource, bool, tracer.Tracer) {
 	panic(TestPanic)
 }

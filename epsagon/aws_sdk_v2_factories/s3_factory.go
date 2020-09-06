@@ -4,13 +4,19 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 	"strings"
 	"time"
 )
 
 // S3EventDataFactory creats an Epsagon Resource from aws.Request to S3
-func S3EventDataFactory(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
+func S3EventDataFactory(
+	r *aws.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	currentTracer tracer.Tracer,
+) {
 	inputValue := reflect.ValueOf(r.Params).Elem()
 	getResourceNameFromField(res, inputValue, "Bucket")
 	handleSpecificOperations := map[string]specificOperationHandler{
@@ -19,7 +25,7 @@ func S3EventDataFactory(r *aws.Request, res *protocol.Resource, metadataOnly boo
 		"PutObject":   handleS3PutObject,
 		"ListObjects": handleS3ListObject,
 	}
-	handleSpecificOperation(r, res, metadataOnly, handleSpecificOperations, nil)
+	handleSpecificOperation(r, res, metadataOnly, handleSpecificOperations, nil, currentTracer)
 }
 
 func commonS3OpertionHandler(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
@@ -33,7 +39,12 @@ func commonS3OpertionHandler(r *aws.Request, res *protocol.Resource, metadataOnl
 	}
 }
 
-func handleS3GetOrHeadObject(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
+func handleS3GetOrHeadObject(
+	r *aws.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	_ tracer.Tracer,
+) {
 	commonS3OpertionHandler(r, res, metadataOnly)
 	outputValue := reflect.ValueOf(r.Data).Elem()
 	updateMetadataFromValue(outputValue, "ContentLength", "file_size", res.Metadata)
@@ -46,7 +57,12 @@ func handleS3GetOrHeadObject(r *aws.Request, res *protocol.Resource, metadataOnl
 	res.Metadata["last_modified"] = lastModified.String()
 }
 
-func handleS3PutObject(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
+func handleS3PutObject(
+	r *aws.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	_ tracer.Tracer,
+) {
 	commonS3OpertionHandler(r, res, metadataOnly)
 }
 
@@ -56,7 +72,12 @@ type s3File struct {
 	etag string
 }
 
-func handleS3ListObject(r *aws.Request, res *protocol.Resource, metadataOnly bool) {
+func handleS3ListObject(
+	r *aws.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	_ tracer.Tracer,
+) {
 	if metadataOnly {
 		return
 	}
