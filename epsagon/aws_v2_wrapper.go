@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
+	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"log"
@@ -21,12 +22,7 @@ func WrapAwsV2Service(svcClient interface{}, args ...context.Context) interface{
 		aws.NamedHandler{
 			Name: "epsagon-aws-sdk-v2",
 			Fn: func(r *aws.Request) {
-				var currentTracer tracer.Tracer
-				if len(args) == 0 {
-					currentTracer = tracer.GlobalTracer
-				} else {
-					currentTracer = args[0].Value("tracer").(tracer.Tracer)
-				}
+				currentTracer := internal.ExtractTracer(args)
 				completeEventData(r, currentTracer)
 			},
 		},

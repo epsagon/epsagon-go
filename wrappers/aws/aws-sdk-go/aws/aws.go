@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"log"
@@ -22,12 +23,7 @@ func WrapSession(s *session.Session, args ...context.Context) *session.Session {
 		request.NamedHandler{
 			Name: "github.com/epsagon/epsagon-go/wrappers/aws/aws-sdk-go/aws/aws.go",
 			Fn: func(r *request.Request) {
-				var currentTracer tracer.Tracer
-				if len(args) == 0 {
-					currentTracer = tracer.GlobalTracer
-				} else {
-					currentTracer = args[0].Value("tracer").(tracer.Tracer)
-				}
+				currentTracer := internal.ExtractTracer(args)
 				completeEventData(r, currentTracer)
 			},
 		})

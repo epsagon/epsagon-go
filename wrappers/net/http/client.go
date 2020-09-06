@@ -6,6 +6,7 @@ import (
 	// "fmt"
 	"bytes"
 	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
@@ -27,12 +28,7 @@ type ClientWrapper struct {
 
 // Wrap wraps an http.Client to Epsagon's ClientWrapper
 func Wrap(c http.Client, args ...context.Context) ClientWrapper {
-	var currentTracer tracer.Tracer
-	if len(args) == 0 {
-		currentTracer = tracer.GlobalTracer
-	} else {
-		currentTracer = args[0].Value("tracer").(tracer.Tracer)
-	}
+	currentTracer := internal.ExtractTracer(args)
 	return ClientWrapper{c, false, currentTracer}
 }
 
