@@ -83,6 +83,20 @@ var _ = Describe("generic_wrapper", func() {
 				Expect(called).To(Equal(true))
 				Expect(len(events)).To(Equal(1))
 			})
+			It("Calls the user function with custom resource name", func() {
+				called := false
+				resourceName := "test-resource-name"
+				wrapper := &epsagonGenericWrapper{
+					config:       &Config{},
+					handler:      reflect.ValueOf(func() { called = true }),
+					tracer:       tracer.GlobalTracer,
+					resourceName: resourceName,
+				}
+				wrapper.Call()
+				Expect(called).To(Equal(true))
+				Expect(len(events)).To(Equal(1))
+				Expect(events[0].Name).To(Equal(resourceName))
+			})
 			It("Retuns and accepts arguments", func() {
 				called := false
 				result := false

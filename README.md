@@ -91,6 +91,10 @@ func main() {
 	errInterface := response[1].Interface()
 }
 ```
+Optionally, you can pass a custom name for your instrumented function:
+```
+	response := epsagon.GoWrapper(config, doTask, "<MyInstrumentedFuncName>")(5, "hello")
+```
 
 ### Concurrent Generic
 In order to support more than one function being traced in the same environment (using different goroutines), use this wrapper as shown in the example below. The instrumented function has to receive a context as its first parameter, and pass it to the relevant instrumented operations.
@@ -115,6 +119,10 @@ func main() {
 	wg.Wait()
 	time.Sleep(2 * time.Second)
 }
+```
+Optionally, you can pass a custom name for your instrumented function:
+```
+		go epsagon.ConcurrentGoWrapper(config, doTask, "<MyInstrumentedFuncName>")(i, "hello", &wg)
 ```
 
 ## Integrations
