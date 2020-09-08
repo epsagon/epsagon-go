@@ -95,7 +95,7 @@ var _ = Describe("generic_wrapper", func() {
 				wrapper.Call()
 				Expect(called).To(Equal(true))
 				Expect(len(events)).To(Equal(1))
-				Expect(events[0].Name).To(Equal(resourceName))
+				Expect(events[0].Resource.Name).To(Equal(resourceName))
 			})
 			It("Retuns and accepts arguments", func() {
 				called := false
