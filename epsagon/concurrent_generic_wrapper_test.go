@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -66,6 +67,8 @@ func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, resour
 			func() {
 				Expect(len(trace.Events)).To(Equal(2))
 				if len(resourceName) > 0 {
+					log.Printf("test")
+					log.Printf("%s and %s", trace.Events[1].Resource.Name, resourceName)
 					Expect(trace.Events[1].Resource.Name).To(Equal(resourceName))
 				}
 				identifier := parseEventID(trace.Events[0])
