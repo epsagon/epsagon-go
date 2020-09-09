@@ -120,7 +120,9 @@ func main() {
 	time.Sleep(2 * time.Second)
 }
 ```
-Optionally, you can pass a custom name for your instrumented function:
+Optionally, you can pass a custom name for your instrumented function. In the epsagon dashboard,
+your instrumented function will be displayed with your configured name in all the relevant screens:
+traces search, service map and more.
 ```
 		go epsagon.ConcurrentGoWrapper(config, doTask, "<MyInstrumentedFuncName>")(i, "hello", &wg)
 ```
