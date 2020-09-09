@@ -91,13 +91,15 @@ func main() {
 	errInterface := response[1].Interface()
 }
 ```
-Optionally, you can pass a custom name for your instrumented function:
+Optionally, you can pass a custom name for your wrapped function. In the epsagon dashboard,
+your wrapped function will be displayed with your configured name in all the relevant screens:
+traces search, service map and more.
 ```
 	response := epsagon.GoWrapper(config, doTask, "<MyInstrumentedFuncName>")(5, "hello")
 ```
 
 ### Concurrent Generic
-In order to support more than one function being traced in the same environment (using different goroutines), use this wrapper as shown in the example below. The instrumented function has to receive a context as its first parameter, and pass it to the relevant instrumented operations.
+In order to support more than one function being traced in the same environment (using different goroutines), use this wrapper as shown in the example below. The wrapped function has to receive a context as its first parameter, and pass it to the relevant wrapped operations.
 
 
 ```go
@@ -120,36 +122,11 @@ func main() {
 	time.Sleep(2 * time.Second)
 }
 ```
-Optionally, you can pass a custom name for your instrumented function. In the epsagon dashboard,
-your instrumented function will be displayed with your configured name in all the relevant screens:
+Optionally, you can pass a custom name for your wrapped function. In the epsagon dashboard,
+your wrapped function will be displayed with your configured name in all the relevant screens:
 traces search, service map and more.
 ```
 		go epsagon.ConcurrentGoWrapper(config, doTask, "<MyInstrumentedFuncName>")(i, "hello", &wg)
-```
-
-### Concurrent Generic
-In order to support more than one function being traced in the same environment (using different goroutines), use this wrapper as shown in the example below. The instrumented function has to receive a context as its first parameter, and pass it to the relevant instrumented operations.
-
-
-```go
-func doTask(ctx context.Context, a int, b string, wg *sync.WaitGroup) (int, error) {
-	defer wg.Done()
-	log.Printf("inside doTask: b = %s", b)
-	client := epsagonhttp.Wrap(http.Client{}, ctx)
-	client.Get("https://epsagon.com/")
-	return a + 1, fmt.Errorf("boom")
-}
-
-func main() {
-	config := epsagon.NewTracerConfig("generic-go-wrapper", "")
-	config.Debug = true
-	var wg sync.WaitGroup
-	for i := 0; i < 5; i++ {
-		go epsagon.ConcurrentGoWrapper(config, doTask)(i, "hello", &wg)
-	}
-	wg.Wait()
-	time.Sleep(2 * time.Second)
-}
 ```
 
 ## Integrations
