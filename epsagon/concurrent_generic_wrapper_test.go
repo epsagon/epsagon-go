@@ -10,7 +10,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -67,8 +66,6 @@ func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, resour
 			func() {
 				Expect(len(trace.Events)).To(Equal(2))
 				if len(resourceName) > 0 {
-					log.Printf("test")
-					log.Printf("%s and %s", trace.Events[1].Resource.Name, resourceName)
 					Expect(trace.Events[1].Resource.Name).To(Equal(resourceName))
 				}
 				identifier := parseEventID(trace.Events[0])
@@ -150,7 +147,7 @@ var _ = Describe("multiple_traces", func() {
 				traceCollectorServer.Close()
 			})
 			It("Multiple requests to test server", func() {
-				resourceName := "command-line-arguments_test.handleResponse"
+				resourceName := ""
 				testServer = createTestHTTPServer(config, "")
 				var wg sync.WaitGroup
 				go waitForTraces(0, 50, traceChannel, resourceName, &wg)
