@@ -15,7 +15,34 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
+
+const EPSAGON_TRACE_ID_KEY = "epsagon-trace-id"
+
+type ValidationFunction func(string, string) bool
+
+var hasSuffix ValidationFunction = strings.HasSuffix
+var contains ValidationFunction = strings.Contains
+
+var blacklistURLs = map[*ValidationFunction][]string{
+	&hasSuffix: {
+		"epsagon.com",
+		".amazonaws.com",
+	},
+	&contains: {
+		"accounts.google.com",
+		"documents.azure.com",
+		"169.254.170.2", // AWS Task Metadata Endpoint
+	},
+}
+var whitelistURLs = map[*ValidationFunction][]string{
+	&contains: {
+		".execute-api.",
+		".elb.amazonaws.com",
+		".appsync-api.",
+	},
+}
 
 // ClientWrapper is Epsagon's wrapper for http.Client
 type ClientWrapper struct {
@@ -36,11 +63,43 @@ func (c *ClientWrapper) getMetadataOnly() bool {
 	return c.MetadataOnly || c.tracer.GetConfig().MetadataOnly
 }
 
+func isBlacklistedURL(parsedUrl *url.URL) bool {
+	hostname := parsedUrl.Hostname()
+	for method, urls := range whitelistURLs {
+		for _, whitelistUrl := range urls {
+			if (*method)(hostname, whitelistUrl) {
+				return false
+			}
+		}
+	}
+	for method, urls := range blacklistURLs {
+		for _, blacklistUrl := range urls {
+			if (*method)(hostname, blacklistUrl) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func shouldAddHeaderByURL(rawUrl string) bool {
+	parsedURL, err := url.Parse(rawUrl)
+	if err != nil {
+		return false
+	}
+	return isBlacklistedURL(parsedURL)
+}
+
 // Do wraps http.Client's Do
 func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 
 	startTime := tracer.GetTimestamp()
+	epsagonTraceID := ""
+	if !isBlacklistedURL(req) {
+		epsagonTraceID = generateEpsagonTraceID()
+		req.Header.Set(EPSAGON_TRACE_ID_KEY, epsagonTraceID)
+	}
 	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, c.getMetadataOnly())
 	if !c.getMetadataOnly() {
@@ -193,6 +252,10 @@ func updateRequestData(req *http.Request, metadata map[string]string) {
 	headers, err := json.Marshal(req.Header)
 	if err == nil {
 		metadata["request_headers"] = string(headers)
+	}
+	traceID := req.Header.Get(EPSAGON_TRACE_ID_KEY)
+	if len(traceID) > 0 {
+		metadata["http_trace_id"] = traceID
 	}
 	if req.Body == nil {
 		return
