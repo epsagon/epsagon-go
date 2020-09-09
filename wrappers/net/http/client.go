@@ -1,10 +1,10 @@
 package epsagonhttp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	// "fmt"
-	"bytes"
+	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/protocol"
@@ -88,6 +88,11 @@ func shouldAddHeaderByURL(rawUrl string) bool {
 		return false
 	}
 	return isBlacklistedURL(parsedURL)
+}
+
+func generateEpsagonTraceID() string {
+
+	return fmt.Printf("%s:%s:%s:1", "", "", "")
 }
 
 // Do wraps http.Client's Do
