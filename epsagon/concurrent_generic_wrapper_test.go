@@ -52,7 +52,7 @@ func parseEventID(event *protocol.Event) (identifier int) {
 	return
 }
 
-func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, wg *sync.WaitGroup) {
+func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, resourceName string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var trace *protocol.Trace
 	receivedTraces := map[int]bool{}
@@ -65,6 +65,7 @@ func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, wg *sy
 		case trace = <-traceChannel:
 			func() {
 				Expect(len(trace.Events)).To(Equal(2))
+				Expect(trace.Events[1].Resource.Name).To(Equal(resourceName))
 				identifier := parseEventID(trace.Events[0])
 				if identifier < start || identifier >= end {
 					panic("received unexpected event")
@@ -79,6 +80,35 @@ func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, wg *sy
 			panic("timeout while receiving traces")
 		}
 	}
+}
+
+type HandlerFunc func(res http.ResponseWriter, req *http.Request)
+
+func handleResponse(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	client := epsagonhttp.Wrap(http.Client{}, ctx)
+	client.Get(fmt.Sprintf("https://www.google.com%s", req.RequestURI))
+	res.Write([]byte(req.RequestURI))
+}
+
+func createTestHTTPServer(config *epsagon.Config, resourceName string) *httptest.Server {
+	var concurrentWrapper epsagon.GenericFunction
+	if len(resourceName) > 0 {
+		concurrentWrapper = epsagon.ConcurrentGoWrapper(
+			config,
+			handleResponse,
+			resourceName,
+		)
+	} else {
+		concurrentWrapper = epsagon.ConcurrentGoWrapper(
+			config,
+			handleResponse,
+		)
+	}
+	return httptest.NewServer(http.HandlerFunc(
+		func(res http.ResponseWriter, req *http.Request) {
+			concurrentWrapper(res, req)
+		},
+	))
 }
 
 var _ = Describe("multiple_traces", func() {
@@ -109,28 +139,16 @@ var _ = Describe("multiple_traces", func() {
 				))
 				config = epsagon.NewTracerConfig("test", "test token")
 				config.CollectorURL = traceCollectorServer.URL
-				testServer = httptest.NewServer(http.HandlerFunc(
-					func(res http.ResponseWriter, req *http.Request) {
-						epsagon.ConcurrentGoWrapper(
-							config,
-							func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-
-								client := epsagonhttp.Wrap(http.Client{}, ctx)
-								client.Get(fmt.Sprintf("https://www.google.com%s", req.RequestURI))
-								res.Write([]byte(req.RequestURI))
-							},
-						)(res, req)
-					},
-				))
-
 			})
 			AfterEach(func() {
 				testServer.Close()
 				traceCollectorServer.Close()
 			})
 			It("Multiple requests to test server", func() {
+				resourceName := "command-line-arguments_test.handleResponse"
+				testServer = createTestHTTPServer(config, "")
 				var wg sync.WaitGroup
-				go waitForTraces(0, 50, traceChannel, &wg)
+				go waitForTraces(0, 50, traceChannel, resourceName, &wg)
 				wg.Add(1)
 				for i := 0; i < 50; i++ {
 					wg.Add(1)
@@ -138,7 +156,7 @@ var _ = Describe("multiple_traces", func() {
 
 				}
 				wg.Wait()
-				go waitForTraces(51, 100, traceChannel, &wg)
+				go waitForTraces(51, 100, traceChannel, resourceName, &wg)
 				wg.Add(1)
 				for i := 51; i < 100; i++ {
 					wg.Add(1)
@@ -146,6 +164,20 @@ var _ = Describe("multiple_traces", func() {
 				}
 				wg.Wait()
 			})
+			It("Custom runner resource name", func() {
+				resourceName := "test-resource-name"
+				testServer = createTestHTTPServer(config, resourceName)
+				var wg sync.WaitGroup
+				go waitForTraces(0, 1, traceChannel, resourceName, &wg)
+				wg.Add(1)
+				for i := 0; i < 1; i++ {
+					wg.Add(1)
+					go sendRequest(&wg, fmt.Sprintf("/%d", i), testServer)
+
+				}
+				wg.Wait()
+			})
+
 		})
 	})
 })
