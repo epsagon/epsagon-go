@@ -125,6 +125,31 @@ Optionally, you can pass a custom name for your instrumented function:
 		go epsagon.ConcurrentGoWrapper(config, doTask, "<MyInstrumentedFuncName>")(i, "hello", &wg)
 ```
 
+### Concurrent Generic
+In order to support more than one function being traced in the same environment (using different goroutines), use this wrapper as shown in the example below. The instrumented function has to receive a context as its first parameter, and pass it to the relevant instrumented operations.
+
+
+```go
+func doTask(ctx context.Context, a int, b string, wg *sync.WaitGroup) (int, error) {
+	defer wg.Done()
+	log.Printf("inside doTask: b = %s", b)
+	client := epsagonhttp.Wrap(http.Client{}, ctx)
+	client.Get("https://epsagon.com/")
+	return a + 1, fmt.Errorf("boom")
+}
+
+func main() {
+	config := epsagon.NewTracerConfig("generic-go-wrapper", "")
+	config.Debug = true
+	var wg sync.WaitGroup
+	for i := 0; i < 5; i++ {
+		go epsagon.ConcurrentGoWrapper(config, doTask)(i, "hello", &wg)
+	}
+	wg.Wait()
+	time.Sleep(2 * time.Second)
+}
+```
+
 ## Integrations
 
 Epsagon provides out-of-the-box instrumentation (tracing) for many popular frameworks and libraries.
