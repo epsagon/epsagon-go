@@ -3,6 +3,7 @@ package epsagonhttp
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
@@ -91,8 +92,10 @@ func shouldAddHeaderByURL(rawUrl string) bool {
 }
 
 func generateEpsagonTraceID() string {
-
-	return fmt.Printf("%s:%s:%s:1", "", "", "")
+	traceID := hex.EncodeToString(uuid.NewRandom().Bytes())
+	spanID := hex.EncodeToString(uuid.NewRandom().Bytes()[:8])
+	parentSpanID := hex.EncodeToString(uuid.NewRandom().Bytes()[:8])
+	return fmt.Printf("%s:%s:%s:1", traceID, spanID, parentSpanID)
 }
 
 // Do wraps http.Client's Do
