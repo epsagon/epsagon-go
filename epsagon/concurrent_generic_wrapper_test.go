@@ -65,7 +65,9 @@ func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, resour
 		case trace = <-traceChannel:
 			func() {
 				Expect(len(trace.Events)).To(Equal(2))
-				Expect(trace.Events[1].Resource.Name).To(Equal(resourceName))
+				if len(resourceName > 0) {
+					Expect(trace.Events[1].Resource.Name).To(Equal(resourceName))
+				}
 				identifier := parseEventID(trace.Events[0])
 				if identifier < start || identifier >= end {
 					panic("received unexpected event")
