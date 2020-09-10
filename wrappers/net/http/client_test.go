@@ -24,8 +24,8 @@ func verifyTraceIDExists(event *protocol.Event) {
 }
 
 func verifyTraceIDNotExists(event *protocol.Event) {
-	traceID, ok := event.Resource.Metadata[EPSAGON_TRACEID_METADATA_KEY]
-	Expect(ok).To(BeFalse())
+	Expect(events[0].Resource.Metadata).NotTo(
+		HaveKey(EPSAGON_TRACEID_METADATA_KEY))
 }
 
 var _ = Describe("ClientWrapper", func() {
@@ -125,6 +125,7 @@ var _ = Describe("ClientWrapper", func() {
 					Equal(string(response_data)))
 				Expect(events[0].Resource.Metadata["request_body"]).To(
 					Equal(data))
+				verifyTraceIDExists(events[0])
 			})
 		})
 		Context("client with metadataOnly", func() {
@@ -143,6 +144,7 @@ var _ = Describe("ClientWrapper", func() {
 					HaveKey("response_body"))
 				Expect(events[0].Resource.Metadata).NotTo(
 					HaveKey("request_body"))
+				verifyTraceIDExists(events[0])
 			})
 		})
 		Context("bad input failing to create request", func() {
@@ -155,6 +157,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(0))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDNotExists(events[0])
 			})
 		})
 	})
@@ -175,6 +178,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(1))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				verifyTraceIDExists(events[0])
 			})
 		})
 		Context("bad input failing to create request", func() {
@@ -189,6 +193,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(0))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDNotExists(events[0])
 			})
 		})
 	})
@@ -204,6 +209,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(1))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				verifyTraceIDExists(events[0])
 			})
 		})
 		Context("bad input failing to create request", func() {
@@ -213,6 +219,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(0))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDNotExists(events[0])
 			})
 		})
 	})
