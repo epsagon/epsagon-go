@@ -17,6 +17,17 @@ func TestEpsagonHTTPWrappers(t *testing.T) {
 	RunSpecs(t, "epsagon http wrapper suite")
 }
 
+func verifyTraceIDExists(event *protocol.Event) {
+	traceID, ok := event.Resource.Metadata[EPSAGON_TRACEID_METADATA_KEY]
+	Expect(ok).To(BeTrue())
+	Expect(traceID).To(Not(BeZero()))
+}
+
+func verifyTraceIDNotExists(event *protocol.Event) {
+	traceID, ok := event.Resource.Metadata[EPSAGON_TRACEID_METADATA_KEY]
+	Expect(ok).To(BeFalse())
+}
+
 var _ = Describe("ClientWrapper", func() {
 	var (
 		events        []*protocol.Event
@@ -80,9 +91,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				Expect(events[0].Resource.Metadata["response_body"]).To(
 					Equal(string(response_data)))
-				traceID, ok := events[0].Resource.Metadata[epsagon.EPSAGON_TRACEID_METADATA_KEY]
-				Expect(ok).To(Equal(true))
-				Expect(len(traceID)).To(Greater(0))
+				verifyTraceIDExists(events[0])
 			})
 		})
 		Context("bad input failing to create request", func() {
@@ -92,6 +101,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(0))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDExists(events[0])
 			})
 		})
 	})
