@@ -174,7 +174,7 @@ func (c *ClientWrapper) Post(
 		resp, err = c.Client.Post(rawUrl, contentType, body)
 	} else {
 		req.Header.Set("Content-Type", contentType)
-		req.Header.Set(EPSAGON_TRACEID_HEADER_KEY, generateEpsagonTraceID())
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
@@ -195,7 +195,7 @@ func (c *ClientWrapper) PostForm(
 		resp, err = c.Client.PostForm(rawUrl, data)
 	} else {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Set(EPSAGON_TRACEID_HEADER_KEY, generateEpsagonTraceID())
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
@@ -213,7 +213,7 @@ func (c *ClientWrapper) Head(rawUrl string) (resp *http.Response, err error) {
 		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
 		resp, err = c.Client.Head(rawUrl)
 	} else {
-		req.Header.Set(EPSAGON_TRACEID_HEADER_KEY, generateEpsagonTraceID())
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
 	event := postSuperCall(startTime, rawUrl, http.MethodHead, resp, err, c.getMetadataOnly())

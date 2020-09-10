@@ -1,15 +1,15 @@
 package epsagonhttp
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"strings"
-	"testing"
-
+	"fmt"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"testing"
 )
 
 func TestEpsagonHTTPWrappers(t *testing.T) {
@@ -74,6 +74,41 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(1))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("request to whitelisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				req, err := http.NewRequest(
+					http.MethodGet,
+					fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN),
+					nil,
+				)
+				if err != nil {
+					Fail("WTF couldn't create request")
+				}
+				client.Do(req)
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("request to blacklisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				req, err := http.NewRequest(
+					http.MethodGet,
+					fmt.Sprintf("https://%s", EPSAGON_DOMAIN),
+					nil,
+				)
+				if err != nil {
+					Fail("WTF couldn't create request")
+				}
+				client.Do(req)
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				verifyTraceIDNotExists(events[0])
 			})
 		})
 	})
@@ -94,6 +129,24 @@ var _ = Describe("ClientWrapper", func() {
 				verifyTraceIDExists(events[0])
 			})
 		})
+		Context("request to whitelisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				client.Get(fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN))
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("request to blacklisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				client.Get(fmt.Sprintf("https://%s", EPSAGON_DOMAIN))
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				verifyTraceIDNotExists(events[0])
+			})
+		})
 		Context("bad input failing to create request", func() {
 			It("Adds event with error code error", func() {
 				client := Wrap(http.Client{})
@@ -101,7 +154,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(0))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
-				verifyTraceIDExists(events[0])
+				verifyTraceIDNotExists(events[0])
 			})
 		})
 	})
@@ -147,6 +200,32 @@ var _ = Describe("ClientWrapper", func() {
 				verifyTraceIDExists(events[0])
 			})
 		})
+		Context("request to whitelisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				data := "{\"hello\":\"world\"}"
+				client.Post(
+					fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN),
+					"application/json",
+					strings.NewReader(data))
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("request to blacklisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				data := "{\"hello\":\"world\"}"
+				client.Post(
+					fmt.Sprintf("https://%s", EPSAGON_DOMAIN),
+					"application/json",
+					strings.NewReader(data))
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				verifyTraceIDNotExists(events[0])
+			})
+		})
 		Context("bad input failing to create request", func() {
 			It("Adds event", func() {
 				client := Wrap(http.Client{})
@@ -181,6 +260,34 @@ var _ = Describe("ClientWrapper", func() {
 				verifyTraceIDExists(events[0])
 			})
 		})
+		Context("request to whitelisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				client.PostForm(
+					fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN),
+					map[string][]string{
+						"hello": []string{"world", "of", "serverless"},
+					},
+				)
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("request to blacklisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				client.PostForm(
+					fmt.Sprintf("https://%s", EPSAGON_DOMAIN),
+					map[string][]string{
+						"hello": []string{"world", "of", "serverless"},
+					},
+				)
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				verifyTraceIDNotExists(events[0])
+			})
+		})
 		Context("bad input failing to create request", func() {
 			It("Adds event with error code error", func() {
 				client := Wrap(http.Client{})
@@ -210,6 +317,24 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("request to whitelisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				client.Head(fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN))
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("request to blacklisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := Wrap(http.Client{})
+				client.Head(fmt.Sprintf("https://%s", EPSAGON_DOMAIN))
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				verifyTraceIDNotExists(events[0])
 			})
 		})
 		Context("bad input failing to create request", func() {
