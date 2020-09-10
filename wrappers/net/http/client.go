@@ -126,13 +126,13 @@ func (c *ClientWrapper) Get(rawUrl string) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Get", c.tracer)
 	startTime := tracer.GetTimestamp()
 	req, err := http.NewRequest(http.MethodGet, rawUrl, nil)
-	if err != nil {
-		panic("couldn't create request")
-	}
-	if shouldAddHeaderByURL(rawUrl) {
+	if err != nil || !shouldAddHeaderByURL(rawUrl) {
+		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
+		resp, err = c.Client.Get(rawUrl)
+	} else {
 		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
+		resp, err = c.Client.Do(req)
 	}
-	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, rawUrl, http.MethodGet, resp, err, c.getMetadataOnly())
 	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
@@ -148,14 +148,14 @@ func (c *ClientWrapper) Post(
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Post", c.tracer)
 	startTime := tracer.GetTimestamp()
 	req, err := http.NewRequest(http.MethodPost, rawUrl, body)
-	req.Header.Set("Content-Type", contentType)
-	if err != nil {
-		panic("couldn't create request")
-	}
-	if shouldAddHeaderByURL(rawUrl) {
+	if err != nil || !shouldAddHeaderByURL(rawUrl) {
+		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
+		resp, err = c.Client.Post(rawUrl, contentType, body)
+	} else {
+		req.Header.Set("Content-Type", contentType)
 		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
+		resp, err = c.Client.Do(req)
 	}
-	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
 	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
@@ -171,14 +171,14 @@ func (c *ClientWrapper) PostForm(
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.PostForm", c.tracer)
 	startTime := tracer.GetTimestamp()
 	req, err := http.NewRequest(http.MethodPost, rawUrl, strings.NewReader(data.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	if err != nil {
-		panic("couldn't create request")
-	}
-	if shouldAddHeaderByURL(rawUrl) {
+	if err != nil || !shouldAddHeaderByURL(rawUrl) {
+		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
+		resp, err = c.Client.PostForm(rawUrl, data)
+	} else {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
+		resp, err = c.Client.Do(req)
 	}
-	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
 	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
@@ -192,13 +192,13 @@ func (c *ClientWrapper) Head(rawUrl string) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Head", c.tracer)
 	startTime := tracer.GetTimestamp()
 	req, err := http.NewRequest(http.MethodHead, rawUrl, nil)
-	if err != nil {
-		panic("couldn't create request")
-	}
-	if shouldAddHeaderByURL(rawUrl) {
+	if err != nil || !shouldAddHeaderByURL(rawUrl) {
+		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
+		resp, err = c.Client.Head(rawUrl)
+	} else {
 		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
+		resp, err = c.Client.Do(req)
 	}
-	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, rawUrl, http.MethodHead, resp, err, c.getMetadataOnly())
 	if resp != nil && !c.getMetadataOnly() {
 		updateRequestData(resp.Request, event.Resource.Metadata)
