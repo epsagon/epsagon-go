@@ -80,6 +80,9 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				Expect(events[0].Resource.Metadata["response_body"]).To(
 					Equal(string(response_data)))
+				traceID, ok := events[0].Resource.Metadata[epsagon.EPSAGON_TRACEID_METADATA_KEY]
+				Expect(ok).To(Equal(true))
+				Expect(len(traceID)).To(Greater(0))
 			})
 		})
 		Context("bad input failing to create request", func() {
