@@ -87,7 +87,7 @@ func shouldAddHeaderByURL(rawUrl string) bool {
 	if err != nil {
 		return false
 	}
-	return isBlacklistedURL(parsedURL)
+	return !isBlacklistedURL(parsedURL)
 }
 
 func generateRandomUUID() string {
@@ -105,15 +105,35 @@ func generateEpsagonTraceID() string {
 	return fmt.Sprintf("%s:%s:%s:1", traceID, spanID, parentSpanID)
 }
 
+func addTraceIdToEvent(req *http.Request, event *protocol.Event) {
+	traceIDs, ok := req.Header[EPSAGON_TRACE_ID_KEY]
+	if ok && len(traceIDs) > 0 {
+		traceID := traceIDs[0]
+		event.Resource.Metadata["http_trace_id"] = traceID
+	}
+}
+
+func (c *ClientWrapper) addDataToEvent(req *http.Request, resp *http.Response, event *protocol.Event) {
+	if req != nil {
+		addTraceIdToEvent(req, event)
+	}
+	if resp != nil && !c.getMetadataOnly() {
+		updateRequestData(resp.Request, event.Resource.Metadata)
+	}
+}
+
 // Do wraps http.Client's Do
 func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 	startTime := tracer.GetTimestamp()
 	if !isBlacklistedURL(req.URL) {
-		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
+		req.Header[EPSAGON_TRACE_ID_KEY] = []string{generateEpsagonTraceID()}
 	}
 	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, c.getMetadataOnly())
+	if req != nil {
+		addTraceIdToEvent(req, event)
+	}
 	if !c.getMetadataOnly() {
 		updateRequestData(req, event.Resource.Metadata)
 	}
@@ -130,13 +150,11 @@ func (c *ClientWrapper) Get(rawUrl string) (resp *http.Response, err error) {
 		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
 		resp, err = c.Client.Get(rawUrl)
 	} else {
-		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
+		req.Header[EPSAGON_TRACE_ID_KEY] = []string{generateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
 	event := postSuperCall(startTime, rawUrl, http.MethodGet, resp, err, c.getMetadataOnly())
-	if resp != nil && !c.getMetadataOnly() {
-		updateRequestData(resp.Request, event.Resource.Metadata)
-	}
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }
@@ -157,9 +175,7 @@ func (c *ClientWrapper) Post(
 		resp, err = c.Client.Do(req)
 	}
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
-	if resp != nil && !c.getMetadataOnly() {
-		updateRequestData(resp.Request, event.Resource.Metadata)
-	}
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }
@@ -180,9 +196,7 @@ func (c *ClientWrapper) PostForm(
 		resp, err = c.Client.Do(req)
 	}
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
-	if resp != nil && !c.getMetadataOnly() {
-		updateRequestData(resp.Request, event.Resource.Metadata)
-	}
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }
@@ -200,9 +214,7 @@ func (c *ClientWrapper) Head(rawUrl string) (resp *http.Response, err error) {
 		resp, err = c.Client.Do(req)
 	}
 	event := postSuperCall(startTime, rawUrl, http.MethodHead, resp, err, c.getMetadataOnly())
-	if resp != nil && !c.getMetadataOnly() {
-		updateRequestData(resp.Request, event.Resource.Metadata)
-	}
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }
@@ -289,10 +301,6 @@ func updateRequestData(req *http.Request, metadata map[string]string) {
 	headers, err := json.Marshal(req.Header)
 	if err == nil {
 		metadata["request_headers"] = string(headers)
-	}
-	traceID := req.Header.Get(EPSAGON_TRACE_ID_KEY)
-	if len(traceID) > 0 {
-		metadata["http_trace_id"] = traceID
 	}
 	if req.Body == nil {
 		return
