@@ -24,7 +24,7 @@ func verifyTraceIDExists(event *protocol.Event) {
 }
 
 func verifyTraceIDNotExists(event *protocol.Event) {
-	Expect(events[0].Resource.Metadata).NotTo(
+	Expect(event.Resource.Metadata).NotTo(
 		HaveKey(EPSAGON_TRACEID_METADATA_KEY))
 }
 

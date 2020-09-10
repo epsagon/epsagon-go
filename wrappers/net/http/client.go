@@ -20,6 +20,8 @@ import (
 
 const EPSAGON_TRACEID_HEADER_KEY = "epsagon-trace-id"
 const EPSAGON_TRACEID_METADATA_KEY = "http_trace_id"
+const EPSAGON_DOMAIN = "epsagon.com"
+const APPSYNC_API_SUBDOMAIN = ".appsync-api."
 
 type ValidationFunction func(string, string) bool
 
@@ -28,7 +30,7 @@ var contains ValidationFunction = strings.Contains
 
 var blacklistURLs = map[*ValidationFunction][]string{
 	&hasSuffix: {
-		"epsagon.com",
+		EPSAGON_DOMAIN,
 		".amazonaws.com",
 	},
 	&contains: {
@@ -41,7 +43,7 @@ var whitelistURLs = map[*ValidationFunction][]string{
 	&contains: {
 		".execute-api.",
 		".elb.amazonaws.com",
-		".appsync-api.",
+		APPSYNC_API_SUBDOMAIN,
 	},
 }
 
