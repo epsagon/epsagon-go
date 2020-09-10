@@ -109,10 +109,8 @@ func generateEpsagonTraceID() string {
 func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 	startTime := tracer.GetTimestamp()
-	epsagonTraceID := ""
 	if !isBlacklistedURL(req.URL) {
-		epsagonTraceID = generateEpsagonTraceID()
-		req.Header.Set(EPSAGON_TRACE_ID_KEY, epsagonTraceID)
+		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
 	}
 	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, c.getMetadataOnly())
@@ -132,8 +130,7 @@ func (c *ClientWrapper) Get(rawUrl string) (resp *http.Response, err error) {
 		panic("couldn't create request")
 	}
 	if shouldAddHeaderByURL(rawUrl) {
-		epsagonTraceID = generateEpsagonTraceID()
-		req.Header.Set(EPSAGON_TRACE_ID_KEY, epsagonTraceID)
+		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
 	}
 	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, rawUrl, http.MethodGet, resp, err, c.getMetadataOnly())
@@ -156,8 +153,7 @@ func (c *ClientWrapper) Post(
 		panic("couldn't create request")
 	}
 	if shouldAddHeaderByURL(rawUrl) {
-		epsagonTraceID = generateEpsagonTraceID()
-		req.Header.Set(EPSAGON_TRACE_ID_KEY, epsagonTraceID)
+		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
 	}
 	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
@@ -180,8 +176,7 @@ func (c *ClientWrapper) PostForm(
 		panic("couldn't create request")
 	}
 	if shouldAddHeaderByURL(rawUrl) {
-		epsagonTraceID = generateEpsagonTraceID()
-		req.Header.Set(EPSAGON_TRACE_ID_KEY, epsagonTraceID)
+		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
 	}
 	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
@@ -201,8 +196,7 @@ func (c *ClientWrapper) Head(rawUrl string) (resp *http.Response, err error) {
 		panic("couldn't create request")
 	}
 	if shouldAddHeaderByURL(rawUrl) {
-		epsagonTraceID = generateEpsagonTraceID()
-		req.Header.Set(EPSAGON_TRACE_ID_KEY, epsagonTraceID)
+		req.Header.Set(EPSAGON_TRACE_ID_KEY, generateEpsagonTraceID())
 	}
 	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, rawUrl, http.MethodHead, resp, err, c.getMetadataOnly())
