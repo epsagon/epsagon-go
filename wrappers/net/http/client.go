@@ -147,7 +147,6 @@ func (c *ClientWrapper) addDataToEvent(req *http.Request, resp *http.Response, e
 		if !c.getMetadataOnly() {
 			updateRequestData(resp.Request, event.Resource.Metadata)
 		}
-		updateByResponseHeaders(resp, event)
 	}
 }
 
