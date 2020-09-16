@@ -23,6 +23,7 @@ type epsagonGenericWrapper struct {
 	tracer        tracer.Tracer
 	runner        *protocol.Event
 	thrownError   interface{}
+	resourceName  string
 	invoked       bool
 	invoking      bool
 	dontAddRunner bool
@@ -32,12 +33,16 @@ type epsagonGenericWrapper struct {
 // createRunner creates a runner event but does not add it to the tracer
 // the runner is saved for further manipulations at wrapper.runner
 func (wrapper *epsagonGenericWrapper) createRunner() {
+	resourceName := wrapper.resourceName
+	if len(resourceName) == 0 {
+		resourceName = runtime.FuncForPC(wrapper.handler.Pointer()).Name()
+	}
 	wrapper.runner = &protocol.Event{
 		Id:        uuid.New().String(),
 		Origin:    "runner",
 		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
-			Name:      runtime.FuncForPC(wrapper.handler.Pointer()).Name(),
+			Name:      resourceName,
 			Type:      "go-function",
 			Operation: "invoke",
 		},
@@ -137,8 +142,16 @@ func (wrapper *epsagonGenericWrapper) Call(args ...interface{}) (results []refle
 // GenericFunction type
 type GenericFunction func(args ...interface{}) []reflect.Value
 
+func getResourceName(args []string) (resourceName string) {
+	if len(args) > 0 {
+		resourceName = args[0]
+	}
+	return
+}
+
 // GoWrapper wraps the function with epsagon's tracer
-func GoWrapper(config *Config, wrappedFunction interface{}) GenericFunction {
+func GoWrapper(config *Config, wrappedFunction interface{}, args ...string) GenericFunction {
+	resourceName := getResourceName(args)
 	return func(args ...interface{}) []reflect.Value {
 		if config == nil {
 			config = &Config{}
@@ -148,16 +161,18 @@ func GoWrapper(config *Config, wrappedFunction interface{}) GenericFunction {
 		defer wrapperTracer.Stop()
 
 		wrapper := &epsagonGenericWrapper{
-			config:  config,
-			handler: reflect.ValueOf(wrappedFunction),
-			tracer:  wrapperTracer,
+			config:       config,
+			handler:      reflect.ValueOf(wrappedFunction),
+			tracer:       wrapperTracer,
+			resourceName: resourceName,
 		}
 		return wrapper.Call(args...)
 	}
 }
 
 // GoWrapper wraps the function with epsagon's tracer
-func ConcurrentGoWrapper(config *Config, wrappedFunction interface{}) GenericFunction {
+func ConcurrentGoWrapper(config *Config, wrappedFunction interface{}, args ...string) GenericFunction {
+	resourceName := getResourceName(args)
 	return func(args ...interface{}) []reflect.Value {
 		if config == nil {
 			config = &Config{}
@@ -167,10 +182,11 @@ func ConcurrentGoWrapper(config *Config, wrappedFunction interface{}) GenericFun
 		defer wrapperTracer.Stop()
 
 		wrapper := &epsagonGenericWrapper{
-			config:     config,
-			handler:    reflect.ValueOf(wrappedFunction),
-			tracer:     wrapperTracer,
-			concurrent: true,
+			config:       config,
+			handler:      reflect.ValueOf(wrappedFunction),
+			tracer:       wrapperTracer,
+			concurrent:   true,
+			resourceName: resourceName,
 		}
 		return wrapper.Call(args...)
 	}
