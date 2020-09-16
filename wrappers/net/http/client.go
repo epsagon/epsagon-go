@@ -134,7 +134,6 @@ func updateByResponseHeaders(resp *http.Response, resource *protocol.Resource) {
 			// api gateway
 			resource.Metadata[AWS_SERVICE_KEY] = API_GATEWAY_RESOURCE_TYPE
 		}
-		resource.Name = resp.Request.URL.Path
 		resource.Metadata[EPSAGON_REQUEST_TRACEID_METADATA_KEY] = amzRequestID
 	}
 }
