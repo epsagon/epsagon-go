@@ -22,6 +22,10 @@ const EPSAGON_TRACEID_HEADER_KEY = "epsagon-trace-id"
 const EPSAGON_TRACEID_METADATA_KEY = "http_trace_id"
 const EPSAGON_DOMAIN = "epsagon.com"
 const APPSYNC_API_SUBDOMAIN = ".appsync-api."
+const AMAZON_REQUEST_ID = "x-amzn-requestid"
+const API_GATEWAY_RESOURCE_TYPE = "api_gateway"
+const EPSAGON_REQUEST_TRACEID_METADATA_KEY = "request_trace_id"
+const AWS_SERVICE_KEY = "aws.service"
 
 type ValidationFunction func(string, string) bool
 
@@ -116,12 +120,33 @@ func addTraceIdToEvent(req *http.Request, event *protocol.Event) {
 	}
 }
 
+func updateByResponseHeaders(resp *http.Response, event *protocol.Event) {
+	var amzRequestIDs []string
+	for headerKey, headerValues := range resp.Header {
+		if strings.ToLower(headerKey) == AMAZON_REQUEST_ID {
+			amzRequestIDs = headerValues
+			break
+		}
+	}
+	if len(amzRequestIDs) > 0 {
+		amzRequestID := amzRequestIDs[0]
+		if !strings.Contains(event.Resource.Name, APPSYNC_API_SUBDOMAIN) {
+			// api gateway
+			event.Resource.Metadata[AWS_SERVICE_KEY] = API_GATEWAY_RESOURCE_TYPE
+		}
+		event.Resource.Metadata[EPSAGON_REQUEST_TRACEID_METADATA_KEY] = amzRequestID
+	}
+}
+
 func (c *ClientWrapper) addDataToEvent(req *http.Request, resp *http.Response, event *protocol.Event) {
 	if req != nil {
 		addTraceIdToEvent(req, event)
 	}
-	if resp != nil && !c.getMetadataOnly() {
-		updateRequestData(resp.Request, event.Resource.Metadata)
+	if resp != nil {
+		if !c.getMetadataOnly() {
+			updateRequestData(resp.Request, event.Resource.Metadata)
+		}
+		updateByResponseHeaders(resp, event)
 	}
 }
 
