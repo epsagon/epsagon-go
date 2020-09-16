@@ -120,7 +120,7 @@ func addTraceIdToEvent(req *http.Request, event *protocol.Event) {
 	}
 }
 
-func updateByResponseHeaders(resp *http.Response, event *protocol.Event) {
+func updateByResponseHeaders(resp *http.Response, resource *protocol.Resource) {
 	var amzRequestIDs []string
 	for headerKey, headerValues := range resp.Header {
 		if strings.ToLower(headerKey) == AMAZON_REQUEST_ID {
@@ -130,11 +130,12 @@ func updateByResponseHeaders(resp *http.Response, event *protocol.Event) {
 	}
 	if len(amzRequestIDs) > 0 {
 		amzRequestID := amzRequestIDs[0]
-		if !strings.Contains(event.Resource.Name, APPSYNC_API_SUBDOMAIN) {
+		if !strings.Contains(resource.Name, APPSYNC_API_SUBDOMAIN) {
 			// api gateway
-			event.Resource.Metadata[AWS_SERVICE_KEY] = API_GATEWAY_RESOURCE_TYPE
+			resource.Metadata[AWS_SERVICE_KEY] = API_GATEWAY_RESOURCE_TYPE
 		}
-		event.Resource.Metadata[EPSAGON_REQUEST_TRACEID_METADATA_KEY] = amzRequestID
+		resource.Name = resp.Request.URL.Path
+		resource.Metadata[EPSAGON_REQUEST_TRACEID_METADATA_KEY] = amzRequestID
 	}
 }
 
@@ -286,12 +287,8 @@ func createHTTPEvent(url, method string, err error) *protocol.Event {
 }
 
 func updateResponseData(resp *http.Response, resource *protocol.Resource, metadataOnly bool) {
-	resource.Metadata["error_code"] = strconv.Itoa(resp.StatusCode)
-	if _, ok := resp.Header["x-amzn-requestid"]; ok {
-		resource.Type = "api_gateway"
-		resource.Name = resp.Request.URL.Path
-		resource.Metadata["request_trace_id"] = resp.Header["x-amzn-requestid"][0]
-	}
+	resource.Metadata["status_code"] = strconv.Itoa(resp.StatusCode)
+	updateByResponseHeaders(resp, resource)
 	if metadataOnly {
 		return
 	}
