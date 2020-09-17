@@ -130,7 +130,7 @@ func updateByResponseHeaders(resp *http.Response, resource *protocol.Resource) {
 	}
 	if len(amzRequestIDs) > 0 {
 		amzRequestID := amzRequestIDs[0]
-		if !strings.Contains(resource.Name, APPSYNC_API_SUBDOMAIN) {
+		if !strings.Contains(resp.Request.URL.Hostname(), APPSYNC_API_SUBDOMAIN) {
 			// api gateway
 			resource.Metadata[AWS_SERVICE_KEY] = API_GATEWAY_RESOURCE_TYPE
 		}
