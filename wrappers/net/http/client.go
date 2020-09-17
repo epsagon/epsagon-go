@@ -120,6 +120,9 @@ func addTraceIdToEvent(req *http.Request, event *protocol.Event) {
 	}
 }
 
+// update event data according to given response headers
+// adds amazon request ID, if returned in response headers
+// used for traces HTTP correlation (appsync / api gateway targets)
 func updateByResponseHeaders(resp *http.Response, resource *protocol.Resource) {
 	var amzRequestIDs []string
 	for headerKey, headerValues := range resp.Header {
