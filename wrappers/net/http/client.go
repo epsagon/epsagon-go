@@ -1,10 +1,10 @@
 package epsagonhttp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	// "fmt"
-	"bytes"
+	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/protocol"
@@ -15,7 +15,41 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
+
+const EPSAGON_TRACEID_HEADER_KEY = "epsagon-trace-id"
+const EPSAGON_TRACEID_METADATA_KEY = "http_trace_id"
+const EPSAGON_DOMAIN = "epsagon.com"
+const APPSYNC_API_SUBDOMAIN = ".appsync-api."
+const AMAZON_REQUEST_ID = "x-amzn-requestid"
+const API_GATEWAY_RESOURCE_TYPE = "api_gateway"
+const EPSAGON_REQUEST_TRACEID_METADATA_KEY = "request_trace_id"
+const AWS_SERVICE_KEY = "aws.service"
+
+type ValidationFunction func(string, string) bool
+
+var hasSuffix ValidationFunction = strings.HasSuffix
+var contains ValidationFunction = strings.Contains
+
+var blacklistURLs = map[*ValidationFunction][]string{
+	&hasSuffix: {
+		EPSAGON_DOMAIN,
+		".amazonaws.com",
+	},
+	&contains: {
+		"accounts.google.com",
+		"documents.azure.com",
+		"169.254.170.2", // AWS Task Metadata Endpoint
+	},
+}
+var whitelistURLs = map[*ValidationFunction][]string{
+	&contains: {
+		".execute-api.",
+		".elb.amazonaws.com",
+		APPSYNC_API_SUBDOMAIN,
+	},
+}
 
 // ClientWrapper is Epsagon's wrapper for http.Client
 type ClientWrapper struct {
@@ -36,13 +70,100 @@ func (c *ClientWrapper) getMetadataOnly() bool {
 	return c.MetadataOnly || c.tracer.GetConfig().MetadataOnly
 }
 
+func isBlacklistedURL(parsedUrl *url.URL) bool {
+	hostname := parsedUrl.Hostname()
+	for method, urls := range whitelistURLs {
+		for _, whitelistUrl := range urls {
+			if (*method)(hostname, whitelistUrl) {
+				return false
+			}
+		}
+	}
+	for method, urls := range blacklistURLs {
+		for _, blacklistUrl := range urls {
+			if (*method)(hostname, blacklistUrl) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func shouldAddHeaderByURL(rawUrl string) bool {
+	parsedURL, err := url.Parse(rawUrl)
+	if err != nil {
+		return false
+	}
+	return !isBlacklistedURL(parsedURL)
+}
+
+func generateRandomUUID() string {
+	uuid, err := uuid.NewRandom()
+	if err != nil {
+		panic("failed to generate random UUID")
+	}
+	return strings.ReplaceAll(uuid.String(), "-", "")
+}
+
+func generateEpsagonTraceID() string {
+	traceID := generateRandomUUID()
+	spanID := generateRandomUUID()[:16]
+	parentSpanID := generateRandomUUID()[:16]
+	return fmt.Sprintf("%s:%s:%s:1", traceID, spanID, parentSpanID)
+}
+
+func addTraceIdToEvent(req *http.Request, event *protocol.Event) {
+	traceIDs, ok := req.Header[EPSAGON_TRACEID_HEADER_KEY]
+	if ok && len(traceIDs) > 0 {
+		traceID := traceIDs[0]
+		event.Resource.Metadata[EPSAGON_TRACEID_METADATA_KEY] = traceID
+	}
+}
+
+// update event data according to given response headers
+// adds amazon request ID, if returned in response headers
+// used for traces HTTP correlation (appsync / api gateway targets)
+func updateByResponseHeaders(resp *http.Response, resource *protocol.Resource) {
+	var amzRequestIDs []string
+	for headerKey, headerValues := range resp.Header {
+		if strings.ToLower(headerKey) == AMAZON_REQUEST_ID {
+			amzRequestIDs = headerValues
+			break
+		}
+	}
+	if len(amzRequestIDs) > 0 {
+		amzRequestID := amzRequestIDs[0]
+		if !strings.Contains(resp.Request.URL.Hostname(), APPSYNC_API_SUBDOMAIN) {
+			// api gateway
+			resource.Metadata[AWS_SERVICE_KEY] = API_GATEWAY_RESOURCE_TYPE
+		}
+		resource.Metadata[EPSAGON_REQUEST_TRACEID_METADATA_KEY] = amzRequestID
+	}
+}
+
+func (c *ClientWrapper) addDataToEvent(req *http.Request, resp *http.Response, event *protocol.Event) {
+	if req != nil {
+		addTraceIdToEvent(req, event)
+	}
+	if resp != nil {
+		if !c.getMetadataOnly() {
+			updateRequestData(resp.Request, event.Resource.Metadata)
+		}
+	}
+}
+
 // Do wraps http.Client's Do
 func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
-
 	startTime := tracer.GetTimestamp()
+	if !isBlacklistedURL(req.URL) {
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+	}
 	resp, err = c.Client.Do(req)
 	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, c.getMetadataOnly())
+	if req != nil {
+		addTraceIdToEvent(req, event)
+	}
 	if !c.getMetadataOnly() {
 		updateRequestData(req, event.Resource.Metadata)
 	}
@@ -51,62 +172,79 @@ func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 }
 
 // Get wraps http.Client.Get
-func (c *ClientWrapper) Get(url string) (resp *http.Response, err error) {
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
+func (c *ClientWrapper) Get(rawUrl string) (resp *http.Response, err error) {
+	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Get", c.tracer)
 	startTime := tracer.GetTimestamp()
-	resp, err = c.Client.Get(url)
-	event := postSuperCall(startTime, url, http.MethodGet, resp, err, c.getMetadataOnly())
-	if resp != nil && !c.getMetadataOnly() {
-		updateRequestData(resp.Request, event.Resource.Metadata)
+	req, err := http.NewRequest(http.MethodGet, rawUrl, nil)
+	if err != nil || !shouldAddHeaderByURL(rawUrl) {
+		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
+		resp, err = c.Client.Get(rawUrl)
+	} else {
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		resp, err = c.Client.Do(req)
 	}
+	event := postSuperCall(startTime, rawUrl, http.MethodGet, resp, err, c.getMetadataOnly())
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }
 
 // Post wraps http.Client.Post
 func (c *ClientWrapper) Post(
-	url string, contentType string, body io.Reader) (resp *http.Response, err error) {
+	rawUrl string, contentType string, body io.Reader) (resp *http.Response, err error) {
 
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
+	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Post", c.tracer)
 	startTime := tracer.GetTimestamp()
-	resp, err = c.Client.Post(url, contentType, body)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
-	if resp != nil && !c.getMetadataOnly() {
-		updateRequestData(resp.Request, event.Resource.Metadata)
+	req, err := http.NewRequest(http.MethodPost, rawUrl, body)
+	if err != nil || !shouldAddHeaderByURL(rawUrl) {
+		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
+		resp, err = c.Client.Post(rawUrl, contentType, body)
+	} else {
+		req.Header.Set("Content-Type", contentType)
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		resp, err = c.Client.Do(req)
 	}
+	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }
 
 // PostForm wraps http.Client.PostForm
 func (c *ClientWrapper) PostForm(
-	url string, data url.Values) (resp *http.Response, err error) {
+	rawUrl string, data url.Values) (resp *http.Response, err error) {
 
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
+	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.PostForm", c.tracer)
 	startTime := tracer.GetTimestamp()
-	resp, err = c.Client.PostForm(url, data)
-	event := postSuperCall(startTime, url, http.MethodPost, resp, err, c.getMetadataOnly())
-	if resp != nil && !c.getMetadataOnly() {
-		updateRequestData(resp.Request, event.Resource.Metadata)
-		dataBytes, err := json.Marshal(data)
-		if err == nil {
-			event.Resource.Metadata["body"] = string(dataBytes)
-		}
+	req, err := http.NewRequest(http.MethodPost, rawUrl, strings.NewReader(data.Encode()))
+	if err != nil || !shouldAddHeaderByURL(rawUrl) {
+		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
+		resp, err = c.Client.PostForm(rawUrl, data)
+	} else {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		resp, err = c.Client.Do(req)
 	}
+	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }
 
 // Head wraps http.Client.Head
-func (c *ClientWrapper) Head(url string) (resp *http.Response, err error) {
-
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
+func (c *ClientWrapper) Head(rawUrl string) (resp *http.Response, err error) {
+	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Head", c.tracer)
 	startTime := tracer.GetTimestamp()
-	resp, err = c.Client.Head(url)
-	event := postSuperCall(startTime, url, http.MethodHead, resp, err, c.getMetadataOnly())
-	if resp != nil && !c.getMetadataOnly() {
-		updateRequestData(resp.Request, event.Resource.Metadata)
+	req, err := http.NewRequest(http.MethodHead, rawUrl, nil)
+	if err != nil || !shouldAddHeaderByURL(rawUrl) {
+		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
+		resp, err = c.Client.Head(rawUrl)
+	} else {
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		resp, err = c.Client.Do(req)
 	}
+	event := postSuperCall(startTime, rawUrl, http.MethodHead, resp, err, c.getMetadataOnly())
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }
@@ -150,12 +288,8 @@ func createHTTPEvent(url, method string, err error) *protocol.Event {
 }
 
 func updateResponseData(resp *http.Response, resource *protocol.Resource, metadataOnly bool) {
-	resource.Metadata["error_code"] = strconv.Itoa(resp.StatusCode)
-	if _, ok := resp.Header["x-amzn-requestid"]; ok {
-		resource.Type = "api_gateway"
-		resource.Name = resp.Request.URL.Path
-		resource.Metadata["request_trace_id"] = resp.Header["x-amzn-requestid"][0]
-	}
+	resource.Metadata["status_code"] = strconv.Itoa(resp.StatusCode)
+	updateByResponseHeaders(resp, resource)
 	if metadataOnly {
 		return
 	}
