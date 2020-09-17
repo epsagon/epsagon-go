@@ -31,7 +31,7 @@ func verifyTraceIDNotExists(event *protocol.Event) {
 		HaveKey(EPSAGON_TRACEID_METADATA_KEY))
 }
 
-func verifyResponseSuccess(resp *http.Response, err error) {
+func verifyResponseSuccess(response *http.Response, err error) {
 	Expect(err).To(BeNil())
 	defer response.Body.Close()
 	responseData, err := ioutil.ReadAll(response.Body)
