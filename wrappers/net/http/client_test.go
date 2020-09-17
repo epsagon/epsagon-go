@@ -6,11 +6,14 @@ import (
 	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+const TEST_RESPONSE_STRING = "response_test_string"
 
 func TestEpsagonHTTPWrappers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -40,7 +43,7 @@ var _ = Describe("ClientWrapper", func() {
 		requests = make([]*http.Request, 0)
 		events = make([]*protocol.Event, 0)
 		exceptions = make([]*protocol.Exception, 0)
-		response_data = []byte("body")
+		response_data = []byte(TEST_RESPONSE_STRING)
 		tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 			Events:     &events,
 			Exceptions: &exceptions,
@@ -75,6 +78,23 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("sending a request to existing server, no tracer", func() {
+			It("adds an event with no error", func() {
+				tracer.GlobalTracer = nil
+				client := Wrap(http.Client{})
+				req, err := http.NewRequest(http.MethodGet, testServer.URL, nil)
+				if err != nil {
+					Fail("WTF couldn't create request")
+				}
+				response, err := client.Do(req)
+				Expect(err).To(BeNil())
+				defer response.Body.Close()
+				responseData, err := ioutil.ReadAll(response.Body)
+				Expect(err).To(BeNil())
+				responseString := string(responseData)
+				Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
 			})
 		})
 		Context("request to whitelisted url", func() {
@@ -129,6 +149,19 @@ var _ = Describe("ClientWrapper", func() {
 				verifyTraceIDExists(events[0])
 			})
 		})
+		Context("sending a request to existing server, no tracer", func() {
+			It("adds an event with no error", func() {
+				tracer.GlobalTracer = nil
+				client := Wrap(http.Client{})
+				response, err := client.Get(testServer.URL)
+				Expect(err).To(BeNil())
+				defer response.Body.Close()
+				responseData, err := ioutil.ReadAll(response.Body)
+				Expect(err).To(BeNil())
+				responseString := string(responseData)
+				Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
+			})
+		})
 		Context("request to whitelisted url", func() {
 			It("Adds event with trace ID", func() {
 				client := Wrap(http.Client{})
@@ -179,6 +212,23 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(events[0].Resource.Metadata["request_body"]).To(
 					Equal(data))
 				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("sending a request to existing server, no tracer", func() {
+			It("adds an event with no error", func() {
+				tracer.GlobalTracer = nil
+				client := Wrap(http.Client{})
+				data := "{\"hello\":\"world\"}"
+				response, err := client.Post(
+					testServer.URL,
+					"application/json",
+					strings.NewReader(data))
+				Expect(err).To(BeNil())
+				defer response.Body.Close()
+				responseData, err := ioutil.ReadAll(response.Body)
+				Expect(err).To(BeNil())
+				responseString := string(responseData)
+				Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
 			})
 		})
 		Context("client with metadataOnly", func() {
@@ -260,6 +310,24 @@ var _ = Describe("ClientWrapper", func() {
 				verifyTraceIDExists(events[0])
 			})
 		})
+		Context("sending a request to existing server, no tracer", func() {
+			It("adds an event with no error", func() {
+				tracer.GlobalTracer = nil
+				client := Wrap(http.Client{})
+				response, err := client.PostForm(
+					testServer.URL,
+					map[string][]string{
+						"hello": []string{"world", "of", "serverless"},
+					},
+				)
+				Expect(err).To(BeNil())
+				defer response.Body.Close()
+				responseData, err := ioutil.ReadAll(response.Body)
+				Expect(err).To(BeNil())
+				responseString := string(responseData)
+				Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
+			})
+		})
 		Context("request to whitelisted url", func() {
 			It("Adds event with trace ID", func() {
 				client := Wrap(http.Client{})
@@ -317,6 +385,14 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("sending a request to existing server, no tracer", func() {
+			It("adds an event with no error", func() {
+				tracer.GlobalTracer = nil
+				client := Wrap(http.Client{})
+				_, err := client.Head(testServer.URL)
+				Expect(err).To(BeNil())
 			})
 		})
 		Context("request to whitelisted url", func() {

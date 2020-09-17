@@ -30,10 +30,10 @@ func sendRequest(wg *sync.WaitGroup, path string, testServer *httptest.Server) {
 	time.Sleep(time.Duration(rand.Intn(500)) * time.Microsecond)
 	client := http.Client{}
 	response, err := client.Get(testServer.URL + path)
-	Expect(err == nil).To(Equal(true))
+	Expect(err).To(BeNil())
 	defer response.Body.Close()
 	responseData, err := ioutil.ReadAll(response.Body)
-	Expect(err == nil).To(Equal(true))
+	Expect(err).To(BeNil())
 	responseString := string(responseData)
 	Expect(responseString).To(Equal(path))
 }
