@@ -151,12 +151,19 @@ func (c *ClientWrapper) addDataToEvent(req *http.Request, resp *http.Response, e
 
 // Do wraps http.Client's Do
 func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
+	called := false
+	defer func() {
+		if !called {
+			resp, err = c.Client.Do(req)
+		}
+	}()
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 	startTime := tracer.GetTimestamp()
 	if !isBlacklistedURL(req.URL) {
 		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 	}
 	resp, err = c.Client.Do(req)
+	called = true
 	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, c.getMetadataOnly())
 	if req != nil {
 		addTraceIdToEvent(req, event)
@@ -170,6 +177,12 @@ func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 
 // Get wraps http.Client.Get
 func (c *ClientWrapper) Get(rawUrl string) (resp *http.Response, err error) {
+	called := false
+	defer func() {
+		if !called {
+			resp, err = c.Client.Get(rawUrl)
+		}
+	}()
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Get", c.tracer)
 	startTime := tracer.GetTimestamp()
 	req, err := http.NewRequest(http.MethodGet, rawUrl, nil)
@@ -180,6 +193,7 @@ func (c *ClientWrapper) Get(rawUrl string) (resp *http.Response, err error) {
 		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
+	called = true
 	event := postSuperCall(startTime, rawUrl, http.MethodGet, resp, err, c.getMetadataOnly())
 	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
@@ -189,7 +203,12 @@ func (c *ClientWrapper) Get(rawUrl string) (resp *http.Response, err error) {
 // Post wraps http.Client.Post
 func (c *ClientWrapper) Post(
 	rawUrl string, contentType string, body io.Reader) (resp *http.Response, err error) {
-
+	called := false
+	defer func() {
+		if !called {
+			resp, err = c.Client.Post(rawUrl, contentType, body)
+		}
+	}()
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Post", c.tracer)
 	startTime := tracer.GetTimestamp()
 	req, err := http.NewRequest(http.MethodPost, rawUrl, body)
@@ -201,6 +220,7 @@ func (c *ClientWrapper) Post(
 		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
+	called = true
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
 	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
@@ -210,7 +230,12 @@ func (c *ClientWrapper) Post(
 // PostForm wraps http.Client.PostForm
 func (c *ClientWrapper) PostForm(
 	rawUrl string, data url.Values) (resp *http.Response, err error) {
-
+	called := false
+	defer func() {
+		if !called {
+			resp, err = c.Client.PostForm(rawUrl, data)
+		}
+	}()
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.PostForm", c.tracer)
 	startTime := tracer.GetTimestamp()
 	req, err := http.NewRequest(http.MethodPost, rawUrl, strings.NewReader(data.Encode()))
@@ -222,6 +247,7 @@ func (c *ClientWrapper) PostForm(
 		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
+	called = true
 	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
 	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
@@ -230,6 +256,12 @@ func (c *ClientWrapper) PostForm(
 
 // Head wraps http.Client.Head
 func (c *ClientWrapper) Head(rawUrl string) (resp *http.Response, err error) {
+	called := false
+	defer func() {
+		if !called {
+			resp, err = c.Client.Head(rawUrl)
+		}
+	}()
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Head", c.tracer)
 	startTime := tracer.GetTimestamp()
 	req, err := http.NewRequest(http.MethodHead, rawUrl, nil)
@@ -240,6 +272,7 @@ func (c *ClientWrapper) Head(rawUrl string) (resp *http.Response, err error) {
 		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
+	called = true
 	event := postSuperCall(startTime, rawUrl, http.MethodHead, resp, err, c.getMetadataOnly())
 	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
