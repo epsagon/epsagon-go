@@ -31,6 +31,15 @@ func verifyTraceIDNotExists(event *protocol.Event) {
 		HaveKey(EPSAGON_TRACEID_METADATA_KEY))
 }
 
+func verifyResponseSuccess(resp *http.Response, err error) {
+	Expect(err).To(BeNil())
+	defer response.Body.Close()
+	responseData, err := ioutil.ReadAll(response.Body)
+	Expect(err).To(BeNil())
+	responseString := string(responseData)
+	Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
+}
+
 var _ = Describe("ClientWrapper", func() {
 	var (
 		events        []*protocol.Event
@@ -71,7 +80,7 @@ var _ = Describe("ClientWrapper", func() {
 				client := Wrap(http.Client{})
 				req, err := http.NewRequest(http.MethodGet, testServer.URL, nil)
 				if err != nil {
-					Fail("WTF couldn't create request")
+					Fail("couldn't create request")
 				}
 				client.Do(req)
 				Expect(requests).To(HaveLen(1))
@@ -86,15 +95,10 @@ var _ = Describe("ClientWrapper", func() {
 				client := Wrap(http.Client{})
 				req, err := http.NewRequest(http.MethodGet, testServer.URL, nil)
 				if err != nil {
-					Fail("WTF couldn't create request")
+					Fail("couldn't create request")
 				}
 				response, err := client.Do(req)
-				Expect(err).To(BeNil())
-				defer response.Body.Close()
-				responseData, err := ioutil.ReadAll(response.Body)
-				Expect(err).To(BeNil())
-				responseString := string(responseData)
-				Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
+				verifyResponseSuccess(response, err)
 			})
 		})
 		Context("request to whitelisted url", func() {
@@ -106,7 +110,7 @@ var _ = Describe("ClientWrapper", func() {
 					nil,
 				)
 				if err != nil {
-					Fail("WTF couldn't create request")
+					Fail("couldn't create request")
 				}
 				client.Do(req)
 				Expect(events).To(HaveLen(1))
@@ -123,7 +127,7 @@ var _ = Describe("ClientWrapper", func() {
 					nil,
 				)
 				if err != nil {
-					Fail("WTF couldn't create request")
+					Fail("couldn't create request")
 				}
 				client.Do(req)
 				Expect(events).To(HaveLen(1))
@@ -154,12 +158,7 @@ var _ = Describe("ClientWrapper", func() {
 				tracer.GlobalTracer = nil
 				client := Wrap(http.Client{})
 				response, err := client.Get(testServer.URL)
-				Expect(err).To(BeNil())
-				defer response.Body.Close()
-				responseData, err := ioutil.ReadAll(response.Body)
-				Expect(err).To(BeNil())
-				responseString := string(responseData)
-				Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
+				verifyResponseSuccess(response, err)
 			})
 		})
 		Context("request to whitelisted url", func() {
@@ -223,12 +222,7 @@ var _ = Describe("ClientWrapper", func() {
 					testServer.URL,
 					"application/json",
 					strings.NewReader(data))
-				Expect(err).To(BeNil())
-				defer response.Body.Close()
-				responseData, err := ioutil.ReadAll(response.Body)
-				Expect(err).To(BeNil())
-				responseString := string(responseData)
-				Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
+				verifyResponseSuccess(response, err)
 			})
 		})
 		Context("client with metadataOnly", func() {
@@ -320,12 +314,7 @@ var _ = Describe("ClientWrapper", func() {
 						"hello": []string{"world", "of", "serverless"},
 					},
 				)
-				Expect(err).To(BeNil())
-				defer response.Body.Close()
-				responseData, err := ioutil.ReadAll(response.Body)
-				Expect(err).To(BeNil())
-				responseString := string(responseData)
-				Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
+				verifyResponseSuccess(response, err)
 			})
 		})
 		Context("request to whitelisted url", func() {
