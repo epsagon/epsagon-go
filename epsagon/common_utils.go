@@ -1,7 +1,10 @@
 package epsagon
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/tracer"
 )
 
@@ -29,4 +32,10 @@ func NewTracerConfig(applicationName, token string) *Config {
 			SendTimeout:     "1s",
 		},
 	}
+}
+
+// NewTracerConfig creates a new tracer Config
+func Label(key, value string, args ...context.Context) {
+	currentTracer := internal.ExtractTracer(args)
+	currentTracer.AddLabel(key, value)
 }

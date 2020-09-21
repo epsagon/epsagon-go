@@ -3,8 +3,6 @@ package tracer
 import (
 	"bytes"
 	"fmt"
-	"github.com/epsagon/epsagon-go/protocol"
-	"github.com/golang/protobuf/jsonpb"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,6 +13,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/golang/protobuf/jsonpb"
 )
 
 var (
@@ -23,11 +24,15 @@ var (
 	GlobalTracer Tracer
 )
 
+const MaxLabelSize = 10 * 1024
+
 // Tracer is what a general program tracer had to provide
 type Tracer interface {
+	verifyLabel(EpsagonLabel) bool
 	AddEvent(*protocol.Event)
 	AddException(*protocol.Exception)
 	AddExceptionTypeAndMessage(string, string)
+	AddLabel(string, string)
 	Start()
 	Running() bool
 	Stop()
@@ -46,13 +51,21 @@ type Config struct {
 	Disable         bool   // Disable sending traces
 }
 
+type EpsagonLabel struct {
+	key   string
+	value string
+}
+
 type epsagonTracer struct {
 	Config *Config
 
 	eventsPipe     chan *protocol.Event
 	events         []*protocol.Event
 	exceptionsPipe chan *protocol.Exception
+	labelsPipe     chan EpsagonLabel
 	exceptions     []*protocol.Exception
+	labels         map[string]string
+	labelsSize     int
 
 	closeCmd chan struct{}
 	stopped  chan struct{}
@@ -210,6 +223,7 @@ func CreateTracer(config *Config) Tracer {
 		closeCmd:       make(chan struct{}),
 		stopped:        make(chan struct{}),
 		running:        make(chan struct{}),
+		labelsPipe:     make(chan EpsagonLabel),
 	}
 	if config.Debug {
 		log.Println("EPSAGON DEBUG: Created a new tracer")
@@ -253,6 +267,23 @@ func AddEvent(event *protocol.Event) {
 		return
 	}
 	GlobalTracer.AddEvent(event)
+}
+
+func (tracer *epsagonTracer) verifyLabel(label EpsagonLabel) bool {
+	if len(label.key)+len(label.value)+tracer.labelsSize < MaxLabelSize {
+		return false
+	}
+
+	return true
+}
+
+// AddLabel adds a label to the tracer
+func (tracer *epsagonTracer) AddLabel(key, value string) {
+	if tracer.Config.Debug {
+		log.Println("EPSAGON DEBUG: Adding label: ", key, value)
+	}
+	label := EpsagonLabel{key, value}
+	tracer.labelsPipe <- label
 }
 
 // AddException adds an exception to the tracer
@@ -310,6 +341,11 @@ func (tracer *epsagonTracer) Run() {
 			tracer.events = append(tracer.events, event)
 		case exception := <-tracer.exceptionsPipe:
 			tracer.exceptions = append(tracer.exceptions, exception)
+		case label := <-tracer.labelsPipe:
+			if tracer.verifyLabel(label) {
+				tracer.labels[label.key] = label.value
+				tracer.labelsSize += len(label.key) + len(label.value)
+			}
 		case <-tracer.closeCmd:
 			if tracer.Config.Debug {
 				log.Println("EPSAGON DEBUG: tracer stops running, sending traces")

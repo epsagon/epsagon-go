@@ -69,3 +69,13 @@ func (t *MockedEpsagonTracer) AddExceptionTypeAndMessage(exceptionType, msg stri
 		Time:    GetTimestamp(),
 	})
 }
+
+// AddLabel implements AddLabel
+func (t *MockedEpsagonTracer) AddLabel(key, value string) {
+	t.AddLabel(key, value)
+}
+
+// verifyLabel implements AddLabel
+func (t *MockedEpsagonTracer) verifyLabel(label EpsagonLabel) bool {
+	return t.verifyLabel(label)
+}
