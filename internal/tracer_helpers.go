@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+
 	"github.com/epsagon/epsagon-go/tracer"
 )
 

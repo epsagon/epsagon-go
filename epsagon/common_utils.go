@@ -34,8 +34,8 @@ func NewTracerConfig(applicationName, token string) *Config {
 	}
 }
 
-// NewTracerConfig creates a new tracer Config
-func Label(key, value string, args ...context.Context) {
+// Label adds a label to the sent trace
+func Label(key string, value interface{}, args ...context.Context) {
 	currentTracer := internal.ExtractTracer(args)
 	currentTracer.AddLabel(key, value)
 }

@@ -2,6 +2,7 @@ package tracer
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +26,7 @@ var (
 	GlobalTracer Tracer
 )
 
+// MaxLabelSize is the maximum allowed total labels size
 const MaxLabelSize = 10 * 1024
 
 // Tracer is what a general program tracer had to provide
@@ -32,7 +35,7 @@ type Tracer interface {
 	AddEvent(*protocol.Event)
 	AddException(*protocol.Exception)
 	AddExceptionTypeAndMessage(string, string)
-	AddLabel(string, string)
+	AddLabel(string, interface{})
 	Start()
 	Running() bool
 	Stop()
@@ -53,7 +56,7 @@ type Config struct {
 
 type EpsagonLabel struct {
 	key   string
-	value string
+	value interface{}
 }
 
 type epsagonTracer struct {
@@ -64,7 +67,7 @@ type epsagonTracer struct {
 	exceptionsPipe chan *protocol.Exception
 	labelsPipe     chan EpsagonLabel
 	exceptions     []*protocol.Exception
-	labels         map[string]string
+	labels         map[string]interface{}
 	labelsSize     int
 
 	closeCmd chan struct{}
@@ -123,6 +126,20 @@ func HandleSendTracesResponse(resp *http.Response, err error) {
 
 func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	version := "go " + runtime.Version()
+
+	for _, event := range tracer.events {
+		if event.Origin == "runner" {
+			jsonString, err := json.Marshal(tracer.labels)
+			if err != nil {
+				if tracer.Config.Debug {
+					log.Printf("EPSAGON DEBUG failed appending labels")
+				}
+			} else {
+				event.Resource.Metadata["labels"] = string(jsonString)
+			}
+		}
+	}
+
 	trace := protocol.Trace{
 		AppName:    tracer.Config.ApplicationName,
 		Token:      tracer.Config.Token,
@@ -223,6 +240,7 @@ func CreateTracer(config *Config) Tracer {
 		closeCmd:       make(chan struct{}),
 		stopped:        make(chan struct{}),
 		running:        make(chan struct{}),
+		labels:         make(map[string]interface{}),
 		labelsPipe:     make(chan EpsagonLabel),
 	}
 	if config.Debug {
@@ -270,15 +288,28 @@ func AddEvent(event *protocol.Event) {
 }
 
 func (tracer *epsagonTracer) verifyLabel(label EpsagonLabel) bool {
-	if len(label.key)+len(label.value)+tracer.labelsSize < MaxLabelSize {
+	var valueSize = 0
+	switch label.value.(type) {
+	case int, float64:
+		valueSize = strconv.IntSize
+	case string:
+		valueSize = len(label.value.(string))
+	default:
+		if tracer.Config.Debug {
+			log.Println("EPSAGON DEBUG: type %v is not supported for labels. Supported types are: int, float, string", label.value)
+		}
+		return false
+	}
+	if len(label.key)+valueSize+tracer.labelsSize > MaxLabelSize {
 		return false
 	}
 
+	tracer.labelsSize += len(label.key) + valueSize
 	return true
 }
 
 // AddLabel adds a label to the tracer
-func (tracer *epsagonTracer) AddLabel(key, value string) {
+func (tracer *epsagonTracer) AddLabel(key string, value interface{}) {
 	if tracer.Config.Debug {
 		log.Println("EPSAGON DEBUG: Adding label: ", key, value)
 	}
@@ -344,7 +375,6 @@ func (tracer *epsagonTracer) Run() {
 		case label := <-tracer.labelsPipe:
 			if tracer.verifyLabel(label) {
 				tracer.labels[label.key] = label.value
-				tracer.labelsSize += len(label.key) + len(label.value)
 			}
 		case <-tracer.closeCmd:
 			if tracer.Config.Debug {

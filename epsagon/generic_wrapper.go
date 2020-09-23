@@ -3,12 +3,13 @@ package epsagon
 import (
 	"context"
 	"fmt"
-	"github.com/epsagon/epsagon-go/protocol"
-	"github.com/epsagon/epsagon-go/tracer"
-	"github.com/google/uuid"
 	"reflect"
 	"runtime"
 	"runtime/debug"
+
+	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
+	"github.com/google/uuid"
 )
 
 type userError struct {
@@ -45,6 +46,7 @@ func (wrapper *epsagonGenericWrapper) createRunner() {
 			Name:      resourceName,
 			Type:      "go-function",
 			Operation: "invoke",
+			Metadata:  make(map[string]string),
 		},
 		ErrorCode: protocol.ErrorCode_OK,
 	}
