@@ -4,11 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/epsagon/epsagon-go/protocol"
-	"github.com/epsagon/epsagon-go/wrappers/net/http"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -18,6 +13,12 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/protocol"
+	epsagonhttp "github.com/epsagon/epsagon-go/wrappers/net/http"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 func TestEpsagonConcurrentWrapper(t *testing.T) {
@@ -87,7 +88,7 @@ func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, resour
 type HandlerFunc func(res http.ResponseWriter, req *http.Request)
 
 func handleResponse(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	client := epsagonhttp.Wrap(http.Client{}, ctx)
+	client := http.Client{Transport: epsagonhttp.NewTracingTransport(ctx)}
 	client.Get(fmt.Sprintf("https://www.google.com%s", req.RequestURI))
 	res.Write([]byte(req.RequestURI))
 }

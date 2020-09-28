@@ -5,17 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/epsagon/epsagon-go/internal"
-	"github.com/epsagon/epsagon-go/protocol"
-	"github.com/epsagon/epsagon-go/tracer"
-	"github.com/google/uuid"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/internal"
+	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
+	"github.com/google/uuid"
 )
 
 const EPSAGON_TRACEID_HEADER_KEY = "epsagon-trace-id"
@@ -51,23 +52,57 @@ var whitelistURLs = map[*ValidationFunction][]string{
 	},
 }
 
-// ClientWrapper is Epsagon's wrapper for http.Client
-type ClientWrapper struct {
-	http.Client
-
+// TracingTransport is the RoundTripper implementation that traces HTTP calls
+type TracingTransport struct {
 	// MetadataOnly flag overriding the configuration
 	MetadataOnly bool
 	tracer       tracer.Tracer
 }
 
-// Wrap wraps an http.Client to Epsagon's ClientWrapper
-func Wrap(c http.Client, args ...context.Context) ClientWrapper {
+func NewTracingTransport(args ...context.Context) *TracingTransport {
 	currentTracer := internal.ExtractTracer(args)
-	return ClientWrapper{c, false, currentTracer}
+	return &TracingTransport{
+		tracer: currentTracer,
+	}
 }
 
-func (c *ClientWrapper) getMetadataOnly() bool {
-	return c.MetadataOnly || c.tracer.GetConfig().MetadataOnly
+// RoundTrip implements the RoundTripper interface to trace HTTP calls
+func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	called := false
+	defer func() {
+		if !called {
+			resp, err = http.DefaultTransport.RoundTrip(req)
+		}
+	}()
+	defer epsagon.GeneralEpsagonRecover("net.http.RoundTripper", "RoundTrip", t.tracer)
+	startTime := tracer.GetTimestamp()
+	if !isBlacklistedURL(req.URL) {
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+	}
+
+	resp, err = http.DefaultTransport.RoundTrip(req)
+
+	called = true
+	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, t.getMetadataOnly())
+	t.addDataToEvent(req, resp, event)
+	t.tracer.AddEvent(event)
+	return
+
+}
+
+func (t *TracingTransport) getMetadataOnly() bool {
+	return t.MetadataOnly || t.tracer.GetConfig().MetadataOnly
+}
+
+func (t *TracingTransport) addDataToEvent(req *http.Request, resp *http.Response, event *protocol.Event) {
+	if req != nil {
+		addTraceIdToEvent(req, event)
+	}
+	if resp != nil {
+		if !t.getMetadataOnly() {
+			updateRequestData(resp.Request, event.Resource.Metadata)
+		}
+	}
 }
 
 func isBlacklistedURL(parsedUrl *url.URL) bool {
@@ -87,14 +122,6 @@ func isBlacklistedURL(parsedUrl *url.URL) bool {
 		}
 	}
 	return false
-}
-
-func shouldAddHeaderByURL(rawUrl string) bool {
-	parsedURL, err := url.Parse(rawUrl)
-	if err != nil {
-		return false
-	}
-	return !isBlacklistedURL(parsedURL)
 }
 
 func generateRandomUUID() string {
@@ -139,147 +166,6 @@ func updateByResponseHeaders(resp *http.Response, resource *protocol.Resource) {
 		}
 		resource.Metadata[EPSAGON_REQUEST_TRACEID_METADATA_KEY] = amzRequestID
 	}
-}
-
-func (c *ClientWrapper) addDataToEvent(req *http.Request, resp *http.Response, event *protocol.Event) {
-	if req != nil {
-		addTraceIdToEvent(req, event)
-	}
-	if resp != nil {
-		if !c.getMetadataOnly() {
-			updateRequestData(resp.Request, event.Resource.Metadata)
-		}
-	}
-}
-
-// Do wraps http.Client's Do
-func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
-	called := false
-	defer func() {
-		if !called {
-			resp, err = c.Client.Do(req)
-		}
-	}()
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
-	startTime := tracer.GetTimestamp()
-	if !isBlacklistedURL(req.URL) {
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
-	}
-	resp, err = c.Client.Do(req)
-	called = true
-	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, c.getMetadataOnly())
-	if req != nil {
-		addTraceIdToEvent(req, event)
-	}
-	if !c.getMetadataOnly() {
-		updateRequestData(req, event.Resource.Metadata)
-	}
-	c.tracer.AddEvent(event)
-	return
-}
-
-// Get wraps http.Client.Get
-func (c *ClientWrapper) Get(rawUrl string) (resp *http.Response, err error) {
-	called := false
-	defer func() {
-		if !called {
-			resp, err = c.Client.Get(rawUrl)
-		}
-	}()
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Get", c.tracer)
-	startTime := tracer.GetTimestamp()
-	req, err := http.NewRequest(http.MethodGet, rawUrl, nil)
-	if err != nil || !shouldAddHeaderByURL(rawUrl) {
-		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
-		resp, err = c.Client.Get(rawUrl)
-	} else {
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
-		resp, err = c.Client.Do(req)
-	}
-	called = true
-	event := postSuperCall(startTime, rawUrl, http.MethodGet, resp, err, c.getMetadataOnly())
-	c.addDataToEvent(req, resp, event)
-	c.tracer.AddEvent(event)
-	return
-}
-
-// Post wraps http.Client.Post
-func (c *ClientWrapper) Post(
-	rawUrl string, contentType string, body io.Reader) (resp *http.Response, err error) {
-	called := false
-	defer func() {
-		if !called {
-			resp, err = c.Client.Post(rawUrl, contentType, body)
-		}
-	}()
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Post", c.tracer)
-	startTime := tracer.GetTimestamp()
-	req, err := http.NewRequest(http.MethodPost, rawUrl, body)
-	if err != nil || !shouldAddHeaderByURL(rawUrl) {
-		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
-		resp, err = c.Client.Post(rawUrl, contentType, body)
-	} else {
-		req.Header.Set("Content-Type", contentType)
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
-		resp, err = c.Client.Do(req)
-	}
-	called = true
-	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
-	c.addDataToEvent(req, resp, event)
-	c.tracer.AddEvent(event)
-	return
-}
-
-// PostForm wraps http.Client.PostForm
-func (c *ClientWrapper) PostForm(
-	rawUrl string, data url.Values) (resp *http.Response, err error) {
-	called := false
-	defer func() {
-		if !called {
-			resp, err = c.Client.PostForm(rawUrl, data)
-		}
-	}()
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.PostForm", c.tracer)
-	startTime := tracer.GetTimestamp()
-	req, err := http.NewRequest(http.MethodPost, rawUrl, strings.NewReader(data.Encode()))
-	if err != nil || !shouldAddHeaderByURL(rawUrl) {
-		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
-		resp, err = c.Client.PostForm(rawUrl, data)
-	} else {
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
-		resp, err = c.Client.Do(req)
-	}
-	called = true
-	event := postSuperCall(startTime, rawUrl, http.MethodPost, resp, err, c.getMetadataOnly())
-	c.addDataToEvent(req, resp, event)
-	c.tracer.AddEvent(event)
-	return
-}
-
-// Head wraps http.Client.Head
-func (c *ClientWrapper) Head(rawUrl string) (resp *http.Response, err error) {
-	called := false
-	defer func() {
-		if !called {
-			resp, err = c.Client.Head(rawUrl)
-		}
-	}()
-	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Head", c.tracer)
-	startTime := tracer.GetTimestamp()
-	req, err := http.NewRequest(http.MethodHead, rawUrl, nil)
-	if err != nil || !shouldAddHeaderByURL(rawUrl) {
-		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
-		resp, err = c.Client.Head(rawUrl)
-	} else {
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
-		resp, err = c.Client.Do(req)
-	}
-	called = true
-	event := postSuperCall(startTime, rawUrl, http.MethodHead, resp, err, c.getMetadataOnly())
-	c.addDataToEvent(req, resp, event)
-	c.tracer.AddEvent(event)
-	return
 }
 
 func postSuperCall(
@@ -333,6 +219,10 @@ func updateResponseData(resp *http.Response, resource *protocol.Resource, metada
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err == nil {
+		// truncates response body to the first 64KB
+		if len(body) > (64 * 1024) {
+			body = body[0 : 64*1024]
+		}
 		resource.Metadata["response_body"] = string(body)
 	}
 	resp.Body = newReadCloser(body, err)
@@ -368,6 +258,10 @@ func updateRequestData(req *http.Request, metadata map[string]string) {
 	if err == nil {
 		bodyBytes, err := ioutil.ReadAll(bodyReader)
 		if err == nil {
+			// truncates request body to the first 64KB
+			if len(bodyBytes) > (64 * 1024) {
+				bodyBytes = bodyBytes[0 : 64*1024]
+			}
 			metadata["request_body"] = string(bodyBytes)
 		}
 	}
