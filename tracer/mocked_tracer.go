@@ -71,7 +71,7 @@ func (t *MockedEpsagonTracer) AddExceptionTypeAndMessage(exceptionType, msg stri
 }
 
 // AddLabel implements AddLabel
-func (t *MockedEpsagonTracer) AddLabel(key, value string) {
+func (t *MockedEpsagonTracer) AddLabel(key string, value interface{}) {
 	t.AddLabel(key, value)
 }
 

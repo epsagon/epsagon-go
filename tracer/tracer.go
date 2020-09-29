@@ -296,7 +296,7 @@ func (tracer *epsagonTracer) verifyLabel(label EpsagonLabel) bool {
 		valueSize = len(label.value.(string))
 	default:
 		if tracer.Config.Debug {
-			log.Println("EPSAGON DEBUG: type %v is not supported for labels. Supported types are: int, float, string", label.value)
+			log.Println("EPSAGON DEBUG: Supported label types are: int, float, string")
 		}
 		return false
 	}
@@ -315,6 +315,15 @@ func (tracer *epsagonTracer) AddLabel(key string, value interface{}) {
 	}
 	label := EpsagonLabel{key, value}
 	tracer.labelsPipe <- label
+}
+
+// AddLabel adds a label to the tracer
+func AddLabel(key string, value interface{}) {
+	if GlobalTracer == nil || GlobalTracer.Stopped() {
+		log.Println("The tracer is not initialized!")
+		return
+	}
+	GlobalTracer.AddLabel(key, value)
 }
 
 // AddException adds an exception to the tracer
