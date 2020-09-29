@@ -300,7 +300,7 @@ func (tracer *epsagonTracer) verifyLabel(label EpsagonLabel) bool {
 		valueSize = len(label.value.(string))
 	default:
 		if tracer.Config.Debug {
-			log.Println("EPSAGON DEBUG: Supported label types are: int, float, string")
+			log.Println("EPSAGON DEBUG: Supported label types are: int, float, string, bool")
 		}
 		return false
 	}
