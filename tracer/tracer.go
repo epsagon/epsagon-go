@@ -294,7 +294,7 @@ func AddEvent(event *protocol.Event) {
 func (tracer *epsagonTracer) verifyLabel(label EpsagonLabel) bool {
 	var valueSize = 0
 	switch label.value.(type) {
-	case int, float64:
+	case int, float64, bool:
 		valueSize = strconv.IntSize
 	case string:
 		valueSize = len(label.value.(string))
