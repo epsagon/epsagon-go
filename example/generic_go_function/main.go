@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/epsagon/epsagon-go/epsagon"
 	"log"
+
+	"github.com/epsagon/epsagon-go/epsagon"
 )
 
 func doTask(a int, b string) (int, error) {

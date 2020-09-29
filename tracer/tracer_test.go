@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
@@ -171,4 +172,11 @@ func Test_handleSendTracesResponse(t *testing.T) {
 
 		})
 	}
+}
+
+func Test_AddLabel_sanity(t *testing.T) {
+	defaultTimeout := time.Second * 100
+	timeout := &defaultTimeout
+	trace := testWithTracer(timeout, func() { epsagon.Label("test_key", "test_value") })
+	println(trace)
 }
