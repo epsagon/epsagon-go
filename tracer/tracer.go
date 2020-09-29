@@ -26,12 +26,11 @@ var (
 	GlobalTracer Tracer
 )
 
-// MaxLabelSize is the maximum allowed total labels size
-const MaxLabelSize = 10 * 1024
+// MaxLabelsSize is the maximum allowed total labels size
+const MaxLabelsSize = 10 * 1024
 
 // Tracer is what a general program tracer had to provide
 type Tracer interface {
-	verifyLabel(EpsagonLabel) bool
 	AddEvent(*protocol.Event)
 	AddException(*protocol.Exception)
 	AddExceptionTypeAndMessage(string, string)
@@ -124,9 +123,7 @@ func HandleSendTracesResponse(resp *http.Response, err error) {
 	}
 }
 
-func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
-	version := "go " + runtime.Version()
-
+func (tracer *epsagonTracer) addRunnerLabels() {
 	for _, event := range tracer.events {
 		if event.Origin == "runner" {
 			jsonString, err := json.Marshal(tracer.labels)
@@ -137,8 +134,15 @@ func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 			} else {
 				event.Resource.Metadata["labels"] = string(jsonString)
 			}
+			break
 		}
 	}
+}
+
+func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
+	version := "go " + runtime.Version()
+
+	tracer.addRunnerLabels()
 
 	trace := protocol.Trace{
 		AppName:    tracer.Config.ApplicationName,
@@ -300,7 +304,7 @@ func (tracer *epsagonTracer) verifyLabel(label EpsagonLabel) bool {
 		}
 		return false
 	}
-	if len(label.key)+valueSize+tracer.labelsSize > MaxLabelSize {
+	if len(label.key)+valueSize+tracer.labelsSize > MaxLabelsSize {
 		return false
 	}
 
