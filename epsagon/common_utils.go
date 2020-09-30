@@ -51,7 +51,7 @@ func Error(value interface{}, args ...context.Context) {
 }
 
 // Error adds an error to the sent trace with specific error type
-func ErrorWithType(value interface{}, errorType string, args ...context.Context) {
+func TypeError(value interface{}, errorType string, args ...context.Context) {
 	currentTracer := internal.ExtractTracer(args)
 	if currentTracer != nil {
 		currentTracer.AddError(errorType, value)

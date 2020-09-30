@@ -9,9 +9,9 @@ import (
 
 func doTask(a int, b string) (int, error) {
 	log.Printf("inside doTask: b = %s", b)
-	if a < 5 {
+	if a < 10 {
 		// This error with its type will be viewable in Epsagon dashboard
-		epsagon.ErrorWithType("value must be bigger than 5", "InputError")
+		epsagon.TypeError("value must be bigger than 10", "InputError")
 	}
 
 	return a + 1, fmt.Errorf("boom")

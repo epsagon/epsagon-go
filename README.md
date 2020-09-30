@@ -66,18 +66,19 @@ You can set a trace as an error (although handled correctly) to get an alert or 
 
 Add the following call inside your code:
 ```go
+epsagon.TypeError("My custom error", "Custom Error Type")
+# Or manually add an error
+epsagon.TypeError(errors.New("My custom error"), "Custom Error Type")
+```
+
+You can also set a tracer as an error with a default error type:
+```go
 epsagon.Error("My custom error")
 # Or manually add an error
 epsagon.Error(errors.New("My custom error"))
 ```
 
-You can also set a tracer as an error with a custom error type, which you can use later on the dashboard.
-```go
-epsagon.ErrorWithType("My custom error", "Custom Error Type")
-# Or manually add an error
-epsagon.ErrorWithType(errors.New("My custom error"), "Custom Error Type")
-```
-
+Valid types are `string` and `error`.
 ## Frameworks
 
 The following frameworks are supported by Epsagon:
