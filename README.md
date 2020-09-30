@@ -151,6 +151,16 @@ import (
 	resp, err := client.Get(anyurl)
 ```
 
+The wrapped http.Client functionality exists for backwards compatibility:
+
+```go
+import (
+	"github.com/epsagon/epsagon-go/wrappers/net/http"
+...
+	client := epsagonhttp.Wrap(http.Client{})
+	resp, err := client.Get(anyurl)
+```
+
 If you want to disable data collection only for the calls made by this client set  `client.MetadataOnly = true`
 
 ### aws-sdk-go
