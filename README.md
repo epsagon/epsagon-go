@@ -47,14 +47,14 @@ You can add custom tags to your traces, for easier filtering and aggregations.
 
 Add the following call inside your code:
 ```go
-epsagon.Label('key', 'value')
-epsagon.Label('user_id', user_id)
+epsagon.Label("key", "value")
+epsagon.Label("user_id", user_id)
 ```
 
 You can also use it to ship custom metrics:
 ```go
-epsagon.Label('key', 'metric')
-epsagon.Label('items_in_cart', items_in_cart)
+epsagon.Label("key", "metric")
+epsagon.Label("items_in_cart", items_in_cart)
 ```
 
 Valid types are `string`, `bool`, `int` and `float`.
