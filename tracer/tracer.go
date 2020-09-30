@@ -136,32 +136,30 @@ func (tracer *epsagonTracer) getRunnerEvent() *protocol.Event {
 	return nil
 }
 
-func (tracer *epsagonTracer) addRunnerLabels() {
-	event := tracer.getRunnerEvent()
-	if event != nil {
-		jsonString, err := json.Marshal(tracer.labels)
-		if err != nil {
-			if tracer.Config.Debug {
-				log.Printf("EPSAGON DEBUG failed appending labels")
-			}
-		} else {
-			event.Resource.Metadata["labels"] = string(jsonString)
+func (tracer *epsagonTracer) addRunnerLabels(event *protocol.Event) {
+	jsonString, err := json.Marshal(tracer.labels)
+	if err != nil {
+		if tracer.Config.Debug {
+			log.Printf("EPSAGON DEBUG failed appending labels")
 		}
+	} else {
+		event.Resource.Metadata["labels"] = string(jsonString)
 	}
 }
 
-func (tracer *epsagonTracer) addRunnerException() {
-	event := tracer.getRunnerEvent()
-	if event != nil && tracer.runnerException != nil {
+func (tracer *epsagonTracer) addRunnerException(event *protocol.Event) {
+	if tracer.runnerException != nil {
 		event.Exception = tracer.runnerException
 	}
 }
 
 func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	version := "go " + runtime.Version()
-
-	tracer.addRunnerLabels()
-	tracer.addRunnerException()
+	runnerEvent := tracer.getRunnerEvent()
+	if runnerEvent != nil {
+		tracer.addRunnerLabels(runnerEvent)
+		tracer.addRunnerException(runnerEvent)
+	}
 	trace := protocol.Trace{
 		AppName:    tracer.Config.ApplicationName,
 		Token:      tracer.Config.Token,

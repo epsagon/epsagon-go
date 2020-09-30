@@ -191,6 +191,6 @@ func Test_AddError_sanity(t *testing.T) {
 func Test_AddErrorWithType_sanity(t *testing.T) {
 	defaultTimeout := time.Second * 100
 	timeout := &defaultTimeout
-	trace := testWithTracer(timeout, func() { epsagon.Error("some error", "test error type") })
+	trace := testWithTracer(timeout, func() { epsagon.ErrorWithType("some error", "test error type") })
 	println(trace)
 }
