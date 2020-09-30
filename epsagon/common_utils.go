@@ -41,3 +41,19 @@ func Label(key string, value interface{}, args ...context.Context) {
 		currentTracer.AddLabel(key, value)
 	}
 }
+
+// Error adds an error to the sent trace
+func Error(value interface{}, args ...context.Context) {
+	currentTracer := internal.ExtractTracer(args)
+	if currentTracer != nil {
+		currentTracer.AddError("Error", value)
+	}
+}
+
+// Error adds an error to the sent trace with specific error type
+func TypeError(value interface{}, errorType string, args ...context.Context) {
+	currentTracer := internal.ExtractTracer(args)
+	if currentTracer != nil {
+		currentTracer.AddError(errorType, value)
+	}
+}

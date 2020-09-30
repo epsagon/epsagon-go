@@ -180,3 +180,17 @@ func Test_AddLabel_sanity(t *testing.T) {
 	trace := testWithTracer(timeout, func() { epsagon.Label("test_key", "test_value") })
 	println(trace)
 }
+
+func Test_AddError_sanity(t *testing.T) {
+	defaultTimeout := time.Second * 100
+	timeout := &defaultTimeout
+	trace := testWithTracer(timeout, func() { epsagon.Error("some error") })
+	println(trace)
+}
+
+func Test_AddTypeError(t *testing.T) {
+	defaultTimeout := time.Second * 100
+	timeout := &defaultTimeout
+	trace := testWithTracer(timeout, func() { epsagon.TypeError("some error", "test error type") })
+	println(trace)
+}
