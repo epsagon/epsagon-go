@@ -21,6 +21,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const RunnerLabelKey = "test_identifier"
+
 func TestEpsagonConcurrentWrapper(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Multiple Traces")
@@ -39,18 +41,40 @@ func sendRequest(wg *sync.WaitGroup, path string, testServer *httptest.Server) {
 	Expect(responseString).To(Equal(path))
 }
 
+func convertRequestUriToInt(requestUri string) (identifier int) {
+	identifier, err := strconv.Atoi(requestUri[1:])
+	if err != nil {
+		panic("failed to parse request uri - bad trace")
+	}
+	return
+}
+
 func parseEventID(event *protocol.Event) (identifier int) {
 	resourceName := event.Resource.GetName()
 	resourceURL, err := url.Parse(resourceName)
 	if err != nil {
 		panic("failed to parse event URL - bad trace")
 	}
-	urlPath := resourceURL.RequestURI()
-	identifier, err = strconv.Atoi(urlPath[1:])
-	if err != nil {
-		panic("failed to parse path - bad trace")
-	}
+	identifier = convertRequestUriToInt(resourceURL.RequestURI())
 	return
+}
+
+func validateAgainstRunnerEvent(runnerEvent *protocol.Event, identifier int) {
+	labels, ok := runnerEvent.Resource.Metadata["labels"]
+	if !ok {
+		panic("no labels in runner event!")
+	}
+	var labelsMap map[string]interface{}
+	err := json.Unmarshal([]byte(labels), &labelsMap)
+	if err != nil {
+		panic("bad labels map in runner event")
+	}
+	labelValue, ok := labelsMap[RunnerLabelKey]
+	if !ok {
+		panic("no identifier in runner event labels")
+	}
+	runnerIdentifier := convertRequestUriToInt(labelValue.(string))
+	Expect(runnerIdentifier).To(Equal(identifier))
 }
 
 func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, resourceName string, wg *sync.WaitGroup) {
@@ -77,6 +101,7 @@ func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, resour
 				if !exists {
 					panic("received duplicated event")
 				}
+				validateAgainstRunnerEvent(trace.Events[1], identifier)
 				delete(receivedTraces, identifier)
 			}()
 		case <-ticker.C:
@@ -90,6 +115,7 @@ type HandlerFunc func(res http.ResponseWriter, req *http.Request)
 func handleResponse(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	client := http.Client{Transport: epsagonhttp.NewTracingTransport(ctx)}
 	client.Get(fmt.Sprintf("https://www.google.com%s", req.RequestURI))
+	epsagon.Label(RunnerLabelKey, req.RequestURI, ctx)
 	res.Write([]byte(req.RequestURI))
 }
 

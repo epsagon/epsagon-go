@@ -12,12 +12,14 @@ import (
 	"os"
 	"strings"
 
+	"testing"
+	"time"
+
+	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"testing"
-	"time"
 )
 
 // FakeCollector implements a fake trace collector that will
@@ -76,17 +78,18 @@ func runWithTracer(endpoint string, operations func()) {
 	tracer.CreateGlobalTracer(&tracer.Config{
 		CollectorURL: endpoint,
 	})
+	tracer.GlobalTracer.Start()
 	defer tracer.StopGlobalTracer()
 	operations()
 }
 
 // testWithTracer runs a test with
 func testWithTracer(timeout *time.Duration, operations func()) *protocol.Trace {
-	endpoint := "localhost:547698"
+	endpoint := "127.0.0.1:54769"
 	traceChannel := make(chan *protocol.Trace)
 	fc := FakeCollector{Endpoint: endpoint}
 	go fc.Listen(traceChannel)
-	go runWithTracer(endpoint, operations)
+	go runWithTracer("http://"+endpoint, operations)
 	if timeout == nil {
 		defaultTimeout := time.Second * 10
 		timeout = &defaultTimeout
@@ -169,4 +172,25 @@ func Test_handleSendTracesResponse(t *testing.T) {
 
 		})
 	}
+}
+
+func Test_AddLabel_sanity(t *testing.T) {
+	defaultTimeout := time.Second * 100
+	timeout := &defaultTimeout
+	trace := testWithTracer(timeout, func() { epsagon.Label("test_key", "test_value") })
+	println(trace)
+}
+
+func Test_AddError_sanity(t *testing.T) {
+	defaultTimeout := time.Second * 100
+	timeout := &defaultTimeout
+	trace := testWithTracer(timeout, func() { epsagon.Error("some error") })
+	println(trace)
+}
+
+func Test_AddTypeError(t *testing.T) {
+	defaultTimeout := time.Second * 100
+	timeout := &defaultTimeout
+	trace := testWithTracer(timeout, func() { epsagon.TypeError("some error", "test error type") })
+	println(trace)
 }

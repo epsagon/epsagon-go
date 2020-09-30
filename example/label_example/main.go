@@ -9,6 +9,9 @@ import (
 
 func doTask(a int, b string) (int, error) {
 	log.Printf("inside doTask: b = %s", b)
+
+	// This label will be viewable in Epsagon dashboard
+	epsagon.Label("my_key", 100.12)
 	return a + 1, fmt.Errorf("boom")
 }
 
