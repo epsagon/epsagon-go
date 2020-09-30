@@ -18,6 +18,7 @@ This package provides tracing to Go applications for the collection of distribut
 - [Installation](#installation)
 - [Usage](#usage)
   - [Tagging Traces](#tagging-traces)
+  - [Custom Errors](#custom-errors)
 - [Frameworks](#frameworks)
 - [Integrations](#integrations)
 - [Configuration](#configuration)
@@ -58,6 +59,26 @@ epsagon.Label('items_in_cart', items_in_cart)
 
 Valid types are `string`, `bool`, `int` and `float`.
 
+
+### Custom Errors
+
+You can set a trace as an error (although handled correctly) to get an alert or just follow it on the dashboard.
+
+Add the following call inside your code:
+```go
+epsagon.TypeError("My custom error", "Custom Error Type")
+# Or manually add an error
+epsagon.TypeError(errors.New("My custom error"), "Custom Error Type")
+```
+
+You can also set a tracer as an error with a default error type:
+```go
+epsagon.Error("My custom error")
+# Or manually add an error
+epsagon.Error(errors.New("My custom error"))
+```
+
+Valid types are `string` and `error`.
 ## Frameworks
 
 The following frameworks are supported by Epsagon:

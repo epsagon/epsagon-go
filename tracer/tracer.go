@@ -35,6 +35,7 @@ type Tracer interface {
 	AddException(*protocol.Exception)
 	AddExceptionTypeAndMessage(string, string)
 	AddLabel(string, interface{})
+	AddError(string, interface{})
 	Start()
 	Running() bool
 	Stop()
@@ -61,13 +62,15 @@ type EpsagonLabel struct {
 type epsagonTracer struct {
 	Config *Config
 
-	eventsPipe     chan *protocol.Event
-	events         []*protocol.Event
-	exceptionsPipe chan *protocol.Exception
-	labelsPipe     chan EpsagonLabel
-	exceptions     []*protocol.Exception
-	labels         map[string]interface{}
-	labelsSize     int
+	eventsPipe          chan *protocol.Event
+	events              []*protocol.Event
+	runnerExceptionPipe chan *protocol.Exception
+	exceptionsPipe      chan *protocol.Exception
+	labelsPipe          chan EpsagonLabel
+	exceptions          []*protocol.Exception
+	runnerException     *protocol.Exception
+	labels              map[string]interface{}
+	labelsSize          int
 
 	closeCmd chan struct{}
 	stopped  chan struct{}
@@ -123,27 +126,40 @@ func HandleSendTracesResponse(resp *http.Response, err error) {
 	}
 }
 
-func (tracer *epsagonTracer) addRunnerLabels() {
+// getRunnerEvent Gets the runner event, nil if not found
+func (tracer *epsagonTracer) getRunnerEvent() *protocol.Event {
 	for _, event := range tracer.events {
 		if event.Origin == "runner" {
-			jsonString, err := json.Marshal(tracer.labels)
-			if err != nil {
-				if tracer.Config.Debug {
-					log.Printf("EPSAGON DEBUG failed appending labels")
-				}
-			} else {
-				event.Resource.Metadata["labels"] = string(jsonString)
-			}
-			break
+			return event
 		}
+	}
+	return nil
+}
+
+func (tracer *epsagonTracer) addRunnerLabels(event *protocol.Event) {
+	jsonString, err := json.Marshal(tracer.labels)
+	if err != nil {
+		if tracer.Config.Debug {
+			log.Printf("EPSAGON DEBUG failed appending labels")
+		}
+	} else {
+		event.Resource.Metadata["labels"] = string(jsonString)
+	}
+}
+
+func (tracer *epsagonTracer) addRunnerException(event *protocol.Event) {
+	if tracer.runnerException != nil {
+		event.Exception = tracer.runnerException
 	}
 }
 
 func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	version := "go " + runtime.Version()
-
-	tracer.addRunnerLabels()
-
+	runnerEvent := tracer.getRunnerEvent()
+	if runnerEvent != nil {
+		tracer.addRunnerLabels(runnerEvent)
+		tracer.addRunnerException(runnerEvent)
+	}
 	trace := protocol.Trace{
 		AppName:    tracer.Config.ApplicationName,
 		Token:      tracer.Config.Token,
@@ -236,16 +252,17 @@ func CreateTracer(config *Config) Tracer {
 	}
 	fillConfigDefaults(config)
 	tracer := &epsagonTracer{
-		Config:         config,
-		eventsPipe:     make(chan *protocol.Event),
-		events:         make([]*protocol.Event, 0, 0),
-		exceptionsPipe: make(chan *protocol.Exception),
-		exceptions:     make([]*protocol.Exception, 0, 0),
-		closeCmd:       make(chan struct{}),
-		stopped:        make(chan struct{}),
-		running:        make(chan struct{}),
-		labels:         make(map[string]interface{}),
-		labelsPipe:     make(chan EpsagonLabel),
+		Config:              config,
+		eventsPipe:          make(chan *protocol.Event),
+		events:              make([]*protocol.Event, 0, 0),
+		exceptionsPipe:      make(chan *protocol.Exception),
+		runnerExceptionPipe: make(chan *protocol.Exception),
+		exceptions:          make([]*protocol.Exception, 0, 0),
+		closeCmd:            make(chan struct{}),
+		stopped:             make(chan struct{}),
+		running:             make(chan struct{}),
+		labels:              make(map[string]interface{}),
+		labelsPipe:          make(chan EpsagonLabel),
 	}
 	if config.Debug {
 		log.Println("EPSAGON DEBUG: Created a new tracer")
@@ -385,6 +402,8 @@ func (tracer *epsagonTracer) Run() {
 			tracer.events = append(tracer.events, event)
 		case exception := <-tracer.exceptionsPipe:
 			tracer.exceptions = append(tracer.exceptions, exception)
+		case exception := <-tracer.runnerExceptionPipe:
+			tracer.runnerException = exception
 		case label := <-tracer.labelsPipe:
 			if tracer.verifyLabel(label) {
 				tracer.labels[label.key] = label.value
@@ -411,15 +430,39 @@ func GetGlobalTracerConfig() *Config {
 	return GlobalTracer.GetConfig()
 }
 
-// AddExceptionTypeAndMessage adds an exception to the current tracer with
-// the current stack and time.
-// exceptionType, msg are strings that will be added to the exception
-func (tracer *epsagonTracer) AddExceptionTypeAndMessage(exceptionType, msg string) {
+func (tracer *epsagonTracer) createException(exceptionType, msg string) *protocol.Exception {
 	stack := debug.Stack()
-	tracer.AddException(&protocol.Exception{
+	return &protocol.Exception{
 		Type:      exceptionType,
 		Message:   msg,
 		Traceback: string(stack),
 		Time:      GetTimestamp(),
-	})
+	}
+}
+
+// AddExceptionTypeAndMessage adds an exception to the current tracer with
+// the current stack and time.
+// exceptionType, msg are strings that will be added to the exception
+func (tracer *epsagonTracer) AddExceptionTypeAndMessage(exceptionType, msg string) {
+	tracer.AddException(tracer.createException(exceptionType, msg))
+}
+
+func (tracer *epsagonTracer) AddError(errorType string, value interface{}) {
+	var message string
+	switch value.(type) {
+	case string:
+		message = value.(string)
+	case error:
+		message = value.(error).Error()
+	default:
+		if tracer.Config.Debug {
+			log.Println("EPSAGON DEBUG: Supported error types are: string, error")
+		}
+		return
+	}
+	if tracer.Config.Debug {
+		log.Println("EPSAGON DEBUG: Adding error message to trace: ", message)
+	}
+	exception := tracer.createException(errorType, message)
+	tracer.runnerExceptionPipe <- exception
 }
