@@ -16,7 +16,7 @@ type Config struct {
 // GeneralEpsagonRecover recover function that will send exception to epsagon
 // exceptionType, msg are strings that will be added to the exception
 func GeneralEpsagonRecover(exceptionType, msg string, currentTracer tracer.Tracer) {
-	if r := recover(); r != nil {
+	if r := recover(); r != nil && currentTracer != nil {
 		currentTracer.AddExceptionTypeAndMessage(exceptionType, fmt.Sprintf("%s:%+v", msg, r))
 	}
 }
