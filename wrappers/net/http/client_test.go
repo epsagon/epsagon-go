@@ -1,16 +1,18 @@
 package epsagonhttp
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/epsagon/epsagon-go/protocol"
-	"github.com/epsagon/epsagon-go/tracer"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 const TEST_RESPONSE_STRING = "response_test_string"
@@ -409,6 +411,82 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(0))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDNotExists(events[0])
+			})
+		})
+	})
+	Describe("http.RoundTripper", func() {
+		BeforeEach(func() {
+			events = make([]*protocol.Event, 0)
+			exceptions = make([]*protocol.Exception, 0)
+			requests = make([]*http.Request, 0)
+		})
+		Context("sending a request to existing server", func() {
+			It("adds an event with no error, truncating the request body", func() {
+				client := &http.Client{Transport: NewTracingTransport()}
+				data := make([]byte, 128*1024)
+				for i := range data {
+					data[i] = byte(1)
+				}
+				req, err := http.NewRequest(
+					http.MethodPost,
+					testServer.URL,
+					bytes.NewReader(data))
+				if err != nil {
+					Fail("couldn't create request")
+				}
+				client.Do(req)
+				Expect(requests).To(HaveLen(1))
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				Expect([]byte(events[0].Resource.Metadata["request_body"])).To(HaveCap(MAX_METADATA_SIZE))
+				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("sending a request to existing server, no tracer", func() {
+			It("adds an event with no error", func() {
+				tracer.GlobalTracer = nil
+				client := &http.Client{Transport: NewTracingTransport()}
+				req, err := http.NewRequest(http.MethodGet, testServer.URL, nil)
+				if err != nil {
+					Fail("couldn't create request")
+				}
+				response, err := client.Do(req)
+				verifyResponseSuccess(response, err)
+			})
+		})
+		Context("request to whitelisted url", func() {
+			It("Adds event with trace ID", func() {
+				client := &http.Client{Transport: NewTracingTransport()}
+				req, err := http.NewRequest(
+					http.MethodGet,
+					fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN),
+					nil,
+				)
+				if err != nil {
+					Fail("couldn't create request")
+				}
+				client.Do(req)
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+				verifyTraceIDExists(events[0])
+			})
+		})
+		Context("request to blacklisted url", func() {
+			It("Adds event with trace ID and the response truncated", func() {
+				client := &http.Client{Transport: NewTracingTransport()}
+				req, err := http.NewRequest(
+					http.MethodGet,
+					fmt.Sprintf("https://%s", EPSAGON_DOMAIN),
+					nil,
+				)
+				if err != nil {
+					Fail("couldn't create request")
+				}
+				client.Do(req)
+				Expect(events).To(HaveLen(1))
+				Expect([]byte(events[0].Resource.Metadata["response_body"])).To(HaveCap(64 * 1024))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				verifyTraceIDNotExists(events[0])
 			})
 		})
