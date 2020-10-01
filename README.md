@@ -184,7 +184,17 @@ Epsagon provides out-of-the-box instrumentation (tracing) for many popular frame
 
 ### net/http
 
-Wrapping http requests using the net/http library can be done by wrapping the client:
+Any http request can be traced using a custom RoundTripper implementation and using that in an http.Client:
+
+```go
+import (
+	"github.com/epsagon/epsagon-go/wrappers/net/http"
+...
+	client := http.Client{Transport: epsagonhttp.TracingTransport}
+	resp, err := client.Get(anyurl)
+```
+
+The wrapped http.Client functionality exists for backwards compatibility:
 
 ```go
 import (

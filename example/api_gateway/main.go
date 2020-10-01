@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/epsagon/epsagon-go/wrappers/net/http"
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/epsagon/epsagon-go/epsagon"
+	epsagonhttp "github.com/epsagon/epsagon-go/wrappers/net/http"
 )
 
 // Response is an API gateway response type
@@ -15,7 +16,7 @@ type Response events.APIGatewayProxyResponse
 
 func myHandler(request events.APIGatewayProxyRequest) (Response, error) {
 	log.Println("In myHandler, received body: ", request.Body)
-	client := epsagonhttp.Wrap(http.Client{})
+	client := http.Client{Transport: epsagonhttp.NewTracingTransport()}
 	resp, err := client.Get("https://api.randomuser.me")
 	var body string
 	if err == nil {

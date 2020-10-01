@@ -113,7 +113,7 @@ func waitForTraces(start int, end int, traceChannel chan *protocol.Trace, resour
 type HandlerFunc func(res http.ResponseWriter, req *http.Request)
 
 func handleResponse(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	client := epsagonhttp.Wrap(http.Client{}, ctx)
+	client := http.Client{Transport: epsagonhttp.NewTracingTransport(ctx)}
 	client.Get(fmt.Sprintf("https://www.google.com%s", req.RequestURI))
 	epsagon.Label(RunnerLabelKey, req.RequestURI, ctx)
 	res.Write([]byte(req.RequestURI))

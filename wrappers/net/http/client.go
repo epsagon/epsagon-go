@@ -5,17 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/epsagon/epsagon-go/internal"
-	"github.com/epsagon/epsagon-go/protocol"
-	"github.com/epsagon/epsagon-go/tracer"
-	"github.com/google/uuid"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/internal"
+	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
+	"github.com/google/uuid"
 )
 
 const EPSAGON_TRACEID_HEADER_KEY = "epsagon-trace-id"
@@ -26,6 +27,7 @@ const AMAZON_REQUEST_ID = "x-amzn-requestid"
 const API_GATEWAY_RESOURCE_TYPE = "api_gateway"
 const EPSAGON_REQUEST_TRACEID_METADATA_KEY = "request_trace_id"
 const AWS_SERVICE_KEY = "aws.service"
+const MAX_METADATA_SIZE = 64 * 1024
 
 type ValidationFunction func(string, string) bool
 
@@ -68,6 +70,59 @@ func Wrap(c http.Client, args ...context.Context) ClientWrapper {
 
 func (c *ClientWrapper) getMetadataOnly() bool {
 	return c.MetadataOnly || c.tracer.GetConfig().MetadataOnly
+}
+
+// TracingTransport is the RoundTripper implementation that traces HTTP calls
+type TracingTransport struct {
+	// MetadataOnly flag overriding the configuration
+	MetadataOnly bool
+	tracer       tracer.Tracer
+}
+
+func NewTracingTransport(args ...context.Context) *TracingTransport {
+	currentTracer := internal.ExtractTracer(args)
+	return &TracingTransport{
+		tracer: currentTracer,
+	}
+}
+
+// RoundTrip implements the RoundTripper interface to trace HTTP calls
+func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	called := false
+	defer func() {
+		if !called {
+			resp, err = http.DefaultTransport.RoundTrip(req)
+		}
+	}()
+	defer epsagon.GeneralEpsagonRecover("net.http.RoundTripper", "RoundTrip", t.tracer)
+	startTime := tracer.GetTimestamp()
+	if !isBlacklistedURL(req.URL) {
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+	}
+
+	resp, err = http.DefaultTransport.RoundTrip(req)
+
+	called = true
+	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, t.getMetadataOnly())
+	t.addDataToEvent(req, resp, event)
+	t.tracer.AddEvent(event)
+	return
+
+}
+
+func (t *TracingTransport) getMetadataOnly() bool {
+	return t.MetadataOnly || t.tracer.GetConfig().MetadataOnly
+}
+
+func (t *TracingTransport) addDataToEvent(req *http.Request, resp *http.Response, event *protocol.Event) {
+	if req != nil {
+		addTraceIdToEvent(req, event)
+	}
+	if resp != nil {
+		if !t.getMetadataOnly() {
+			updateRequestData(resp.Request, event.Resource.Metadata)
+		}
+	}
 }
 
 func isBlacklistedURL(parsedUrl *url.URL) bool {
@@ -333,6 +388,10 @@ func updateResponseData(resp *http.Response, resource *protocol.Resource, metada
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err == nil {
+		// truncates response body to the first 64KB
+		if len(body) > MAX_METADATA_SIZE {
+			body = body[0:MAX_METADATA_SIZE]
+		}
 		resource.Metadata["response_body"] = string(body)
 	}
 	resp.Body = newReadCloser(body, err)
@@ -368,6 +427,10 @@ func updateRequestData(req *http.Request, metadata map[string]string) {
 	if err == nil {
 		bodyBytes, err := ioutil.ReadAll(bodyReader)
 		if err == nil {
+			// truncates request body to the first 64KB
+			if len(bodyBytes) > MAX_METADATA_SIZE {
+				bodyBytes = bodyBytes[0:MAX_METADATA_SIZE]
+			}
 			metadata["request_body"] = string(bodyBytes)
 		}
 	}
