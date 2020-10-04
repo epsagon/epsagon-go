@@ -1,4 +1,4 @@
-service: example-go-app
+service: example-go-app-2
 
 provider:
   name: aws
@@ -7,6 +7,8 @@ provider:
   environment:
     EPSAGON_TOKEN: ${env:EPSAGON_TOKEN}
     EPSAGON_COLLECTOR_URL: ${env:EPSAGON_COLLECTOR_URL}
+    EPSAGON_METADATA: FALSE
+    EPSAGON_DEBUG: TRUE
 
 functions:
   hello:

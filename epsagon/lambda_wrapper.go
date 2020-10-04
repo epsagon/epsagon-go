@@ -119,7 +119,12 @@ func (wrapper *epsagonLambdaWrapper) postInvokeOps(
 	}
 
 	if !wrapper.config.MetadataOnly {
-		lambdaEvent.Resource.Metadata["return_value"] = fmt.Sprintf("%+v", invokeInfo.result)
+		result, err := json.Marshal(invokeInfo.result)
+		if err == nil {
+			lambdaEvent.Resource.Metadata["return_value"] = string(result)
+		} else {
+			lambdaEvent.Resource.Metadata["return_value"] = fmt.Sprintf("%+v", invokeInfo.result)
+		}
 	}
 
 	wrapper.tracer.AddEvent(lambdaEvent)
