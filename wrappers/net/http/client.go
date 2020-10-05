@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -97,6 +98,9 @@ func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	// if the TracingTransport is created before the global tracer is created it will be nil
 	if t.tracer == nil {
 		t.tracer = internal.ExtractTracer(nil)
+		if t.tracer != nil && t.tracer.GetConfig().Debug {
+			log.Println("EPSAGON DEBUG: defaulting to global tracer in RoundTrip")
+		}
 	}
 
 	called := false
