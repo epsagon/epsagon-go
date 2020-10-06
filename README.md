@@ -190,7 +190,18 @@ Any http request can be traced using a custom RoundTripper implementation and us
 import (
 	"github.com/epsagon/epsagon-go/wrappers/net/http"
 ...
-	client := http.Client{Transport: epsagonhttp.TracingTransport}
+	client := http.Client{Transport: epsagonhttp.NewTracingTransport()}
+	resp, err := client.Get(anyurl)
+```
+
+If you are already using a custom RoundTripper implementation, such as for AWS V4 request signing, you can wrap it:
+
+```go
+import (
+	"github.com/epsagon/epsagon-go/wrappers/net/http"
+...
+	rt := &custom.Roundtripper{}
+	client := http.Client{Transport: epsagonhttp.NewWrappedTracingTransport(rt)}
 	resp, err := client.Get(anyurl)
 ```
 
