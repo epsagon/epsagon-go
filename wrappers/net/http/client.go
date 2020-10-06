@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -77,21 +78,35 @@ type TracingTransport struct {
 	// MetadataOnly flag overriding the configuration
 	MetadataOnly bool
 	tracer       tracer.Tracer
+	transport    http.RoundTripper
 }
 
 func NewTracingTransport(args ...context.Context) *TracingTransport {
+	return NewWrappedTracingTransport(http.DefaultTransport, args...)
+}
+
+func NewWrappedTracingTransport(rt http.RoundTripper, args ...context.Context) *TracingTransport {
 	currentTracer := internal.ExtractTracer(args)
 	return &TracingTransport{
-		tracer: currentTracer,
+		tracer:    currentTracer,
+		transport: rt,
 	}
 }
 
 // RoundTrip implements the RoundTripper interface to trace HTTP calls
 func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	// if the TracingTransport is created before the global tracer is created it will be nil
+	if t.tracer == nil {
+		t.tracer = internal.ExtractTracer(nil)
+		if t.tracer != nil && t.tracer.GetConfig().Debug {
+			log.Println("EPSAGON DEBUG: defaulting to global tracer in RoundTrip")
+		}
+	}
+
 	called := false
 	defer func() {
 		if !called {
-			resp, err = http.DefaultTransport.RoundTrip(req)
+			resp, err = t.transport.RoundTrip(req)
 		}
 	}()
 	defer epsagon.GeneralEpsagonRecover("net.http.RoundTripper", "RoundTrip", t.tracer)
@@ -100,7 +115,7 @@ func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 	}
 
-	resp, err = http.DefaultTransport.RoundTrip(req)
+	resp, err = t.transport.RoundTrip(req)
 
 	called = true
 	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, t.getMetadataOnly())

@@ -42,6 +42,15 @@ func verifyResponseSuccess(response *http.Response, err error) {
 	Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
 }
 
+type mockTransport struct {
+	called bool
+}
+
+func (m *mockTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	m.called = true
+	return http.DefaultTransport.RoundTrip(req)
+}
+
 var _ = Describe("ClientWrapper", func() {
 	var (
 		events        []*protocol.Event
@@ -488,6 +497,18 @@ var _ = Describe("ClientWrapper", func() {
 				Expect([]byte(events[0].Resource.Metadata["response_body"])).To(HaveCap(64 * 1024))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				verifyTraceIDNotExists(events[0])
+			})
+		})
+		Context("wrapping a custom transport, request created succesfully", func() {
+			It("Adds event", func() {
+				mock := &mockTransport{}
+				client := &http.Client{Transport: NewWrappedTracingTransport(mock)}
+				client.Head(testServer.URL)
+				Expect(requests).To(HaveLen(1))
+				Expect(events).To(HaveLen(1))
+				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				Expect(mock.called).To(BeTrue())
+				verifyTraceIDExists(events[0])
 			})
 		})
 	})
