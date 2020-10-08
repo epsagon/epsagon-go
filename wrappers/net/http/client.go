@@ -396,9 +396,9 @@ func updateResponseData(resp *http.Response, resource *protocol.Resource, metada
 	if metadataOnly {
 		return
 	}
-	headers, err := json.Marshal(resp.Header)
+	headers, err := formatHeaders(resp.Header)
 	if err == nil {
-		resource.Metadata["response_headers"] = string(headers)
+		resource.Metadata["response_headers"] = headers
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
@@ -431,9 +431,9 @@ func newReadCloser(body []byte, err error) io.ReadCloser {
 }
 
 func updateRequestData(req *http.Request, metadata map[string]string) {
-	headers, err := json.Marshal(req.Header)
+	headers, err := formatHeaders(req.Header)
 	if err == nil {
-		metadata["request_headers"] = string(headers)
+		metadata["request_headers"] = headers
 	}
 	if req.Body == nil {
 		return
@@ -449,4 +449,19 @@ func updateRequestData(req *http.Request, metadata map[string]string) {
 			metadata["request_body"] = string(bodyBytes)
 		}
 	}
+}
+
+// format HTTP headers to string - using first header value, ignoring the rest
+func formatHeaders(headers http.Header) (string, error) {
+	headersToFormat := make(map[string]string)
+	for headerKey, headerValues := range headers {
+		if len(headerValues) > 0 {
+			headersToFormat[headerKey] = headerValues[0]
+		}
+	}
+	headersJson, err := json.Marshal(headersToFormat)
+	if err != nil {
+		return "", err
+	}
+	return string(headersJson), nil
 }
