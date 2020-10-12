@@ -1,5 +1,3 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
 # Controls when the action will run. Triggers the workflow on push or pull request
@@ -23,8 +21,6 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Update version
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
           git remote add github "https://maorlx:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
           git pull github ${GITHUB_REF} --ff-only
           git config --global user.email "maor@epsagon.com"
