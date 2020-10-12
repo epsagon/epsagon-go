@@ -2,6 +2,7 @@ package epsagon_test
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -51,6 +52,11 @@ func getRunnerLabels(runner *protocol.Event) map[string]interface{} {
 	err := json.Unmarshal([]byte(labels), &labelsMap)
 	Expect(err).To(BeNil())
 	return labelsMap
+}
+
+func verifyException(errorType string, errorMessage string, exception *protocol.Exception) {
+	Expect(errorType).To(Equal(exception.Type))
+	Expect(errorMessage).To(Equal(exception.Message))
 }
 
 func verifyLabelValue(key string, value interface{}, labelsMap map[string]interface{}) {
@@ -212,6 +218,68 @@ var _ = Describe("Custom trace fields", func() {
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
+			})
+			It("Default custom error - string error message", func() {
+				resourceName := "test-resource-name"
+				errorMessage := "test_value"
+				epsagon.GoWrapper(
+					config,
+					func() {
+						epsagon.Error(errorMessage)
+					},
+					resourceName,
+				)()
+				runnerEvent := waitForTrace(traceChannel, resourceName)
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				exception := runnerEvent.Exception
+				verifyException(epsagon.DefaultErrorType, errorMessage, exception)
+			})
+			It("Default custom error - Error input", func() {
+				resourceName := "test-resource-name"
+				errorMessage := "test_value"
+				epsagon.GoWrapper(
+					config,
+					func() {
+						epsagon.Error(errors.New(errorMessage))
+					},
+					resourceName,
+				)()
+				runnerEvent := waitForTrace(traceChannel, resourceName)
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				exception := runnerEvent.Exception
+				verifyException(epsagon.DefaultErrorType, errorMessage, exception)
+			})
+			It("Custom error & type - string error message", func() {
+				resourceName := "test-resource-name"
+				errorMessage := "test_value"
+				errorType := "test error type"
+				epsagon.GoWrapper(
+					config,
+					func() {
+						epsagon.TypeError(errorMessage, errorType)
+					},
+					resourceName,
+				)()
+				runnerEvent := waitForTrace(traceChannel, resourceName)
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				exception := runnerEvent.Exception
+				verifyException(errorType, errorMessage, exception)
+			})
+			It("Custom error & type - Error input", func() {
+				resourceName := "test-resource-name"
+				errorMessage := "test_value"
+				errorType := "test error type"
+				epsagon.GoWrapper(
+					config,
+					func() {
+						epsagon.TypeError(errors.New(errorMessage), errorType)
+					},
+					resourceName,
+				)()
+				runnerEvent := waitForTrace(traceChannel, resourceName)
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				exception := runnerEvent.Exception
+				verifyException(errorType, errorMessage, exception)
 			})
 
 		})
