@@ -281,7 +281,23 @@ var _ = Describe("Custom trace fields", func() {
 				exception := runnerEvent.Exception
 				verifyException(errorType, errorMessage, exception)
 			})
-
+			It("Custom label - no tracer", func() {
+				value := 3
+				output := func() int {
+					epsagon.Label("a", 3)
+					return value
+				}()
+				Expect(output).To(Equal(value))
+			})
+			It("Custom error - no tracer", func() {
+				errorMessage := "test_value"
+				value := 3
+				output := func() int {
+					epsagon.Error(errorMessage)
+					return value
+				}()
+				Expect(output).To(Equal(value))
+			})
 		})
 	})
 })
