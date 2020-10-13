@@ -20,6 +20,9 @@ jobs:
 
       # Runs a set of commands using the runners shell
       - name: Update version
+        env:
+          # This is necessary in order to push a commit to the repo
+          GITHUB_TOKEN: ${{ secrets.INCREASE_VERSION_TOKEN }} # Leave this line unchanged
         run: |
           git remote add github "https://maorlx:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
           git pull github ${GITHUB_REF} --ff-only
