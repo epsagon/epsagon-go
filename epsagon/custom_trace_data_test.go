@@ -298,6 +298,15 @@ var _ = Describe("Custom trace fields", func() {
 				}()
 				Expect(output).To(Equal(value))
 			})
+			It("Custom type error - no tracer", func() {
+				errorMessage := "test_value"
+				value := 3
+				output := func() int {
+					epsagon.TypeError("a", errorMessage)
+					return value
+				}()
+				Expect(output).To(Equal(value))
+			})
 		})
 	})
 })
