@@ -16,6 +16,7 @@ import (
 
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
+	"github.com/epsagon/epsagon-go/tracer"
 	epsagonhttp "github.com/epsagon/epsagon-go/wrappers/net/http"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -60,7 +61,7 @@ func parseEventID(event *protocol.Event) (identifier int) {
 }
 
 func validateAgainstRunnerEvent(runnerEvent *protocol.Event, identifier int) {
-	labels, ok := runnerEvent.Resource.Metadata["labels"]
+	labels, ok := runnerEvent.Resource.Metadata[tracer.LabelsKey]
 	if !ok {
 		panic("no labels in runner event!")
 	}

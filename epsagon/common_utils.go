@@ -8,6 +8,9 @@ import (
 	"github.com/epsagon/epsagon-go/tracer"
 )
 
+// DefaultErrorType Default custom error type
+const DefaultErrorType = "Error"
+
 // Config is the configuration for Epsagon's tracer
 type Config struct {
 	tracer.Config
@@ -46,7 +49,7 @@ func Label(key string, value interface{}, args ...context.Context) {
 func Error(value interface{}, args ...context.Context) {
 	currentTracer := internal.ExtractTracer(args)
 	if currentTracer != nil {
-		currentTracer.AddError("Error", value)
+		currentTracer.AddError(DefaultErrorType, value)
 	}
 }
 

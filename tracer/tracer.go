@@ -29,6 +29,8 @@ var (
 // MaxLabelsSize is the maximum allowed total labels size
 const MaxLabelsSize = 10 * 1024
 
+const LabelsKey = "labels"
+
 // Tracer is what a general program tracer had to provide
 type Tracer interface {
 	AddEvent(*protocol.Event)
@@ -143,7 +145,7 @@ func (tracer *epsagonTracer) addRunnerLabels(event *protocol.Event) {
 			log.Printf("EPSAGON DEBUG failed appending labels")
 		}
 	} else {
-		event.Resource.Metadata["labels"] = string(jsonString)
+		event.Resource.Metadata[LabelsKey] = string(jsonString)
 	}
 }
 
