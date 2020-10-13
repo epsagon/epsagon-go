@@ -63,7 +63,6 @@ Valid types are `string`, `bool`, `int` and `float`.
 ### Custom Errors
 
 You can set a trace as an error (although handled correctly) to get an alert or just follow it on the dashboard.
-
 Add the following call inside your code:
 ```go
 epsagon.TypeError("My custom error", "Custom Error Type")
