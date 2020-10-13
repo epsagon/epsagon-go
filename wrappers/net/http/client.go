@@ -95,10 +95,12 @@ func NewWrappedTracingTransport(rt http.RoundTripper, args ...context.Context) *
 
 // RoundTrip implements the RoundTripper interface to trace HTTP calls
 func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	// reference to the tracer
+	tr := t.tracer
 	// if the TracingTransport is created before the global tracer is created it will be nil
-	if t.tracer == nil {
-		t.tracer = internal.ExtractTracer(nil)
-		if t.tracer != nil && t.tracer.GetConfig().Debug {
+	if tr == nil {
+		tr = internal.ExtractTracer(nil)
+		if tr != nil && tr.GetConfig().Debug {
 			log.Println("EPSAGON DEBUG: defaulting to global tracer in RoundTrip")
 		}
 	}
@@ -118,23 +120,23 @@ func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	resp, err = t.transport.RoundTrip(req)
 
 	called = true
-	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, t.getMetadataOnly())
-	t.addDataToEvent(req, resp, event)
-	t.tracer.AddEvent(event)
+	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, t.getMetadataOnly(tr))
+	t.addDataToEvent(req, resp, event, tr)
+	tr.AddEvent(event)
 	return
 
 }
 
-func (t *TracingTransport) getMetadataOnly() bool {
-	return t.MetadataOnly || t.tracer.GetConfig().MetadataOnly
+func (t *TracingTransport) getMetadataOnly(tr tracer.Tracer) bool {
+	return t.MetadataOnly || tr.GetConfig().MetadataOnly
 }
 
-func (t *TracingTransport) addDataToEvent(req *http.Request, resp *http.Response, event *protocol.Event) {
+func (t *TracingTransport) addDataToEvent(req *http.Request, resp *http.Response, event *protocol.Event, tr tracer.Tracer) {
 	if req != nil {
 		addTraceIdToEvent(req, event)
 	}
 	if resp != nil {
-		if !t.getMetadataOnly() {
+		if !t.getMetadataOnly(tr) {
 			updateRequestData(resp.Request, event.Resource.Metadata)
 		}
 	}
