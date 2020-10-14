@@ -435,9 +435,10 @@ func updateResponseData(resp *http.Response, resource *protocol.Resource, metada
 	if err == nil {
 		// truncates response body to the first 64KB
 		if len(body) > MAX_METADATA_SIZE {
-			body = body[0:MAX_METADATA_SIZE]
+			resource.Metadata["response_body"] = string(body[0:MAX_METADATA_SIZE])
+		} else {
+			resource.Metadata["response_body"] = string(body)
 		}
-		resource.Metadata["response_body"] = string(body)
 	}
 	resp.Body = newReadCloser(body, err)
 }
