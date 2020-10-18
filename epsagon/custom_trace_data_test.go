@@ -79,6 +79,7 @@ var _ = Describe("Custom trace fields", func() {
 				traceChannel         chan *protocol.Trace
 			)
 			BeforeEach(func() {
+				tracer.GlobalTracer = nil
 				traceChannel = make(chan *protocol.Trace)
 				traceCollectorServer = httptest.NewServer(http.HandlerFunc(
 					func(res http.ResponseWriter, req *http.Request) {
