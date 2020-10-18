@@ -26,10 +26,25 @@ var (
 	GlobalTracer Tracer
 )
 
-// MaxLabelsSize is the maximum allowed total labels size
+// MaxTraceSize is the maximum allowed trace size (in bytes)
+const MaxTraceSize = 64 * 1024 * 1024
+
+// MaxLabelsSize is the maximum allowed total labels size (in bytes)
 const MaxLabelsSize = 10 * 1024
 
 const LabelsKey = "labels"
+
+// MaxMetadataFieldSize is the maximum allowed metadata field size (in bytes)
+const MaxMetadataFieldSize uint = 3 * 1024
+const EpsagonHTTPTraceIDKey = "http_trace_id"
+const EpsagonRequestTraceIDKey = "request_trace_id"
+const AwsServiceKey = "aws.service"
+
+var strongKeys = map[string]bool{
+	EpsagonHTTPTraceIDKey:    true,
+	EpsagonRequestTraceIDKey: true,
+	AwsServiceKey:            true,
+}
 
 // Tracer is what a general program tracer had to provide
 type Tracer interface {
@@ -155,8 +170,74 @@ func (tracer *epsagonTracer) addRunnerException(event *protocol.Event) {
 	}
 }
 
+func isStrongKey(key string) bool {
+	_, ok := strongKeys[key]
+	return ok
+}
+
+func trimMapValues(data map[string]string, maxSize uint) {
+	for key, value := range data {
+		if !isStrongKey(key) {
+			if uint(len(value)) > maxSize {
+				data[key] = value[0:maxSize]
+			}
+		}
+	}
+}
+
+func (tracer *epsagonTracer) trimEventsData() {
+	for _, event := range tracer.events {
+		trimMapValues(event.Resource.Metadata, MaxMetadataFieldSize)
+	}
+}
+
+func (tracer *epsagonTracer) stripEvents(traceLength int, marshaler *jsonpb.Marshaler) {
+	eventSize := 0
+	for _, event := range tracer.events {
+		eventJSON, err := marshaler.MarshalToString(event)
+		if err != nil {
+			continue
+		}
+		eventSize = len(eventJSON)
+		for key, _ := range event.Resource.Metadata {
+			if !isStrongKey(key) {
+				delete(event.Resource.Metadata, key)
+			}
+		}
+		eventJSON, err = marshaler.MarshalToString(event)
+		if err != nil {
+			continue
+		}
+		strippedSize := eventSize - len(eventJSON)
+		traceLength -= strippedSize
+		if traceLength <= MaxTraceSize {
+			return
+		}
+	}
+}
+
+func (tracer *epsagonTracer) getTraceJSON(trace *protocol.Trace, runnerEvent *protocol.Event) (traceJSON string, err error) {
+	marshaler := jsonpb.Marshaler{
+		EnumsAsInts: true, EmitDefaults: true, OrigName: true}
+	traceJSON, err = marshaler.MarshalToString(trace)
+	if err != nil {
+		return
+	}
+	traceLength := len(traceJSON)
+	if traceLength > MaxTraceSize {
+		tracer.stripEvents(traceLength, &marshaler)
+		runnerEvent.Resource.Metadata["is_trimmed"] = "true"
+		if tracer.Config.Debug {
+			log.Printf("EPSAGON DEBUG trimmed trace (max allowed size: 64KB)")
+		}
+		traceJSON, err = marshaler.MarshalToString(trace)
+	}
+	return
+}
+
 func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	version := "go " + runtime.Version()
+	tracer.trimEventsData()
 	runnerEvent := tracer.getRunnerEvent()
 	if runnerEvent != nil {
 		tracer.addRunnerLabels(runnerEvent)
@@ -173,10 +254,7 @@ func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	if tracer.Config.Debug {
 		log.Printf("EPSAGON DEBUG sending trace: %+v\n", trace)
 	}
-
-	marshaler := jsonpb.Marshaler{
-		EnumsAsInts: true, EmitDefaults: true, OrigName: true}
-	traceJSON, err := marshaler.MarshalToString(&trace)
+	traceJSON, err := tracer.getTraceJSON(&trace, runnerEvent)
 	if err != nil {
 		return nil, err
 	}
