@@ -48,6 +48,8 @@ var strongKeys = map[string]bool{
 	"region":                 true,
 	"log_group_name":         true,
 	"log_stream_name":        true,
+	"sequence_number":        true,
+	"item_hash":              true,
 }
 
 // Tracer is what a general program tracer had to provide
