@@ -27,7 +27,7 @@ var (
 )
 
 // MaxTraceSize is the maximum allowed trace size (in bytes)
-const MaxTraceSize = 64 * 1024 * 1024
+const MaxTraceSize = 64 * 1024
 
 // MaxLabelsSize is the maximum allowed total labels size (in bytes)
 const MaxLabelsSize = 10 * 1024
@@ -36,8 +36,6 @@ const LabelsKey = "labels"
 
 const IsTrimmedKey = "is_trimmed"
 
-// MaxMetadataFieldSize is the maximum allowed metadata field size (in bytes)
-const MaxMetadataFieldSize uint = 3 * 1024
 const EpsagonHTTPTraceIDKey = "http_trace_id"
 const EpsagonRequestTraceIDKey = "request_trace_id"
 const AwsServiceKey = "aws.service"

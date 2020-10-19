@@ -36,7 +36,7 @@ func waitForTrace(traceChannel chan *protocol.Trace, resourceName string, events
 			func() {
 				Expect(len(trace.Events)).To(Equal(eventsCount))
 				if len(resourceName) > 0 {
-					Expect(trace.Events[0].Resource.Name).To(Equal(resourceName))
+					Expect(trace.Events[eventsCount-1].Resource.Name).To(Equal(resourceName))
 				}
 				receivedTrace = true
 			}()
@@ -44,7 +44,7 @@ func waitForTrace(traceChannel chan *protocol.Trace, resourceName string, events
 			panic("timeout while receiving trace")
 		}
 	}
-	return trace.Events[0]
+	return trace.Events[eventsCount-1]
 }
 
 func getRunnerLabels(runner *protocol.Event) map[string]interface{} {
@@ -331,20 +331,21 @@ var _ = Describe("Custom trace fields", func() {
 							},
 						))
 						defer testServer.Close()
-						client := http.Client{Transport: epsagonhttp.NewTracingTransport()}
-						req, err := http.NewRequest(http.MethodGet, testServer.URL, bytes.NewReader(b))
-						if err != nil {
-							panic(err)
+						for i := 0; i < 10; i++ {
+							client := http.Client{Transport: epsagonhttp.NewTracingTransport()}
+							req, err := http.NewRequest(http.MethodGet, testServer.URL, bytes.NewReader(b))
+							if err != nil {
+								panic(err)
+							}
+							_, err = client.Do(req)
+							if err != nil {
+								panic(err)
+							}
 						}
-						_, err = client.Do(req)
-						if err != nil {
-							panic(err)
-						}
-
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 2)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 11)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				isTrimmed, ok := runnerEvent.Resource.Metadata[tracer.IsTrimmedKey]
 				Expect(ok).To(BeTrue())
