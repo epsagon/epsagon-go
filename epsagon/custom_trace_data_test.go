@@ -26,7 +26,7 @@ func TestEpsagonCustomTraceFields(t *testing.T) {
 	RunSpecs(t, "Custom trace fields tests")
 }
 
-func waitForTrace(traceChannel chan *protocol.Trace, resourceName string) *protocol.Event {
+func waitForTrace(traceChannel chan *protocol.Trace, resourceName string, eventsCount int) *protocol.Event {
 	var trace *protocol.Trace
 	receivedTrace := false
 	ticker := time.NewTicker(3 * time.Second)
@@ -34,7 +34,7 @@ func waitForTrace(traceChannel chan *protocol.Trace, resourceName string) *proto
 		select {
 		case trace = <-traceChannel:
 			func() {
-				Expect(len(trace.Events)).To(Equal(1))
+				Expect(len(trace.Events)).To(Equal(eventsCount))
 				if len(resourceName) > 0 {
 					Expect(trace.Events[0].Resource.Name).To(Equal(resourceName))
 				}
@@ -115,7 +115,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -130,7 +130,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -145,7 +145,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -160,7 +160,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -178,7 +178,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(2))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -197,7 +197,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(0))
 			})
@@ -218,7 +218,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -233,7 +233,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				exception := runnerEvent.Exception
 				verifyException(epsagon.DefaultErrorType, errorMessage, exception)
@@ -248,7 +248,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				exception := runnerEvent.Exception
 				verifyException(epsagon.DefaultErrorType, errorMessage, exception)
@@ -264,7 +264,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				exception := runnerEvent.Exception
 				verifyException(errorType, errorMessage, exception)
@@ -280,7 +280,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				exception := runnerEvent.Exception
 				verifyException(errorType, errorMessage, exception)
@@ -313,17 +313,14 @@ var _ = Describe("Custom trace fields", func() {
 			})
 			It("Trimmed event metadata fields", func() {
 				resourceName := "test-resource-name"
-				var b []byte
-				bigValue := ""
 				epsagon.GoWrapper(
 					config,
 					func() {
 						letterBytes := "abc"
-						b = make([]byte, tracer.MaxTraceSize*2)
+						b := make([]byte, tracer.MaxTraceSize*2)
 						for i := range b {
 							b[i] = letterBytes[rand.Intn(len(letterBytes))]
 						}
-						bigValue = string(b)
 						testServer := httptest.NewServer(http.HandlerFunc(
 							func(res http.ResponseWriter, req *http.Request) {
 								buf, err := ioutil.ReadAll(req.Body)
@@ -347,7 +344,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName)
+				runnerEvent := waitForTrace(traceChannel, resourceName, 2)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				isTrimmed, ok := runnerEvent.Resource.Metadata[tracer.IsTrimmedKey]
 				Expect(ok).To(BeTrue())
