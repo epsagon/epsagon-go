@@ -494,7 +494,7 @@ var _ = Describe("ClientWrapper", func() {
 				}
 				client.Do(req)
 				Expect(events).To(HaveLen(1))
-				Expect([]byte(events[0].Resource.Metadata["response_body"])).To(HaveCap(64 * 1024))
+				Expect([]byte(events[0].Resource.Metadata["response_body"])).To(HaveCap(10 * 1024))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				verifyTraceIDNotExists(events[0])
 			})
