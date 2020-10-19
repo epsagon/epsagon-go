@@ -44,6 +44,10 @@ var strongKeys = map[string]bool{
 	EpsagonHTTPTraceIDKey:    true,
 	EpsagonRequestTraceIDKey: true,
 	AwsServiceKey:            true,
+	"aws_account":            true,
+	"region":                 true,
+	"log_group_name":         true,
+	"log_stream_name":        true,
 }
 
 // Tracer is what a general program tracer had to provide
