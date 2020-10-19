@@ -1,6 +1,7 @@
 package epsagon_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
+	epsagonhttp "github.com/epsagon/epsagon-go/wrappers/net/http"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -43,6 +45,27 @@ func waitForTrace(traceChannel chan *protocol.Trace, resourceName string) *proto
 		}
 	}
 	return trace.Events[0]
+}
+
+func waitForTraceMultipleEvents(traceChannel chan *protocol.Trace, resourceName string) []*protocol.Event {
+	var trace *protocol.Trace
+	receivedTrace := false
+	ticker := time.NewTicker(3 * time.Second)
+	for !receivedTrace {
+		select {
+		case trace = <-traceChannel:
+			func() {
+				Expect(len(trace.Events)).To(Equal(2))
+				if len(resourceName) > 0 {
+					Expect(trace.Events[1].Resource.Name).To(Equal(resourceName))
+				}
+				receivedTrace = true
+			}()
+		case <-ticker.C:
+			panic("timeout while receiving trace")
+		}
+	}
+	return trace.Events
 }
 
 func getRunnerLabels(runner *protocol.Event) map[string]interface{} {
@@ -98,6 +121,7 @@ var _ = Describe("Custom trace fields", func() {
 				))
 				config = epsagon.NewTracerConfig("test", "test token")
 				config.CollectorURL = traceCollectorServer.URL
+				config.MetadataOnly = false
 			})
 			AfterEach(func() {
 				traceCollectorServer.Close()
@@ -307,6 +331,51 @@ var _ = Describe("Custom trace fields", func() {
 					return value
 				}()
 				Expect(output).To(Equal(value))
+			})
+			It("Trimmed event metadata fields", func() {
+				resourceName := "test-resource-name"
+				var b []byte
+				bigValue := ""
+				epsagon.GoWrapper(
+					config,
+					func() {
+						letterBytes := "abc"
+						b = make([]byte, tracer.MaxMetadataFieldSize*2)
+						for i := range b {
+							b[i] = letterBytes[rand.Intn(len(letterBytes))]
+						}
+						bigValue = string(b)
+						testServer := httptest.NewServer(http.HandlerFunc(
+							func(res http.ResponseWriter, req *http.Request) {
+								buf, err := ioutil.ReadAll(req.Body)
+								if err != nil {
+									panic(err)
+								}
+								res.Write(buf)
+							},
+						))
+						defer testServer.Close()
+						client := http.Client{Transport: epsagonhttp.NewTracingTransport()}
+						req, err := http.NewRequest(http.MethodGet, testServer.URL, bytes.NewReader(b))
+						if err != nil {
+							panic(err)
+						}
+						_, err = client.Do(req)
+						if err != nil {
+							panic(err)
+						}
+
+					},
+					resourceName,
+				)()
+				events := waitForTraceMultipleEvents(traceChannel, resourceName)
+				httpEvent := events[0]
+				requestBody, ok := httpEvent.Resource.Metadata["request_body"]
+				Expect(ok).To(BeTrue())
+				Expect(requestBody).To(Equal(bigValue[0:tracer.MaxMetadataFieldSize]))
+				responseBody, ok := httpEvent.Resource.Metadata["response_body"]
+				Expect(ok).To(BeTrue())
+				Expect(responseBody).To(Equal(bigValue[0:tracer.MaxMetadataFieldSize]))
 			})
 		})
 	})
