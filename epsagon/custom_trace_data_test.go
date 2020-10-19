@@ -47,27 +47,6 @@ func waitForTrace(traceChannel chan *protocol.Trace, resourceName string) *proto
 	return trace.Events[0]
 }
 
-func waitForTraceMultipleEvents(traceChannel chan *protocol.Trace, resourceName string) []*protocol.Event {
-	var trace *protocol.Trace
-	receivedTrace := false
-	ticker := time.NewTicker(3 * time.Second)
-	for !receivedTrace {
-		select {
-		case trace = <-traceChannel:
-			func() {
-				Expect(len(trace.Events)).To(Equal(2))
-				if len(resourceName) > 0 {
-					Expect(trace.Events[1].Resource.Name).To(Equal(resourceName))
-				}
-				receivedTrace = true
-			}()
-		case <-ticker.C:
-			panic("timeout while receiving trace")
-		}
-	}
-	return trace.Events
-}
-
 func getRunnerLabels(runner *protocol.Event) map[string]interface{} {
 	labels, ok := runner.Resource.Metadata[tracer.LabelsKey]
 	Expect(ok).To(BeTrue())
@@ -340,7 +319,7 @@ var _ = Describe("Custom trace fields", func() {
 					config,
 					func() {
 						letterBytes := "abc"
-						b = make([]byte, tracer.MaxMetadataFieldSize*2)
+						b = make([]byte, tracer.MaxTraceSize*2)
 						for i := range b {
 							b[i] = letterBytes[rand.Intn(len(letterBytes))]
 						}
@@ -368,14 +347,11 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				events := waitForTraceMultipleEvents(traceChannel, resourceName)
-				httpEvent := events[0]
-				requestBody, ok := httpEvent.Resource.Metadata["request_body"]
+				runnerEvent := waitForTrace(traceChannel, resourceName)
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				isTrimmed, ok := runnerEvent.Resource.Metadata[tracer.IsTrimmedKey]
 				Expect(ok).To(BeTrue())
-				Expect(requestBody).To(Equal(bigValue[0:tracer.MaxMetadataFieldSize]))
-				responseBody, ok := httpEvent.Resource.Metadata["response_body"]
-				Expect(ok).To(BeTrue())
-				Expect(responseBody).To(Equal(bigValue[0:tracer.MaxMetadataFieldSize]))
+				Expect(isTrimmed).To(Equal("true"))
 			})
 		})
 	})

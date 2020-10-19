@@ -34,6 +34,8 @@ const MaxLabelsSize = 10 * 1024
 
 const LabelsKey = "labels"
 
+const IsTrimmedKey = "is_trimmed"
+
 // MaxMetadataFieldSize is the maximum allowed metadata field size (in bytes)
 const MaxMetadataFieldSize uint = 3 * 1024
 const EpsagonHTTPTraceIDKey = "http_trace_id"
@@ -181,22 +183,6 @@ func isStrongKey(key string) bool {
 	return ok
 }
 
-func trimMapValues(data map[string]string, maxSize uint) {
-	for key, value := range data {
-		if !isStrongKey(key) {
-			if uint(len(value)) > maxSize {
-				data[key] = value[0:maxSize]
-			}
-		}
-	}
-}
-
-func (tracer *epsagonTracer) trimEventsData() {
-	for _, event := range tracer.events {
-		trimMapValues(event.Resource.Metadata, MaxMetadataFieldSize)
-	}
-}
-
 func (tracer *epsagonTracer) stripEvents(traceLength int, marshaler *jsonpb.Marshaler) {
 	eventSize := 0
 	for _, event := range tracer.events {
@@ -232,7 +218,7 @@ func (tracer *epsagonTracer) getTraceJSON(trace *protocol.Trace, runnerEvent *pr
 	traceLength := len(traceJSON)
 	if traceLength > MaxTraceSize {
 		tracer.stripEvents(traceLength, &marshaler)
-		runnerEvent.Resource.Metadata["is_trimmed"] = "true"
+		runnerEvent.Resource.Metadata[IsTrimmedKey] = "true"
 		if tracer.Config.Debug {
 			log.Printf("EPSAGON DEBUG trimmed trace (max allowed size: 64KB)")
 		}
@@ -243,7 +229,6 @@ func (tracer *epsagonTracer) getTraceJSON(trace *protocol.Trace, runnerEvent *pr
 
 func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	version := "go " + runtime.Version()
-	tracer.trimEventsData()
 	runnerEvent := tracer.getRunnerEvent()
 	if runnerEvent != nil {
 		tracer.addRunnerLabels(runnerEvent)

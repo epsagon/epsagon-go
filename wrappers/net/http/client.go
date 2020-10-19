@@ -25,7 +25,7 @@ const EPSAGON_DOMAIN = "epsagon.com"
 const APPSYNC_API_SUBDOMAIN = ".appsync-api."
 const AMAZON_REQUEST_ID = "x-amzn-requestid"
 const API_GATEWAY_RESOURCE_TYPE = "api_gateway"
-const MAX_METADATA_SIZE = 64 * 1024
+const MAX_METADATA_SIZE = 10 * 1024
 
 type ValidationFunction func(string, string) bool
 
