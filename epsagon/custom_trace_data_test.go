@@ -15,6 +15,7 @@ import (
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	epsagonhttp "github.com/epsagon/epsagon-go/wrappers/net/http"
+	"github.com/gogo/protobuf/jsonpb"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -26,7 +27,7 @@ func TestEpsagonCustomTraceFields(t *testing.T) {
 	RunSpecs(t, "Custom trace fields tests")
 }
 
-func waitForTrace(traceChannel chan *protocol.Trace, resourceName string, eventsCount int) *protocol.Event {
+func waitForTraceWithEvents(traceChannel chan *protocol.Trace, resourceName string, eventsCount int) *protocol.Event {
 	var trace *protocol.Trace
 	receivedTrace := false
 	ticker := time.NewTicker(3 * time.Second)
@@ -38,6 +39,11 @@ func waitForTrace(traceChannel chan *protocol.Trace, resourceName string, events
 				if len(resourceName) > 0 {
 					Expect(trace.Events[eventsCount-1].Resource.Name).To(Equal(resourceName))
 				}
+				marshaler := jsonpb.Marshaler{
+					EnumsAsInts: true, EmitDefaults: true, OrigName: true}
+				traceJSON, err := marshaler.MarshalToString(trace)
+				Expect(err).To(BeNil())
+				Expect(len(traceJSON)).Should(BeNumerically("<=", tracer.MaxTraceSize))
 				receivedTrace = true
 			}()
 		case <-ticker.C:
@@ -45,6 +51,10 @@ func waitForTrace(traceChannel chan *protocol.Trace, resourceName string, events
 		}
 	}
 	return trace.Events[eventsCount-1]
+}
+
+func waitForTrace(traceChannel chan *protocol.Trace, resourceName string) *protocol.Event {
+	return waitForTraceWithEvents(traceChannel, resourceName, 1)
 }
 
 func getRunnerLabels(runner *protocol.Event) map[string]interface{} {
@@ -115,7 +125,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -130,7 +140,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -145,7 +155,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -160,7 +170,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -178,7 +188,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(2))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -197,7 +207,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(0))
 			})
@@ -218,7 +228,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				labelsMap := getRunnerLabels(runnerEvent)
 				Expect(len(labelsMap)).To(Equal(1))
 				verifyLabelValue(TestLabelKey, value, labelsMap)
@@ -233,7 +243,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				exception := runnerEvent.Exception
 				verifyException(epsagon.DefaultErrorType, errorMessage, exception)
@@ -248,7 +258,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				exception := runnerEvent.Exception
 				verifyException(epsagon.DefaultErrorType, errorMessage, exception)
@@ -264,7 +274,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				exception := runnerEvent.Exception
 				verifyException(errorType, errorMessage, exception)
@@ -280,7 +290,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 1)
+				runnerEvent := waitForTrace(traceChannel, resourceName)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				exception := runnerEvent.Exception
 				verifyException(errorType, errorMessage, exception)
@@ -345,7 +355,7 @@ var _ = Describe("Custom trace fields", func() {
 					},
 					resourceName,
 				)()
-				runnerEvent := waitForTrace(traceChannel, resourceName, 11)
+				runnerEvent := waitForTraceWithEvents(traceChannel, resourceName, 11)
 				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				isTrimmed, ok := runnerEvent.Resource.Metadata[tracer.IsTrimmedKey]
 				Expect(ok).To(BeTrue())

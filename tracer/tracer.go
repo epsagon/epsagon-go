@@ -3,6 +3,7 @@ package tracer
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -181,7 +182,8 @@ func isStrongKey(key string) bool {
 	return ok
 }
 
-func (tracer *epsagonTracer) stripEvents(traceLength int, marshaler *jsonpb.Marshaler) {
+func (tracer *epsagonTracer) stripEvents(traceLength int, marshaler *jsonpb.Marshaler) bool {
+	originalTraceLength := traceLength / 1024
 	eventSize := 0
 	for _, event := range tracer.events {
 		eventJSON, err := marshaler.MarshalToString(event)
@@ -201,9 +203,14 @@ func (tracer *epsagonTracer) stripEvents(traceLength int, marshaler *jsonpb.Mars
 		strippedSize := eventSize - len(eventJSON)
 		traceLength -= strippedSize
 		if traceLength <= MaxTraceSize {
-			return
+			if tracer.Config.Debug {
+				traceLength := traceLength / 1024
+				log.Printf("EPSAGON DEBUG trimmed trace from %dKB to %dKB (max allowed size: 64KB)", originalTraceLength, traceLength)
+			}
+			return true
 		}
 	}
+	return false
 }
 
 func (tracer *epsagonTracer) getTraceJSON(trace *protocol.Trace, runnerEvent *protocol.Event) (traceJSON string, err error) {
@@ -215,11 +222,12 @@ func (tracer *epsagonTracer) getTraceJSON(trace *protocol.Trace, runnerEvent *pr
 	}
 	traceLength := len(traceJSON)
 	if traceLength > MaxTraceSize {
-		tracer.stripEvents(traceLength, &marshaler)
-		runnerEvent.Resource.Metadata[IsTrimmedKey] = "true"
-		if tracer.Config.Debug {
-			log.Printf("EPSAGON DEBUG trimmed trace (max allowed size: 64KB)")
+		ok := tracer.stripEvents(traceLength, &marshaler)
+		if !ok {
+			err = errors.New("Trace is too big (max allowed size: 64KB)")
+			return
 		}
+		runnerEvent.Resource.Metadata[IsTrimmedKey] = "true"
 		traceJSON, err = marshaler.MarshalToString(trace)
 	}
 	return
