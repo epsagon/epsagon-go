@@ -12,6 +12,7 @@ before_install:
 install:
   - go mod download
   - go get golang.org/x/lint/golint
+  - go mod tidy
 
 script:
   - go test ./...

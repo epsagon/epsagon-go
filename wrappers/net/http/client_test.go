@@ -23,14 +23,14 @@ func TestEpsagonHTTPWrappers(t *testing.T) {
 }
 
 func verifyTraceIDExists(event *protocol.Event) {
-	traceID, ok := event.Resource.Metadata[EPSAGON_TRACEID_METADATA_KEY]
+	traceID, ok := event.Resource.Metadata[tracer.EpsagonHTTPTraceIDKey]
 	Expect(ok).To(BeTrue())
 	Expect(traceID).To(Not(BeZero()))
 }
 
 func verifyTraceIDNotExists(event *protocol.Event) {
 	Expect(event.Resource.Metadata).NotTo(
-		HaveKey(EPSAGON_TRACEID_METADATA_KEY))
+		HaveKey(tracer.EpsagonHTTPTraceIDKey))
 }
 
 func verifyResponseSuccess(response *http.Response, err error) {
@@ -494,7 +494,7 @@ var _ = Describe("ClientWrapper", func() {
 				}
 				client.Do(req)
 				Expect(events).To(HaveLen(1))
-				Expect([]byte(events[0].Resource.Metadata["response_body"])).To(HaveCap(64 * 1024))
+				Expect([]byte(events[0].Resource.Metadata["response_body"])).To(HaveCap(10 * 1024))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				verifyTraceIDNotExists(events[0])
 			})

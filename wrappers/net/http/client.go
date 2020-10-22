@@ -21,14 +21,11 @@ import (
 )
 
 const EPSAGON_TRACEID_HEADER_KEY = "epsagon-trace-id"
-const EPSAGON_TRACEID_METADATA_KEY = "http_trace_id"
 const EPSAGON_DOMAIN = "epsagon.com"
 const APPSYNC_API_SUBDOMAIN = ".appsync-api."
 const AMAZON_REQUEST_ID = "x-amzn-requestid"
 const API_GATEWAY_RESOURCE_TYPE = "api_gateway"
-const EPSAGON_REQUEST_TRACEID_METADATA_KEY = "request_trace_id"
-const AWS_SERVICE_KEY = "aws.service"
-const MAX_METADATA_SIZE = 64 * 1024
+const MAX_METADATA_SIZE = 10 * 1024
 
 type ValidationFunction func(string, string) bool
 
@@ -216,7 +213,7 @@ func addTraceIdToEvent(req *http.Request, event *protocol.Event) {
 	traceIDs, ok := req.Header[EPSAGON_TRACEID_HEADER_KEY]
 	if ok && len(traceIDs) > 0 {
 		traceID := traceIDs[0]
-		event.Resource.Metadata[EPSAGON_TRACEID_METADATA_KEY] = traceID
+		event.Resource.Metadata[tracer.EpsagonHTTPTraceIDKey] = traceID
 	}
 }
 
@@ -235,9 +232,9 @@ func updateByResponseHeaders(resp *http.Response, resource *protocol.Resource) {
 		amzRequestID := amzRequestIDs[0]
 		if !strings.Contains(resp.Request.URL.Hostname(), APPSYNC_API_SUBDOMAIN) {
 			// api gateway
-			resource.Metadata[AWS_SERVICE_KEY] = API_GATEWAY_RESOURCE_TYPE
+			resource.Metadata[tracer.AwsServiceKey] = API_GATEWAY_RESOURCE_TYPE
 		}
-		resource.Metadata[EPSAGON_REQUEST_TRACEID_METADATA_KEY] = amzRequestID
+		resource.Metadata[tracer.EpsagonRequestTraceIDKey] = amzRequestID
 	}
 }
 

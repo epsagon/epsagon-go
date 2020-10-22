@@ -1,6 +1,7 @@
 package epsagon_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -13,6 +14,8 @@ import (
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
+	epsagonhttp "github.com/epsagon/epsagon-go/wrappers/net/http"
+	"github.com/gogo/protobuf/jsonpb"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -24,7 +27,7 @@ func TestEpsagonCustomTraceFields(t *testing.T) {
 	RunSpecs(t, "Custom trace fields tests")
 }
 
-func waitForTrace(traceChannel chan *protocol.Trace, resourceName string) *protocol.Event {
+func waitForTraceWithEvents(traceChannel chan *protocol.Trace, resourceName string, eventsCount int) *protocol.Event {
 	var trace *protocol.Trace
 	receivedTrace := false
 	ticker := time.NewTicker(3 * time.Second)
@@ -32,17 +35,26 @@ func waitForTrace(traceChannel chan *protocol.Trace, resourceName string) *proto
 		select {
 		case trace = <-traceChannel:
 			func() {
-				Expect(len(trace.Events)).To(Equal(1))
+				Expect(len(trace.Events)).To(Equal(eventsCount))
 				if len(resourceName) > 0 {
-					Expect(trace.Events[0].Resource.Name).To(Equal(resourceName))
+					Expect(trace.Events[eventsCount-1].Resource.Name).To(Equal(resourceName))
 				}
+				marshaler := jsonpb.Marshaler{
+					EnumsAsInts: true, EmitDefaults: true, OrigName: true}
+				traceJSON, err := marshaler.MarshalToString(trace)
+				Expect(err).To(BeNil())
+				Expect(len(traceJSON)).Should(BeNumerically("<=", tracer.MaxTraceSize))
 				receivedTrace = true
 			}()
 		case <-ticker.C:
 			panic("timeout while receiving trace")
 		}
 	}
-	return trace.Events[0]
+	return trace.Events[eventsCount-1]
+}
+
+func waitForTrace(traceChannel chan *protocol.Trace, resourceName string) *protocol.Event {
+	return waitForTraceWithEvents(traceChannel, resourceName, 1)
 }
 
 func getRunnerLabels(runner *protocol.Event) map[string]interface{} {
@@ -79,6 +91,7 @@ var _ = Describe("Custom trace fields", func() {
 				traceChannel         chan *protocol.Trace
 			)
 			BeforeEach(func() {
+				tracer.GlobalTracer = nil
 				traceChannel = make(chan *protocol.Trace)
 				traceCollectorServer = httptest.NewServer(http.HandlerFunc(
 					func(res http.ResponseWriter, req *http.Request) {
@@ -97,6 +110,7 @@ var _ = Describe("Custom trace fields", func() {
 				))
 				config = epsagon.NewTracerConfig("test", "test token")
 				config.CollectorURL = traceCollectorServer.URL
+				config.MetadataOnly = false
 			})
 			AfterEach(func() {
 				traceCollectorServer.Close()
@@ -306,6 +320,46 @@ var _ = Describe("Custom trace fields", func() {
 					return value
 				}()
 				Expect(output).To(Equal(value))
+			})
+			It("Trimmed event metadata fields", func() {
+				resourceName := "test-resource-name"
+				epsagon.GoWrapper(
+					config,
+					func() {
+						letterBytes := "abc"
+						b := make([]byte, tracer.MaxTraceSize*2)
+						for i := range b {
+							b[i] = letterBytes[rand.Intn(len(letterBytes))]
+						}
+						testServer := httptest.NewServer(http.HandlerFunc(
+							func(res http.ResponseWriter, req *http.Request) {
+								buf, err := ioutil.ReadAll(req.Body)
+								if err != nil {
+									panic(err)
+								}
+								res.Write(buf)
+							},
+						))
+						defer testServer.Close()
+						for i := 0; i < 10; i++ {
+							client := http.Client{Transport: epsagonhttp.NewTracingTransport()}
+							req, err := http.NewRequest(http.MethodGet, testServer.URL, bytes.NewReader(b))
+							if err != nil {
+								panic(err)
+							}
+							_, err = client.Do(req)
+							if err != nil {
+								panic(err)
+							}
+						}
+					},
+					resourceName,
+				)()
+				runnerEvent := waitForTraceWithEvents(traceChannel, resourceName, 11)
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				isTrimmed, ok := runnerEvent.Resource.Metadata[tracer.IsTrimmedKey]
+				Expect(ok).To(BeTrue())
+				Expect(isTrimmed).To(Equal("true"))
 			})
 		})
 	})
