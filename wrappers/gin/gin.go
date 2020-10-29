@@ -11,9 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// TracerKey is the key of the epsagon tracer in the gin.Context Keys map passed to the handlers
+const TracerKey = "EpsagonTracer"
+
 // GinRouterWrapper is an epsagon instumentation wrapper for gin.RouterGroup
 type GinRouterWrapper struct {
-	*gin.Engine
+	gin.IRouter
 	Hostname string
 	Config   *epsagon.Config
 }
@@ -30,7 +33,7 @@ func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath strin
 		if c.Keys == nil {
 			c.Keys = make(map[string]interface{})
 		}
-		c.Keys["epsagonTracer"] = wrapperTracer
+		c.Keys[TracerKey] = wrapperTracer
 		wrapper := epsagon.WrapGenericFunction(
 			handler,
 			config,
@@ -48,7 +51,7 @@ func (router *GinRouterWrapper) Handle(httpMethod, relativePath string, handlers
 	if len(handlers) >= 1 {
 		handlers[0] = wrapGinHandler(handlers[0], router.Hostname, relativePath, router.Config)
 	}
-	return router.Engine.Handle(httpMethod, relativePath, handlers...)
+	return router.IRouter.Handle(httpMethod, relativePath, handlers...)
 }
 
 // POST is a shortcut for router.Handle("POST", path, handle).

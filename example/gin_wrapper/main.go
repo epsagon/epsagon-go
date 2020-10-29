@@ -10,8 +10,9 @@ import (
 )
 
 func main() {
+	// r := gin.Default()
 	r := epsagongin.GinRouterWrapper{
-		Engine:   gin.New(),
+		IRouter:  gin.Default(),
 		Hostname: "my_site",
 		Config: epsagon.NewTracerConfig(
 			"erez-test-gin", "",
@@ -25,5 +26,6 @@ func main() {
 			"message": "pong",
 		})
 	})
-	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	// r.Run()
+	r.IRouter.(*gin.Engine).Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }

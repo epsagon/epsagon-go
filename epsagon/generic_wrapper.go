@@ -184,8 +184,8 @@ func GoWrapper(config *Config, wrappedFunction interface{}, args ...string) Gene
 	}
 }
 
-// injectContextGoWrapper wraps the function with epsagon's tracer
-func injectContextGoWrapper(config *Config, wrappedFunction interface{}, args ...string) GenericFunction {
+// ConcurrentGoWrapper wraps the function with epsagon's tracer
+func ConcurrentGoWrapper(config *Config, wrappedFunction interface{}, args ...string) GenericFunction {
 	resourceName := getResourceName(args)
 	return func(args ...interface{}) []reflect.Value {
 		if config == nil {
