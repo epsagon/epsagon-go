@@ -1,8 +1,6 @@
 package epsagongin
 
 import (
-	// "github.com/epsagon/epsagon-go/internal"
-	// "github.com/epsagon/epsagon-go/protocol"
 	"fmt"
 	"net/http"
 
