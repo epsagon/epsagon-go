@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
@@ -448,7 +449,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(requests).To(HaveLen(1))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
-				Expect([]byte(events[0].Resource.Metadata["request_body"])).To(HaveCap(MAX_METADATA_SIZE))
+				Expect([]byte(events[0].Resource.Metadata["request_body"])).To(HaveCap(epsagon.MaxMetadataSize))
 				verifyTraceIDExists(events[0])
 			})
 		})

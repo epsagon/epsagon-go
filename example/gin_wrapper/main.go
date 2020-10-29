@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/epsagon/epsagon-go/epsagon"
@@ -20,9 +21,14 @@ func main() {
 		),
 	}
 
-	r.GET("/ping", func(c *gin.Context) {
+	r.POST("/ping", func(c *gin.Context) {
 		time.Sleep(time.Second * 1)
-		fmt.Println("hello world")
+		body, err := ioutil.ReadAll(c.Request.Body)
+		if err == nil {
+			fmt.Println(body)
+		} else {
+			fmt.Println("Error reading body: ", err)
+		}
 		c.JSON(200, gin.H{
 			"message": "pong",
 		})

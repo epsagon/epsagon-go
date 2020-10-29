@@ -60,6 +60,7 @@ type Tracer interface {
 	AddExceptionTypeAndMessage(string, string)
 	AddLabel(string, interface{})
 	AddError(string, interface{})
+	GetRunnerEvent() *protocol.Event
 	Start()
 	Running() bool
 	Stop()
@@ -151,8 +152,8 @@ func HandleSendTracesResponse(resp *http.Response, err error) {
 	}
 }
 
-// getRunnerEvent Gets the runner event, nil if not found
-func (tracer *epsagonTracer) getRunnerEvent() *protocol.Event {
+// GetRunnerEvent Gets the runner event, nil if not found
+func (tracer *epsagonTracer) GetRunnerEvent() *protocol.Event {
 	for _, event := range tracer.events {
 		if event.Origin == "runner" {
 			return event
@@ -236,7 +237,7 @@ func (tracer *epsagonTracer) getTraceJSON(trace *protocol.Trace, runnerEvent *pr
 
 func (tracer *epsagonTracer) getTraceReader() (io.Reader, error) {
 	version := "go " + runtime.Version()
-	runnerEvent := tracer.getRunnerEvent()
+	runnerEvent := tracer.GetRunnerEvent()
 	if runnerEvent != nil {
 		tracer.addRunnerLabels(runnerEvent)
 		tracer.addRunnerException(runnerEvent)

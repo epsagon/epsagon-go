@@ -2,8 +2,13 @@ package epsagongin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"runtime/debug"
+
+	"github.com/epsagon/epsagon-go/protocol"
 
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/tracer"
@@ -25,6 +30,47 @@ type GinRouterWrapper struct {
 	Config   *epsagon.Config
 }
 
+func processRawQuery(urlObj *url.URL, wrapperTracer tracer.Tracer) string {
+	processed, err := json.Marshal(urlObj.Query())
+	if err != nil {
+		wrapperTracer.AddException(&protocol.Exception{
+			Type:      "trigger-creation",
+			Message:   fmt.Sprintf("Failed to serialize query params %s", urlObj.RawQuery),
+			Traceback: string(debug.Stack()),
+			Time:      tracer.GetTimestamp(),
+		})
+	}
+	return string(processed)
+}
+
+func addTriggerEvent(wrapperTracer tracer.Tracer, context *gin.Context, resourceName string) {
+	name := resourceName
+	if len(name) == 0 {
+		name = context.Request.Host
+	}
+	event := &protocol.Event{
+		Id:        "",
+		Origin:    "trigger",
+		StartTime: tracer.GetTimestamp(),
+		Resource: &protocol.Resource{
+			Name:      name,
+			Type:      "http",
+			Operation: context.Request.Method,
+			Metadata: map[string]string{
+				"query_string_parameters": processRawQuery(
+					context.Request.URL, wrapperTracer),
+				"path": context.Request.URL.Path,
+			},
+		},
+	}
+	if !wrapperTracer.GetConfig().MetadataOnly {
+		headers, body := epsagon.ExtractRequestData(context.Request)
+		event.Resource.Metadata["request_headers"] = headers
+		event.Resource.Metadata["request_body"] = body
+	}
+	wrapperTracer.AddEvent(event)
+}
+
 func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath string, config *epsagon.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if config == nil {
@@ -39,13 +85,15 @@ func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath strin
 		}
 		c.Keys[TracerKey] = wrapperTracer
 		wrapper := epsagon.WrapGenericFunction(
-			handler,
-			config,
-			wrapperTracer,
-			false,
-			fmt.Sprintf("%s%s", hostname, relativePath),
+			handler, config, wrapperTracer, false, relativePath,
 		)
+		addTriggerEvent(wrapperTracer, c, hostname)
 		wrapper.Call(c)
+
+		runner := wrapperTracer.GetRunnerEvent()
+		if runner != nil {
+			runner.Resource.Type = "gin"
+		}
 	}
 }
 
