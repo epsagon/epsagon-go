@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
@@ -62,7 +61,7 @@ type ClientWrapper struct {
 
 // Wrap wraps an http.Client to Epsagon's ClientWrapper
 func Wrap(c http.Client, args ...context.Context) ClientWrapper {
-	currentTracer := internal.ExtractTracer(args)
+	currentTracer := epsagon.ExtractTracer(args)
 	return ClientWrapper{c, false, currentTracer}
 }
 
@@ -83,7 +82,7 @@ func NewTracingTransport(args ...context.Context) *TracingTransport {
 }
 
 func NewWrappedTracingTransport(rt http.RoundTripper, args ...context.Context) *TracingTransport {
-	currentTracer := internal.ExtractTracer(args)
+	currentTracer := epsagon.ExtractTracer(args)
 	return &TracingTransport{
 		tracer:    currentTracer,
 		transport: rt,
@@ -96,7 +95,7 @@ func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	tr := t.tracer
 	// if the TracingTransport is created before the global tracer is created it will be nil
 	if tr == nil {
-		tr = internal.ExtractTracer(nil)
+		tr = epsagon.ExtractTracer(nil)
 		if tr != nil && tr.GetConfig().Debug {
 			log.Println("EPSAGON DEBUG: defaulting to global tracer in RoundTrip")
 		}

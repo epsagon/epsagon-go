@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/epsagon/epsagon-go/wrappers/gin"
+	epsagongin "github.com/epsagon/epsagon-go/wrappers/gin"
+	epsagonhttp "github.com/epsagon/epsagon-go/wrappers/net/http"
 	"github.com/gin-gonic/gin"
 )
 

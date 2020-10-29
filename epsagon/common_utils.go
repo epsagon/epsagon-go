@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/tracer"
 )
 
@@ -39,7 +38,7 @@ func NewTracerConfig(applicationName, token string) *Config {
 
 // Label adds a label to the sent trace
 func Label(key string, value interface{}, args ...context.Context) {
-	currentTracer := internal.ExtractTracer(args)
+	currentTracer := ExtractTracer(args)
 	if currentTracer != nil {
 		currentTracer.AddLabel(key, value)
 	}
@@ -47,7 +46,7 @@ func Label(key string, value interface{}, args ...context.Context) {
 
 // Error adds an error to the sent trace
 func Error(value interface{}, args ...context.Context) {
-	currentTracer := internal.ExtractTracer(args)
+	currentTracer := ExtractTracer(args)
 	if currentTracer != nil {
 		currentTracer.AddError(DefaultErrorType, value)
 	}
@@ -55,7 +54,7 @@ func Error(value interface{}, args ...context.Context) {
 
 // Error adds an error to the sent trace with specific error type
 func TypeError(value interface{}, errorType string, args ...context.Context) {
-	currentTracer := internal.ExtractTracer(args)
+	currentTracer := ExtractTracer(args)
 	if currentTracer != nil {
 		currentTracer.AddError(errorType, value)
 	}

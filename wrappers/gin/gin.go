@@ -1,6 +1,7 @@
 package epsagongin
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -11,6 +12,11 @@ import (
 
 // TracerKey is the key of the epsagon tracer in the gin.Context Keys map passed to the handlers
 const TracerKey = "EpsagonTracer"
+
+// EpsagonContext creates a context.Background() with epsagon's associated tracer for nexted instrumentations
+func EpsagonContext(c *gin.Context) context.Context {
+	return epsagon.ContextWithTracer(c.Keys[TracerKey].(tracer.Tracer))
+}
 
 // GinRouterWrapper is an epsagon instumentation wrapper for gin.RouterGroup
 type GinRouterWrapper struct {

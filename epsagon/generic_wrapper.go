@@ -1,7 +1,6 @@
 package epsagon
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -104,8 +103,7 @@ func (wrapper *GenericWrapper) transformArguments(args ...interface{}) []reflect
 	inputs := make([]reflect.Value, actualLength)
 	argsInputs := inputs
 	if wrapper.injectContext {
-		inputs[0] = reflect.ValueOf(
-			context.WithValue(context.Background(), "tracer", wrapper.tracer))
+		inputs[0] = reflect.ValueOf(ContextWithTracer(wrapper.tracer))
 		argsInputs = argsInputs[1:]
 	}
 	for k, in := range args {

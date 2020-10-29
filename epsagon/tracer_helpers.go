@@ -1,4 +1,4 @@
-package internal
+package epsagon
 
 import (
 	"context"
@@ -6,7 +6,16 @@ import (
 	"github.com/epsagon/epsagon-go/tracer"
 )
 
-// Extracts the tracer from given contexts (using first context),
+type tracerKey string
+
+const tracerKeyValue tracerKey = "tracer"
+
+// ContextWithTracer creates a context with given tracer
+func ContextWithTracer(t tracer.Tracer) context.Context {
+	return context.WithValue(context.Background(), tracerKeyValue, t)
+}
+
+// ExtractTracer Extracts the tracer from given contexts (using first context),
 // returns Global tracer if no context is given and GlobalTracer is valid (= non nil, not stopped)
 func ExtractTracer(ctx []context.Context) tracer.Tracer {
 	if len(ctx) == 0 {
@@ -15,7 +24,7 @@ func ExtractTracer(ctx []context.Context) tracer.Tracer {
 		}
 		return tracer.GlobalTracer
 	}
-	rawValue := ctx[0].Value("tracer")
+	rawValue := ctx[0].Value(tracerKeyValue)
 	if rawValue == nil {
 		panic("Invalid context, see Epsagon Concurrent Generic GO function example")
 	}
