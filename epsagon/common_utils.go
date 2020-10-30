@@ -8,8 +8,10 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 
 	"github.com/epsagon/epsagon-go/tracer"
+	"github.com/onsi/gomega/types"
 )
 
 // DefaultErrorType Default custom error type
@@ -95,10 +97,10 @@ func ExtractRequestData(req *http.Request) (headers string, body string) {
 	}
 
 	buf, err := ioutil.ReadAll(req.Body)
+	req.Body = NewReadCloser(buf, err)
 	if err != nil {
 		return
 	}
-	req.Body = ioutil.NopCloser(bytes.NewReader(buf))
 	// truncates request body to the first 64KB
 	trimmed := buf
 	if len(buf) > MaxMetadataSize {
@@ -126,4 +128,36 @@ func (er *errorReader) Read([]byte) (int, error) {
 }
 func (er *errorReader) Close() error {
 	return er.err
+}
+
+type matchUserError struct {
+	exception interface{}
+}
+
+func (matcher *matchUserError) Match(actual interface{}) (bool, error) {
+	uErr, ok := actual.(userError)
+	if !ok {
+		return false, fmt.Errorf("excpects userError, got %v", actual)
+	}
+
+	if !reflect.DeepEqual(uErr.exception, matcher.exception) {
+		return false, fmt.Errorf("expected\n\t%v\nexception, got\n\t%v", matcher.exception, uErr.exception)
+	}
+
+	return true, nil
+}
+
+func (matcher *matchUserError) FailureMessage(actual interface{}) string {
+	return fmt.Sprintf("Expected\n\t%#v\nto be userError with exception\n\t%#v", actual, matcher.exception)
+}
+
+func (matcher *matchUserError) NegatedFailureMessage(actual interface{}) string {
+	return fmt.Sprintf("NegatedFailureMessage")
+}
+
+// MatchUserError matches epsagon exceptions
+func MatchUserError(exception interface{}) types.GomegaMatcher {
+	return &matchUserError{
+		exception: exception,
+	}
 }

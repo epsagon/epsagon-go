@@ -31,6 +31,9 @@ type GinRouterWrapper struct {
 }
 
 func processRawQuery(urlObj *url.URL, wrapperTracer tracer.Tracer) string {
+	if urlObj == nil {
+		return ""
+	}
 	processed, err := json.Marshal(urlObj.Query())
 	if err != nil {
 		wrapperTracer.AddException(&protocol.Exception{
@@ -72,10 +75,10 @@ func addTriggerEvent(wrapperTracer tracer.Tracer, context *gin.Context, resource
 }
 
 func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath string, config *epsagon.Config) gin.HandlerFunc {
+	if config == nil {
+		config = &epsagon.Config{}
+	}
 	return func(c *gin.Context) {
-		if config == nil {
-			config = &epsagon.Config{}
-		}
 		wrapperTracer := tracer.CreateTracer(&config.Config)
 		wrapperTracer.Start()
 		defer wrapperTracer.Stop()
