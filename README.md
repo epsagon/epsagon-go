@@ -86,6 +86,7 @@ The following frameworks are supported by Epsagon:
 |----------------------------------------|---------------------------|
 |[AWS Lambda](#aws-lambda)               |All                        |
 |[Generic Function](#generic)            |All                        |
+|[Gin](#gin)                             |All                        |
 
 
 ### AWS Lambda
@@ -169,6 +170,42 @@ your wrapped function will be displayed with your configured name in all the rel
 traces search, service map and more.
 ```
 		go epsagon.ConcurrentGoWrapper(config, doTask, "<MyInstrumentedFuncName>")(i, "hello", &wg)
+```
+
+### gin
+
+You can easily instrument gin applications with Epsagon:
+
+```go
+import (
+	"github.com/epsagon/epsagon-go/epsagon"
+	epsagongin "github.com/epsagon/epsagon-go/wrappers/gin"
+	"github.com/gin-gonic/gin"
+)
+
+func main() {
+	r := epsagongin.GinRouterWrapper{
+		IRouter:  gin.Default(),
+		Hostname: "my_site",
+        Config:   epsagon.NewTracerConfig(
+        "test-gin-application", "",
+        ),
+	}
+
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
+	})
+	r.IRouter.(*gin.Engine).Run()
+```
+
+If you want to instument other integrated libraries inside the gin handler you can get the Epsagon context from the gin.Context to do that:
+
+```go
+client := http.Client{
+    Transport: epsagonhttp.NewTracingTransport(epsagongin.EpsagonContext(c))}
+resp, err := client.Get("http://example.com")
 ```
 
 ## Integrations
