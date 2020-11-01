@@ -12,7 +12,7 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
-func TestEpsagonTracer(t *testing.T) {
+func TestGenericWrapper(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Generic Wrapper")
 }
@@ -58,7 +58,7 @@ var _ = Describe("generic_wrapper", func() {
 			})
 		})
 	})
-	Describe("epsagonGenericWrapper", func() {
+	Describe("GenericWrapper", func() {
 		Context("Happy Flows", func() {
 			var (
 				events     []*protocol.Event
@@ -74,7 +74,7 @@ var _ = Describe("generic_wrapper", func() {
 			})
 			It("Calls the user function", func() {
 				called := false
-				wrapper := &epsagonGenericWrapper{
+				wrapper := &GenericWrapper{
 					config:  &Config{},
 					handler: reflect.ValueOf(func() { called = true }),
 					tracer:  tracer.GlobalTracer,
@@ -86,7 +86,7 @@ var _ = Describe("generic_wrapper", func() {
 			It("Calls the user function with custom resource name", func() {
 				called := false
 				resourceName := "test-resource-name"
-				wrapper := &epsagonGenericWrapper{
+				wrapper := &GenericWrapper{
 					config:       &Config{},
 					handler:      reflect.ValueOf(func() { called = true }),
 					tracer:       tracer.GlobalTracer,
@@ -100,7 +100,7 @@ var _ = Describe("generic_wrapper", func() {
 			It("Retuns and accepts arguments", func() {
 				called := false
 				result := false
-				wrapper := &epsagonGenericWrapper{
+				wrapper := &GenericWrapper{
 					config: &Config{},
 					handler: reflect.ValueOf(
 						func(x bool) bool {
@@ -130,7 +130,7 @@ var _ = Describe("generic_wrapper", func() {
 			})
 			It("Panics for wrong number of arguments", func() {
 				called := false
-				wrapper := &epsagonGenericWrapper{
+				wrapper := &GenericWrapper{
 					config:  &Config{},
 					handler: reflect.ValueOf(func(x bool) { called = x }),
 					tracer:  tracer.GlobalTracer,
@@ -143,7 +143,7 @@ var _ = Describe("generic_wrapper", func() {
 			It("Failed to add event", func() {
 				tracer.GlobalTracer.(*tracer.MockedEpsagonTracer).PanicAddEvent = true
 				called := false
-				wrapper := &epsagonGenericWrapper{
+				wrapper := &GenericWrapper{
 					config:  &Config{},
 					handler: reflect.ValueOf(func() { called = true }),
 					tracer:  tracer.GlobalTracer,
@@ -153,7 +153,7 @@ var _ = Describe("generic_wrapper", func() {
 				Expect(len(exceptions)).To(Equal(1))
 			})
 			It("User function panics", func() {
-				wrapper := &epsagonGenericWrapper{
+				wrapper := &GenericWrapper{
 					config:  &Config{},
 					handler: reflect.ValueOf(func() { panic("boom") }),
 					tracer:  tracer.GlobalTracer,

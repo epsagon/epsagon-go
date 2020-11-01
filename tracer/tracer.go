@@ -76,6 +76,7 @@ type Config struct {
 	Debug           bool   // Print Epsagon debug information
 	SendTimeout     string // Timeout for sending traces to Epsagon
 	Disable         bool   // Disable sending traces
+	TestMode        bool   // TestMode sending traces
 }
 
 type EpsagonLabel struct {
@@ -324,6 +325,9 @@ func fillConfigDefaults(config *Config) {
 
 // CreateTracer will initiallize a new epsagon tracer
 func CreateTracer(config *Config) Tracer {
+	if config.TestMode {
+		return GlobalTracer
+	}
 	if config == nil {
 		config = &Config{}
 	}

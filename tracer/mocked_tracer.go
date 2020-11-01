@@ -6,9 +6,11 @@ import (
 
 // MockedEpsagonTracer will not send traces if closed
 type MockedEpsagonTracer struct {
-	Exceptions *[]*protocol.Exception
-	Events     *[]*protocol.Event
-	Config     *Config
+	Exceptions      *[]*protocol.Exception
+	Events          *[]*protocol.Event
+	Labels          map[string]interface{}
+	RunnerException *protocol.Exception
+	Config          *Config
 
 	PanicStart        bool
 	PanicAddEvent     bool
@@ -72,15 +74,18 @@ func (t *MockedEpsagonTracer) AddExceptionTypeAndMessage(exceptionType, msg stri
 
 // AddLabel implements AddLabel
 func (t *MockedEpsagonTracer) AddLabel(key string, value interface{}) {
-	t.AddLabel(key, value)
+	t.Labels[key] = value
 }
 
-// verifyLabel implements AddLabel
+// verifyLabel implements verifyLabel
 func (t *MockedEpsagonTracer) verifyLabel(label EpsagonLabel) bool {
-	return t.verifyLabel(label)
+	return true
 }
 
-// AddLabel implements AddError
+// AddError implements AddError
 func (t *MockedEpsagonTracer) AddError(errorType string, value interface{}) {
-	t.AddError(errorType, value)
+	t.RunnerException = &protocol.Exception{
+		Type:    errorType,
+		Message: "test",
+	}
 }
