@@ -46,7 +46,7 @@ func processRawQuery(urlObj *url.URL, wrapperTracer tracer.Tracer) string {
 	return string(processed)
 }
 
-func addTriggerEvent(wrapperTracer tracer.Tracer, context *gin.Context, resourceName string) {
+func createTriggerEvent(wrapperTracer tracer.Tracer, context *gin.Context, resourceName string) *protocol.Event {
 	name := resourceName
 	if len(name) == 0 {
 		name = context.Request.Host
@@ -71,7 +71,7 @@ func addTriggerEvent(wrapperTracer tracer.Tracer, context *gin.Context, resource
 		event.Resource.Metadata["request_headers"] = headers
 		event.Resource.Metadata["request_body"] = body
 	}
-	wrapperTracer.AddEvent(event)
+	return event
 }
 
 func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath string, config *epsagon.Config) gin.HandlerFunc {
@@ -90,8 +90,10 @@ func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath strin
 		wrapper := epsagon.WrapGenericFunction(
 			handler, config, wrapperTracer, false, relativePath,
 		)
-		addTriggerEvent(wrapperTracer, c, hostname)
+		triggerEvent := createTriggerEvent(wrapperTracer, c, hostname)
+		wrapperTracer.AddEvent(triggerEvent)
 		wrapper.Call(c)
+		triggerEvent.Resource.Metadata["status_code"] = fmt.Sprint(c.Writer.Status())
 
 		runner := wrapperTracer.GetRunnerEvent()
 		if runner != nil {
