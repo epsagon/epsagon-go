@@ -2,16 +2,12 @@ package epsagongin
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-	"runtime/debug"
-
-	"github.com/epsagon/epsagon-go/protocol"
 
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/tracer"
+	"github.com/epsagon/epsagon-go/wrappers/net/http"
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,49 +26,9 @@ type GinRouterWrapper struct {
 	Config   *epsagon.Config
 }
 
-func processRawQuery(urlObj *url.URL, wrapperTracer tracer.Tracer) string {
-	if urlObj == nil {
-		return ""
-	}
-	processed, err := json.Marshal(urlObj.Query())
-	if err != nil {
-		wrapperTracer.AddException(&protocol.Exception{
-			Type:      "trigger-creation",
-			Message:   fmt.Sprintf("Failed to serialize query params %s", urlObj.RawQuery),
-			Traceback: string(debug.Stack()),
-			Time:      tracer.GetTimestamp(),
-		})
-		return ""
-	}
-	return string(processed)
-}
-
-func createTriggerEvent(wrapperTracer tracer.Tracer, context *gin.Context, resourceName string) *protocol.Event {
-	name := resourceName
-	if len(name) == 0 {
-		name = context.Request.Host
-	}
-	event := &protocol.Event{
-		Id:        "",
-		Origin:    "trigger",
-		StartTime: tracer.GetTimestamp(),
-		Resource: &protocol.Resource{
-			Name:      name,
-			Type:      "http",
-			Operation: context.Request.Method,
-			Metadata: map[string]string{
-				"query_string_parameters": processRawQuery(
-					context.Request.URL, wrapperTracer),
-				"path": context.Request.URL.Path,
-			},
-		},
-	}
-	if !wrapperTracer.GetConfig().MetadataOnly {
-		headers, body := epsagon.ExtractRequestData(context.Request)
-		event.Resource.Metadata["request_headers"] = headers
-		event.Resource.Metadata["request_body"] = body
-	}
-	return event
+type wrappedGinWriter struct {
+	gin.ResponseWriter
+	htrw http.ResponseWriter
 }
 
 func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath string, config *epsagon.Config) gin.HandlerFunc {
@@ -88,9 +44,17 @@ func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath strin
 		wrapper := epsagon.WrapGenericFunction(
 			handler, config, wrapperTracer, false, relativePath,
 		)
-		triggerEvent := createTriggerEvent(wrapperTracer, c, hostname)
+		triggerEvent := epsagonhttp.CreateHTTPTriggerEvent(
+			wrapperTracer, c.Request, hostname)
 		wrapperTracer.AddEvent(triggerEvent)
-		triggerEvent.Resource.Metadata["status_code"] = "500"
+		wrappedResponseWriter := &wrappedGinWriter{
+			ResponseWriter: c.Writer,
+			htrw:           epsagonhttp.CreateWrappedResponseWriter(c.Writer, triggerEvent.Resource),
+		}
+		c.Writer = wrappedResponseWriter
+		defer func() {
+			wrappedResponseWriter.htrw.(*epsagonhttp.WrappedResponseWriter).UpdateResource()
+		}()
 
 		defer func() {
 			runner := wrapperTracer.GetRunnerEvent()
@@ -145,4 +109,14 @@ func (router *GinRouterWrapper) OPTIONS(relativePath string, handlers ...gin.Han
 // HEAD is a shortcut for router.Handle("HEAD", path, handle).
 func (router *GinRouterWrapper) HEAD(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes {
 	return router.Handle(http.MethodHead, relativePath, handlers...)
+}
+
+func (grw *wrappedGinWriter) Header() http.Header {
+	return grw.htrw.Header()
+}
+func (grw *wrappedGinWriter) Write(data []byte) (int, error) {
+	return grw.htrw.Write(data)
+}
+func (grw *wrappedGinWriter) WriteHeader(statusCode int) {
+	grw.htrw.WriteHeader(statusCode)
 }
