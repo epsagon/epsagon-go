@@ -42,6 +42,7 @@ func processRawQuery(urlObj *url.URL, wrapperTracer tracer.Tracer) string {
 			Traceback: string(debug.Stack()),
 			Time:      tracer.GetTimestamp(),
 		})
+		return ""
 	}
 	return string(processed)
 }
@@ -83,22 +84,22 @@ func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath strin
 		wrapperTracer.Start()
 		defer wrapperTracer.Stop()
 
-		if c.Keys == nil {
-			c.Keys = make(map[string]interface{})
-		}
-		c.Keys[TracerKey] = wrapperTracer
+		c.Set(TracerKey, wrapperTracer)
 		wrapper := epsagon.WrapGenericFunction(
 			handler, config, wrapperTracer, false, relativePath,
 		)
 		triggerEvent := createTriggerEvent(wrapperTracer, c, hostname)
 		wrapperTracer.AddEvent(triggerEvent)
+		triggerEvent.Resource.Metadata["status_code"] = "500"
+
+		defer func() {
+			runner := wrapperTracer.GetRunnerEvent()
+			if runner != nil {
+				runner.Resource.Type = "gin"
+			}
+		}()
 		wrapper.Call(c)
 		triggerEvent.Resource.Metadata["status_code"] = fmt.Sprint(c.Writer.Status())
-
-		runner := wrapperTracer.GetRunnerEvent()
-		if runner != nil {
-			runner.Resource.Type = "gin"
-		}
 	}
 }
 

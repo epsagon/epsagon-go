@@ -125,6 +125,8 @@ var _ = Describe("gin_wrapper", func() {
 				}
 				Expect(triggerEvent).NotTo(Equal(nil))
 				Expect(triggerEvent.Resource.Name).To(Equal("www.help.com"))
+				Expect(triggerEvent.Resource.Type).To(Equal("http"))
+				Expect(triggerEvent.Resource.Operation).To(Equal("POST"))
 				expectedQuery, _ := json.Marshal(map[string][]string{
 					"hello": {"world"}, "good": {"bye"}})
 				Expect(triggerEvent.Resource.Metadata["query_string_parameters"]).To(
