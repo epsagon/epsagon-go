@@ -54,6 +54,11 @@ func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath strin
 		c.Writer = wrappedResponseWriter
 		defer func() {
 			wrappedResponseWriter.htrw.(*epsagonhttp.WrappedResponseWriter).UpdateResource()
+			userError := recover()
+			if userError != nil {
+				triggerEvent.Resource.Metadata["status_code"] = "500"
+				panic(userError)
+			}
 		}()
 
 		defer func() {

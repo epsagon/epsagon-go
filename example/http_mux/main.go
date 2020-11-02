@@ -26,7 +26,7 @@ func main() {
 					fmt.Println("First 1000 bytes recieved: ", string(respBody[:1000]))
 				}
 			}
-			io.WriteString(w, "ping\n")
+			io.WriteString(w, "pong\n")
 		}),
 	)
 
