@@ -1,8 +1,14 @@
 package epsagongin
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"runtime/debug"
+
+	"github.com/epsagon/epsagon-go/protocol"
 
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/tracer"
@@ -12,6 +18,11 @@ import (
 // TracerKey is the key of the epsagon tracer in the gin.Context Keys map passed to the handlers
 const TracerKey = "EpsagonTracer"
 
+// EpsagonContext creates a context.Background() with epsagon's associated tracer for nexted instrumentations
+func EpsagonContext(c *gin.Context) context.Context {
+	return epsagon.ContextWithTracer(c.Keys[TracerKey].(tracer.Tracer))
+}
+
 // GinRouterWrapper is an epsagon instumentation wrapper for gin.RouterGroup
 type GinRouterWrapper struct {
 	gin.IRouter
@@ -19,27 +30,76 @@ type GinRouterWrapper struct {
 	Config   *epsagon.Config
 }
 
+func processRawQuery(urlObj *url.URL, wrapperTracer tracer.Tracer) string {
+	if urlObj == nil {
+		return ""
+	}
+	processed, err := json.Marshal(urlObj.Query())
+	if err != nil {
+		wrapperTracer.AddException(&protocol.Exception{
+			Type:      "trigger-creation",
+			Message:   fmt.Sprintf("Failed to serialize query params %s", urlObj.RawQuery),
+			Traceback: string(debug.Stack()),
+			Time:      tracer.GetTimestamp(),
+		})
+		return ""
+	}
+	return string(processed)
+}
+
+func createTriggerEvent(wrapperTracer tracer.Tracer, context *gin.Context, resourceName string) *protocol.Event {
+	name := resourceName
+	if len(name) == 0 {
+		name = context.Request.Host
+	}
+	event := &protocol.Event{
+		Id:        "",
+		Origin:    "trigger",
+		StartTime: tracer.GetTimestamp(),
+		Resource: &protocol.Resource{
+			Name:      name,
+			Type:      "http",
+			Operation: context.Request.Method,
+			Metadata: map[string]string{
+				"query_string_parameters": processRawQuery(
+					context.Request.URL, wrapperTracer),
+				"path": context.Request.URL.Path,
+			},
+		},
+	}
+	if !wrapperTracer.GetConfig().MetadataOnly {
+		headers, body := epsagon.ExtractRequestData(context.Request)
+		event.Resource.Metadata["request_headers"] = headers
+		event.Resource.Metadata["request_body"] = body
+	}
+	return event
+}
+
 func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath string, config *epsagon.Config) gin.HandlerFunc {
+	if config == nil {
+		config = &epsagon.Config{}
+	}
 	return func(c *gin.Context) {
-		if config == nil {
-			config = &epsagon.Config{}
-		}
 		wrapperTracer := tracer.CreateTracer(&config.Config)
 		wrapperTracer.Start()
 		defer wrapperTracer.Stop()
 
-		if c.Keys == nil {
-			c.Keys = make(map[string]interface{})
-		}
-		c.Keys[TracerKey] = wrapperTracer
+		c.Set(TracerKey, wrapperTracer)
 		wrapper := epsagon.WrapGenericFunction(
-			handler,
-			config,
-			wrapperTracer,
-			false,
-			fmt.Sprintf("%s%s", hostname, relativePath),
+			handler, config, wrapperTracer, false, relativePath,
 		)
+		triggerEvent := createTriggerEvent(wrapperTracer, c, hostname)
+		wrapperTracer.AddEvent(triggerEvent)
+		triggerEvent.Resource.Metadata["status_code"] = "500"
+
+		defer func() {
+			runner := wrapperTracer.GetRunnerEvent()
+			if runner != nil {
+				runner.Resource.Type = "gin"
+			}
+		}()
 		wrapper.Call(c)
+		triggerEvent.Resource.Metadata["status_code"] = fmt.Sprint(c.Writer.Status())
 	}
 }
 

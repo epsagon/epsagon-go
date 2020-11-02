@@ -89,3 +89,13 @@ func (t *MockedEpsagonTracer) AddError(errorType string, value interface{}) {
 		Message: "test",
 	}
 }
+
+// GetRunnerEvent implements AddError
+func (t *MockedEpsagonTracer) GetRunnerEvent() *protocol.Event {
+	for _, event := range *t.Events {
+		if event.Origin == "runner" {
+			return event
+		}
+	}
+	return nil
+}

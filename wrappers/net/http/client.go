@@ -1,9 +1,7 @@
 package epsagonhttp
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/epsagon/epsagon-go/internal"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
@@ -25,7 +22,6 @@ const EPSAGON_DOMAIN = "epsagon.com"
 const APPSYNC_API_SUBDOMAIN = ".appsync-api."
 const AMAZON_REQUEST_ID = "x-amzn-requestid"
 const API_GATEWAY_RESOURCE_TYPE = "api_gateway"
-const MAX_METADATA_SIZE = 10 * 1024
 
 type ValidationFunction func(string, string) bool
 
@@ -62,7 +58,7 @@ type ClientWrapper struct {
 
 // Wrap wraps an http.Client to Epsagon's ClientWrapper
 func Wrap(c http.Client, args ...context.Context) ClientWrapper {
-	currentTracer := internal.ExtractTracer(args)
+	currentTracer := epsagon.ExtractTracer(args)
 	return ClientWrapper{c, false, currentTracer}
 }
 
@@ -83,7 +79,7 @@ func NewTracingTransport(args ...context.Context) *TracingTransport {
 }
 
 func NewWrappedTracingTransport(rt http.RoundTripper, args ...context.Context) *TracingTransport {
-	currentTracer := internal.ExtractTracer(args)
+	currentTracer := epsagon.ExtractTracer(args)
 	return &TracingTransport{
 		tracer:    currentTracer,
 		transport: rt,
@@ -96,7 +92,7 @@ func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	tr := t.tracer
 	// if the TracingTransport is created before the global tracer is created it will be nil
 	if tr == nil {
-		tr = internal.ExtractTracer(nil)
+		tr = epsagon.ExtractTracer(nil)
 		if tr != nil && tr.GetConfig().Debug {
 			log.Println("EPSAGON DEBUG: defaulting to global tracer in RoundTrip")
 		}
@@ -110,7 +106,10 @@ func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	}()
 	defer epsagon.GeneralEpsagonRecover("net.http.RoundTripper", "RoundTrip", t.tracer)
 	startTime := tracer.GetTimestamp()
-	reqHeaders, reqBody := t.extractRequestData(req, tr)
+	reqHeaders, reqBody := "", ""
+	if !t.getMetadataOnly(tr) {
+		reqHeaders, reqBody = epsagon.ExtractRequestData(req)
+	}
 	if !isBlacklistedURL(req.URL) {
 		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
 	}
@@ -137,34 +136,6 @@ func (t *TracingTransport) addDataToEvent(reqHeaders, reqBody string, req *http.
 		event.Resource.Metadata["request_headers"] = reqHeaders
 		event.Resource.Metadata["request_body"] = reqBody
 	}
-}
-
-func (t *TracingTransport) extractRequestData(req *http.Request, tr tracer.Tracer) (headers string, body string) {
-	if t.getMetadataOnly(tr) {
-		return
-	}
-
-	headers, err := formatHeaders(req.Header)
-	if err != nil {
-		headers = ""
-	}
-
-	if req.Body == nil {
-		return
-	}
-
-	buf, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return
-	}
-	req.Body = ioutil.NopCloser(bytes.NewReader(buf))
-	// truncates request body to the first 64KB
-	trimmed := buf
-	if len(buf) > MAX_METADATA_SIZE {
-		trimmed = buf[0:MAX_METADATA_SIZE]
-	}
-	body = string(trimmed)
-	return
 }
 
 func isBlacklistedURL(parsedUrl *url.URL) bool {
@@ -423,7 +394,7 @@ func updateResponseData(resp *http.Response, resource *protocol.Resource, metada
 	if metadataOnly {
 		return
 	}
-	headers, err := formatHeaders(resp.Header)
+	headers, err := epsagon.FormatHeaders(resp.Header)
 	if err == nil {
 		resource.Metadata["response_headers"] = headers
 	}
@@ -431,35 +402,17 @@ func updateResponseData(resp *http.Response, resource *protocol.Resource, metada
 	resp.Body.Close()
 	if err == nil {
 		// truncates response body to the first 64KB
-		if len(body) > MAX_METADATA_SIZE {
-			resource.Metadata["response_body"] = string(body[0:MAX_METADATA_SIZE])
+		if len(body) > epsagon.MaxMetadataSize {
+			resource.Metadata["response_body"] = string(body[0:epsagon.MaxMetadataSize])
 		} else {
 			resource.Metadata["response_body"] = string(body)
 		}
 	}
-	resp.Body = newReadCloser(body, err)
-}
-
-type errorReader struct {
-	err error
-}
-
-func (er *errorReader) Read([]byte) (int, error) {
-	return 0, er.err
-}
-func (er *errorReader) Close() error {
-	return er.err
-}
-
-func newReadCloser(body []byte, err error) io.ReadCloser {
-	if err != nil {
-		return &errorReader{err: err}
-	}
-	return ioutil.NopCloser(bytes.NewReader(body))
+	resp.Body = epsagon.NewReadCloser(body, err)
 }
 
 func updateRequestData(req *http.Request, metadata map[string]string) {
-	headers, err := formatHeaders(req.Header)
+	headers, err := epsagon.FormatHeaders(req.Header)
 	if err == nil {
 		metadata["request_headers"] = headers
 	}
@@ -471,25 +424,10 @@ func updateRequestData(req *http.Request, metadata map[string]string) {
 		bodyBytes, err := ioutil.ReadAll(bodyReader)
 		if err == nil {
 			// truncates request body to the first 64KB
-			if len(bodyBytes) > MAX_METADATA_SIZE {
-				bodyBytes = bodyBytes[0:MAX_METADATA_SIZE]
+			if len(bodyBytes) > epsagon.MaxMetadataSize {
+				bodyBytes = bodyBytes[0:epsagon.MaxMetadataSize]
 			}
 			metadata["request_body"] = string(bodyBytes)
 		}
 	}
-}
-
-// format HTTP headers to string - using first header value, ignoring the rest
-func formatHeaders(headers http.Header) (string, error) {
-	headersToFormat := make(map[string]string)
-	for headerKey, headerValues := range headers {
-		if len(headerValues) > 0 {
-			headersToFormat[headerKey] = headerValues[0]
-		}
-	}
-	headersJson, err := json.Marshal(headersToFormat)
-	if err != nil {
-		return "", err
-	}
-	return string(headersJson), nil
 }

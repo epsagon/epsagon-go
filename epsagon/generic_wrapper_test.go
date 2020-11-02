@@ -1,7 +1,6 @@
 package epsagon
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -9,43 +8,11 @@ import (
 	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/types"
 )
 
 func TestGenericWrapper(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Generic Wrapper")
-}
-
-type matchUserError struct {
-	exception interface{}
-}
-
-func (matcher *matchUserError) Match(actual interface{}) (bool, error) {
-	uErr, ok := actual.(userError)
-	if !ok {
-		return false, fmt.Errorf("excpects userError, got %v", actual)
-	}
-
-	if !reflect.DeepEqual(uErr.exception, matcher.exception) {
-		return false, fmt.Errorf("expected\n\t%v\nexception, got\n\t%v", matcher.exception, uErr.exception)
-	}
-
-	return true, nil
-}
-
-func (matcher *matchUserError) FailureMessage(actual interface{}) string {
-	return fmt.Sprintf("Expected\n\t%#v\nto be userError with exception\n\t%#v", actual, matcher.exception)
-}
-
-func (matcher *matchUserError) NegatedFailureMessage(actual interface{}) string {
-	return fmt.Sprintf("NegatedFailureMessage")
-}
-
-func MatchUserError(exception interface{}) types.GomegaMatcher {
-	return &matchUserError{
-		exception: exception,
-	}
 }
 
 var _ = Describe("generic_wrapper", func() {
