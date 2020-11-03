@@ -11,7 +11,10 @@ type tracerKey string
 const tracerKeyValue tracerKey = "tracer"
 
 // ContextWithTracer creates a context with given tracer
-func ContextWithTracer(t tracer.Tracer) context.Context {
+func ContextWithTracer(t tracer.Tracer, ctx ...context.Context) context.Context {
+	if len(ctx) == 1 {
+		return context.WithValue(ctx[0], tracerKeyValue, t)
+	}
 	return context.WithValue(context.Background(), tracerKeyValue, t)
 }
 

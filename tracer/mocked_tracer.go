@@ -16,6 +16,7 @@ type MockedEpsagonTracer struct {
 	PanicAddEvent     bool
 	PanicAddException bool
 	PanicStop         bool
+	stopped           bool
 }
 
 // Start implementes mocked Start
@@ -23,6 +24,7 @@ func (t *MockedEpsagonTracer) Start() {
 	if t.PanicStart {
 		panic("panic in Start()")
 	}
+	t.stopped = false
 }
 
 // Running implementes mocked Running
@@ -35,11 +37,12 @@ func (t *MockedEpsagonTracer) Stop() {
 	if t.PanicStop {
 		panic("panic in Stop()")
 	}
+	t.stopped = true
 }
 
 // Stopped implementes mocked Stopped
 func (t *MockedEpsagonTracer) Stopped() bool {
-	return false
+	return t.stopped
 }
 
 // AddEvent implementes mocked AddEvent

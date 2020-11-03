@@ -33,6 +33,7 @@ const MaxTraceSize = 64 * 1024
 // MaxLabelsSize is the maximum allowed total labels size (in bytes)
 const MaxLabelsSize = 10 * 1024
 
+// LabelsKey is the key for labels in resource metadata
 const LabelsKey = "labels"
 
 const IsTrimmedKey = "is_trimmed"
@@ -53,16 +54,21 @@ var strongKeys = map[string]bool{
 	"item_hash":              true,
 }
 
-// Tracer is what a general program tracer had to provide
+// Tracer is what a general program tracer has to provide
 type Tracer interface {
 	AddEvent(*protocol.Event)
 	AddException(*protocol.Exception)
 	AddExceptionTypeAndMessage(string, string)
+	// AddLabel Adds a label to the trace that will be sent
 	AddLabel(string, interface{})
+	// AddError Set an error to the trace that will be sent on the runner event
 	AddError(string, interface{})
+	// GetRunnerEvent Returns the first event with "runner" as its Origin
 	GetRunnerEvent() *protocol.Event
+	// Starts the tracer event data collection
 	Start()
 	Running() bool
+	// Stop the tracer collecting data and send trace
 	Stop()
 	Stopped() bool
 	GetConfig() *Config
@@ -512,7 +518,7 @@ func GetGlobalTracerConfig() *Config {
 	return GlobalTracer.GetConfig()
 }
 
-func (tracer *epsagonTracer) createException(exceptionType, msg string) *protocol.Exception {
+func createException(exceptionType, msg string) *protocol.Exception {
 	stack := debug.Stack()
 	return &protocol.Exception{
 		Type:      exceptionType,
@@ -526,7 +532,7 @@ func (tracer *epsagonTracer) createException(exceptionType, msg string) *protoco
 // the current stack and time.
 // exceptionType, msg are strings that will be added to the exception
 func (tracer *epsagonTracer) AddExceptionTypeAndMessage(exceptionType, msg string) {
-	tracer.AddException(tracer.createException(exceptionType, msg))
+	tracer.AddException(createException(exceptionType, msg))
 }
 
 func (tracer *epsagonTracer) AddError(errorType string, value interface{}) {
@@ -545,6 +551,6 @@ func (tracer *epsagonTracer) AddError(errorType string, value interface{}) {
 	if tracer.Config.Debug {
 		log.Println("EPSAGON DEBUG: Adding error message to trace: ", message)
 	}
-	exception := tracer.createException(errorType, message)
+	exception := createException(errorType, message)
 	tracer.runnerExceptionPipe <- exception
 }

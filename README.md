@@ -86,6 +86,7 @@ The following frameworks are supported by Epsagon:
 |----------------------------------------|---------------------------|
 |[AWS Lambda](#aws-lambda)               |All                        |
 |[Generic Function](#generic)            |All                        |
+|[HTTP](#http)                           |All                        |
 |[Gin](#gin)                             |All                        |
 
 
@@ -170,6 +171,48 @@ your wrapped function will be displayed with your configured name in all the rel
 traces search, service map and more.
 ```
 		go epsagon.ConcurrentGoWrapper(config, doTask, "<MyInstrumentedFuncName>")(i, "hello", &wg)
+```
+
+### http
+
+Wrapping http handlers with Epsagon:
+```go
+import (
+	"github.com/epsagon/epsagon-go/epsagon"
+	epsagonhttp "github.com/epsagon/epsagon-go/wrappers/net/http"
+)
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ping", epsagonhttp.WrapHandleFunc(
+		epsagon.NewTracerConfig("test-http-mux", ""),
+		func(w http.ResponseWriter, req *http.Request) {
+			io.WriteString(w, "pong\n")
+		}),
+        "my-handler-name",
+	)
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+The third and fourth arguments to `epsagonhttp.WrapHandleFunc` are optional and set the resource name and the hostname. If the resource name is not set then the wrapped funcdtion name is used and the hostname is taken from the request URL if omitted.
+```go
+	mux.HandleFunc("/ping", epsagonhttp.WrapHandleFunc(
+		epsagon.NewTracerConfig("test-http-mux", ""),
+		func(w http.ResponseWriter, req *http.Request) {
+			io.WriteString(w, "pong\n")
+		}),
+        "my-handler-name",
+		"test.hostname.com",
+	)
+```
+
+To wrap nested libraries you can get the epsagon context from the request context:
+```go
+client := http.Client{
+    Transport: epsagonhttp.NewTracingTransport(req.Context())}
+resp, err := client.Get("http://example.com")
 ```
 
 ### gin
