@@ -152,6 +152,51 @@ var _ = Describe("gin_wrapper", func() {
 				Expect(triggerEvent.Resource.Metadata["status_code"]).To(
 					Equal("200"))
 			})
+			It("Doesn't collect body and headers if MetadataOnly", func() {
+				config := &epsagon.Config{Config: tracer.Config{
+					Disable:      true,
+					TestMode:     true,
+					MetadataOnly: true,
+				}}
+				tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
+					Events:     &events,
+					Exceptions: &exceptions,
+					Labels:     make(map[string]interface{}),
+					Config:     &config.Config,
+				}
+				wrapper.Config = config
+				body := []byte("hello world")
+				testGinContext.Request = httptest.NewRequest(
+					"POST",
+					"https://www.help.com/test?hello=world&good=bye",
+					ioutil.NopCloser(bytes.NewReader(body)))
+				wrapper.Hostname = ""
+				wrapper.GET("/test", func(c *gin.Context) {
+					internalHandlerBody, err := ioutil.ReadAll(c.Request.Body)
+					if err != nil {
+						Expect(true).To(Equal(false))
+					}
+					Expect(internalHandlerBody).To(Equal(body))
+					called = true
+					c.JSON(200, gin.H{"hello": "world"})
+				})
+				Expect(len(events)).To(Equal(2))
+				var triggerEvent *protocol.Event
+				for _, event := range events {
+					if event.Origin == "trigger" {
+						triggerEvent = event
+					}
+				}
+				Expect(triggerEvent).NotTo(Equal(nil))
+				Expect(triggerEvent.Resource.Metadata["query_string_parameters"]).To(
+					Equal(""))
+				Expect(triggerEvent.Resource.Metadata["request_body"]).To(
+					Equal(""))
+				Expect(triggerEvent.Resource.Metadata["response_body"]).To(
+					Equal(""))
+				Expect(triggerEvent.Resource.Metadata["response_headers"]).To(
+					Equal(""))
+			})
 		})
 		Context("Error Flows", func() {
 			It("Adds Exception if handler explodes", func() {

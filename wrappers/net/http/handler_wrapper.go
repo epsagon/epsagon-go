@@ -47,13 +47,13 @@ func CreateHTTPTriggerEvent(wrapperTracer tracer.Tracer, request *http.Request, 
 			Type:      "http",
 			Operation: request.Method,
 			Metadata: map[string]string{
-				"query_string_parameters": processRawQuery(
-					request.URL, wrapperTracer),
 				"path": request.URL.Path,
 			},
 		},
 	}
 	if !wrapperTracer.GetConfig().MetadataOnly {
+		event.Resource.Metadata["query_string_parameters"] = processRawQuery(
+			request.URL, wrapperTracer)
 		headers, body := epsagon.ExtractRequestData(request)
 		event.Resource.Metadata["request_headers"] = headers
 		event.Resource.Metadata["request_body"] = body
@@ -94,17 +94,22 @@ func WrapHandleFunc(
 
 		newRequest := request.WithContext(
 			epsagon.ContextWithTracer(wrapperTracer, request.Context()))
-		wrappedResponseWriter := WrappedResponseWriter{
-			ResponseWriter: rw,
-			resource:       triggerEvent.Resource,
+		if !config.MetadataOnly {
+			rw = &WrappedResponseWriter{
+				ResponseWriter: rw,
+				resource:       triggerEvent.Resource,
+			}
 		}
 		defer func() {
-			wrappedResponseWriter.UpdateResource()
+			wrappedResponseWriter, ok := rw.(*WrappedResponseWriter)
+			if ok {
+				wrappedResponseWriter.UpdateResource()
+			}
 		}()
 
 		wrapper := epsagon.WrapGenericFunction(
 			handler, config, wrapperTracer, false, handlerName,
 		)
-		wrapper.Call(&wrappedResponseWriter, newRequest)
+		wrapper.Call(rw, newRequest)
 	}
 }

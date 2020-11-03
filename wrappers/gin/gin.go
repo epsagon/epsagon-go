@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/epsagon/epsagon-go/wrappers/net/http"
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,30 @@ type wrappedGinWriter struct {
 	htrw http.ResponseWriter
 }
 
+func wrapGinWriter(c *gin.Context, triggerEvent *protocol.Event) {
+	wrappedResponseWriter := &wrappedGinWriter{
+		ResponseWriter: c.Writer,
+		htrw:           epsagonhttp.CreateWrappedResponseWriter(c.Writer, triggerEvent.Resource),
+	}
+	c.Writer = wrappedResponseWriter
+}
+
+func postExecutionUpdates(wrapperTracer tracer.Tracer, triggerEvent *protocol.Event, c *gin.Context) {
+	runner := wrapperTracer.GetRunnerEvent()
+	if runner != nil {
+		runner.Resource.Type = "gin"
+	}
+	wrappedResponseWriter, ok := c.Writer.(*wrappedGinWriter)
+	if ok {
+		wrappedResponseWriter.htrw.(*epsagonhttp.WrappedResponseWriter).UpdateResource()
+	}
+	userError := recover()
+	if userError != nil {
+		triggerEvent.Resource.Metadata["status_code"] = "500"
+		panic(userError)
+	}
+}
+
 func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath string, config *epsagon.Config) gin.HandlerFunc {
 	if config == nil {
 		config = &epsagon.Config{}
@@ -47,26 +72,10 @@ func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath strin
 		triggerEvent := epsagonhttp.CreateHTTPTriggerEvent(
 			wrapperTracer, c.Request, hostname)
 		wrapperTracer.AddEvent(triggerEvent)
-		wrappedResponseWriter := &wrappedGinWriter{
-			ResponseWriter: c.Writer,
-			htrw:           epsagonhttp.CreateWrappedResponseWriter(c.Writer, triggerEvent.Resource),
+		if !config.MetadataOnly {
+			wrapGinWriter(c, triggerEvent)
 		}
-		c.Writer = wrappedResponseWriter
-		defer func() {
-			wrappedResponseWriter.htrw.(*epsagonhttp.WrappedResponseWriter).UpdateResource()
-			userError := recover()
-			if userError != nil {
-				triggerEvent.Resource.Metadata["status_code"] = "500"
-				panic(userError)
-			}
-		}()
-
-		defer func() {
-			runner := wrapperTracer.GetRunnerEvent()
-			if runner != nil {
-				runner.Resource.Type = "gin"
-			}
-		}()
+		defer postExecutionUpdates(wrapperTracer, triggerEvent, c)
 		wrapper.Call(c)
 		triggerEvent.Resource.Metadata["status_code"] = fmt.Sprint(c.Writer.Status())
 	}
