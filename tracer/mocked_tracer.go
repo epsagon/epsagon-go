@@ -81,7 +81,7 @@ func (t *MockedEpsagonTracer) AddLabel(key string, value interface{}) {
 }
 
 // verifyLabel implements verifyLabel
-func (t *MockedEpsagonTracer) verifyLabel(label EpsagonLabel) bool {
+func (t *MockedEpsagonTracer) verifyLabel(label epsagonLabel) bool {
 	return true
 }
 
