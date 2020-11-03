@@ -27,8 +27,10 @@ func main() {
 				}
 			}
 			io.WriteString(w, "pong\n")
-		}),
-	)
+		},
+		"my-test-function",
+		"test.hostname.com",
+	))
 
 	http.ListenAndServe(":8080", mux)
 }

@@ -189,10 +189,23 @@ func main() {
 		func(w http.ResponseWriter, req *http.Request) {
 			io.WriteString(w, "pong\n")
 		}),
+        "my-handler-name",
 	)
 
 	http.ListenAndServe(":8080", mux)
 }
+```
+
+The third and fourth arguments to `epsagonhttp.WrapHandleFunc` are optional and set the resource name and the hostname. If the resource name is not set then the wrapped funcdtion name is used and the hostname is taken from the request URL if omitted.
+```go
+	mux.HandleFunc("/ping", epsagonhttp.WrapHandleFunc(
+		epsagon.NewTracerConfig("test-http-mux", ""),
+		func(w http.ResponseWriter, req *http.Request) {
+			io.WriteString(w, "pong\n")
+		}),
+        "my-handler-name",
+		"test.hostname.com",
+	)
 ```
 
 To wrap nested libraries you can get the epsagon context from the request context:

@@ -167,7 +167,7 @@ var _ = Describe("gin_wrapper", func() {
 				wrapper.Config = config
 				body := []byte("hello world")
 				testGinContext.Request = httptest.NewRequest(
-					"POST",
+					"GET",
 					"https://www.help.com/test?hello=world&good=bye",
 					ioutil.NopCloser(bytes.NewReader(body)))
 				wrapper.Hostname = ""
