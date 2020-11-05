@@ -77,17 +77,18 @@ type Tracer interface {
 
 // Config is the configuration for Epsagon's tracer
 type Config struct {
-	ApplicationName string // Application name in Epsagon
-	Token           string // Epsgaon Token
-	CollectorURL    string // Epsagon collector url
-	MetadataOnly    bool   // Only send metadata about the event
-	Debug           bool   // Print Epsagon debug information
-	SendTimeout     string // Timeout for sending traces to Epsagon
-	Disable         bool   // Disable sending traces
-	TestMode        bool   // TestMode sending traces
+	ApplicationName string   // Application name in Epsagon
+	Token           string   // Epsgaon Token
+	CollectorURL    string   // Epsagon collector url
+	MetadataOnly    bool     // Only send metadata about the event
+	Debug           bool     // Print Epsagon debug information
+	SendTimeout     string   // Timeout for sending traces to Epsagon
+	Disable         bool     // Disable sending traces
+	TestMode        bool     // TestMode sending traces
+	IgnoredKeys     []string // IgnoredKeys are keys that will be masked from events metadata
 }
 
-type EpsagonLabel struct {
+type epsagonLabel struct {
 	key   string
 	value interface{}
 }
@@ -99,7 +100,7 @@ type epsagonTracer struct {
 	events              []*protocol.Event
 	runnerExceptionPipe chan *protocol.Exception
 	exceptionsPipe      chan *protocol.Exception
-	labelsPipe          chan EpsagonLabel
+	labelsPipe          chan epsagonLabel
 	exceptions          []*protocol.Exception
 	runnerException     *protocol.Exception
 	labels              map[string]interface{}
@@ -123,7 +124,14 @@ func (tracer *epsagonTracer) Start() {
 	}
 }
 
+func (tracer *epsagonTracer) maskIgnoredKeys() {
+	for _, event := range tracer.events {
+		tracer.maskEventIgnoredKeys(event, tracer.Config.IgnoredKeys)
+	}
+}
+
 func (tracer *epsagonTracer) sendTraces() {
+	tracer.maskIgnoredKeys()
 	tracesReader, err := tracer.getTraceReader()
 	if err != nil {
 		// TODO create an exception and send a trace only with that
@@ -351,7 +359,7 @@ func CreateTracer(config *Config) Tracer {
 		stopped:             make(chan struct{}),
 		running:             make(chan struct{}),
 		labels:              make(map[string]interface{}),
-		labelsPipe:          make(chan EpsagonLabel),
+		labelsPipe:          make(chan epsagonLabel),
 	}
 	if config.Debug {
 		log.Println("EPSAGON DEBUG: Created a new tracer")
@@ -397,7 +405,7 @@ func AddEvent(event *protocol.Event) {
 	GlobalTracer.AddEvent(event)
 }
 
-func (tracer *epsagonTracer) verifyLabel(label EpsagonLabel) bool {
+func (tracer *epsagonTracer) verifyLabel(label epsagonLabel) bool {
 	var valueSize = 0
 	switch label.value.(type) {
 	case int, float64, bool:
@@ -423,7 +431,7 @@ func (tracer *epsagonTracer) AddLabel(key string, value interface{}) {
 	if tracer.Config.Debug {
 		log.Println("EPSAGON DEBUG: Adding label: ", key, value)
 	}
-	label := EpsagonLabel{key, value}
+	label := epsagonLabel{key, value}
 	tracer.labelsPipe <- label
 }
 

@@ -19,6 +19,7 @@ This package provides tracing to Go applications for the collection of distribut
 - [Usage](#usage)
   - [Tagging Traces](#tagging-traces)
   - [Custom Errors](#custom-errors)
+  - [Ignored Keys](#ignored-keys)
 - [Frameworks](#frameworks)
 - [Integrations](#integrations)
 - [Configuration](#configuration)
@@ -75,6 +76,17 @@ You can also set a tracer as an error with a default error type:
 epsagon.Error("My custom error")
 # Or manually add an error
 epsagon.Error(errors.New("My custom error"))
+```
+
+### Ignored Keys
+
+You can set keys that will be masked in the sent trace from the events metadata to hide selected information:
+```go
+	config.IgnoredKeys = []string{"password"}
+	client := http.Client{Transport: epsagonhttp.NewTracingTransport(ctx)}
+	// This password will be masked in the sent trace:
+	decodedJSON, err := json.Marshal(map[string]string{"password": "abcde", "animal": "lion"})
+	resp, err := client.Post("http://example.com/upload", "application/json", bytes.NewReader(decodedJSON))
 ```
 
 Valid types are `string` and `error`.
