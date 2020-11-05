@@ -17,30 +17,38 @@ func arrayToHitMap(arr []string) map[string]bool {
 	return hitMap
 }
 
-func maskNestedJSONKeys(decodedJSON interface{}, ignoredKeysMap map[string]bool) interface{} {
+func maskNestedJSONKeys(decodedJSON interface{}, ignoredKeysMap map[string]bool) (interface{}, bool) {
+	var changed bool
 	decodedValue := reflect.ValueOf(decodedJSON)
 	if decodedValue.Kind() == reflect.Invalid || decodedValue.IsZero() {
-		return decodedJSON
+		return decodedJSON, false
 	}
 	switch decodedValue.Kind() {
 	case reflect.Array, reflect.Slice:
 		for i := 0; i < decodedValue.Len(); i++ {
 			nestedValue := decodedValue.Index(i)
-			newNestedValue := maskNestedJSONKeys(nestedValue.Interface(), ignoredKeysMap)
-			nestedValue.Set(reflect.ValueOf(newNestedValue))
+			newNestedValue, indexChanged := maskNestedJSONKeys(nestedValue.Interface(), ignoredKeysMap)
+			if indexChanged {
+				nestedValue.Set(reflect.ValueOf(newNestedValue))
+				changed = true
+			}
 		}
 	case reflect.Map:
 		for _, key := range decodedValue.MapKeys() {
 			if ignoredKeysMap[key.String()] {
 				decodedValue.SetMapIndex(key, reflect.ValueOf(maskedValue))
+				changed = true
 			} else {
 				nestedValue := decodedValue.MapIndex(key)
-				newNestedValue := maskNestedJSONKeys(nestedValue.Interface(), ignoredKeysMap)
-				decodedValue.SetMapIndex(key, reflect.ValueOf(newNestedValue))
+				newNestedValue, valueChanged := maskNestedJSONKeys(nestedValue.Interface(), ignoredKeysMap)
+				if valueChanged {
+					decodedValue.SetMapIndex(key, reflect.ValueOf(newNestedValue))
+					changed = true
+				}
 			}
 		}
 	}
-	return decodedValue.Interface()
+	return decodedValue.Interface(), changed
 }
 
 // maskIgnoredKeys masks all the keys in the
@@ -55,16 +63,18 @@ func (tracer *epsagonTracer) maskEventIgnoredKeys(event *protocol.Event, ignored
 			var decodedJSON interface{}
 			err := json.Unmarshal([]byte(value), &decodedJSON)
 			if err == nil {
-				newValue := maskNestedJSONKeys(decodedJSON, ignoredKeysMap)
-				encodedNewValue, err := json.Marshal(newValue)
-				if err == nil {
-					event.Resource.Metadata[key] = string(encodedNewValue)
-				} else {
-					exception := createException("internal json encode error", err.Error())
-					if tracer.Stopped() {
-						tracer.exceptions = append(tracer.exceptions, exception)
+				newValue, changed := maskNestedJSONKeys(decodedJSON, ignoredKeysMap)
+				if changed {
+					encodedNewValue, err := json.Marshal(newValue)
+					if err == nil {
+						event.Resource.Metadata[key] = string(encodedNewValue)
 					} else {
-						tracer.AddException(exception)
+						exception := createException("internal json encode error", err.Error())
+						if tracer.Stopped() {
+							tracer.exceptions = append(tracer.exceptions, exception)
+						} else {
+							tracer.AddException(exception)
+						}
 					}
 				}
 			}
