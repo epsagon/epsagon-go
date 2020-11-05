@@ -59,7 +59,7 @@ epsagon.Label("items_in_cart", items_in_cart)
 ```
 
 Valid types are `string`, `bool`, `int` and `float`.
-
+Custom labels are not trimmed with the trace events in case the trace is too big
 
 ### Custom Errors
 
