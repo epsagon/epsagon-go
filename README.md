@@ -78,6 +78,8 @@ epsagon.Error("My custom error")
 epsagon.Error(errors.New("My custom error"))
 ```
 
+Valid types are `string` and `error`.
+
 ### Ignored Keys
 
 You can set keys that will be masked in the sent trace from the events metadata to hide selected information:
@@ -89,7 +91,6 @@ You can set keys that will be masked in the sent trace from the events metadata 
 	resp, err := client.Post("http://example.com/upload", "application/json", bytes.NewReader(decodedJSON))
 ```
 
-Valid types are `string` and `error`.
 ## Frameworks
 
 The following frameworks are supported by Epsagon:
