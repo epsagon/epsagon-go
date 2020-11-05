@@ -46,6 +46,7 @@ var strongKeys = map[string]bool{
 	EpsagonHTTPTraceIDKey:    true,
 	EpsagonRequestTraceIDKey: true,
 	AwsServiceKey:            true,
+	LabelsKey:                true,
 	"aws_account":            true,
 	"region":                 true,
 	"log_group_name":         true,
