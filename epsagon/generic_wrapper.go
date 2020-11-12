@@ -42,6 +42,11 @@ func WrapGenericFunction(
 	}
 }
 
+// GetRunnerEvent returns the wrapper runner event
+func (wrapper *GenericWrapper) GetRunnerEvent() *protocol.Event {
+	return wrapper.runner
+}
+
 // createRunner creates a runner event but does not add it to the tracer
 // the runner is saved for further manipulations at wrapper.runner
 func (wrapper *GenericWrapper) createRunner() {

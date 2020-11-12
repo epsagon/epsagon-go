@@ -40,8 +40,10 @@ func wrapGinWriter(c *gin.Context, triggerEvent *protocol.Event) {
 	c.Writer = wrappedResponseWriter
 }
 
-func postExecutionUpdates(wrapperTracer tracer.Tracer, triggerEvent *protocol.Event, c *gin.Context) {
-	runner := wrapperTracer.GetRunnerEvent()
+func postExecutionUpdates(
+	wrapperTracer tracer.Tracer, triggerEvent *protocol.Event,
+	c *gin.Context, handlerWrapper *epsagon.GenericWrapper) {
+	runner := handlerWrapper.GetRunnerEvent()
 	if runner != nil {
 		runner.Resource.Type = "gin"
 	}
@@ -75,7 +77,7 @@ func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath strin
 		if !config.MetadataOnly {
 			wrapGinWriter(c, triggerEvent)
 		}
-		defer postExecutionUpdates(wrapperTracer, triggerEvent, c)
+		defer postExecutionUpdates(wrapperTracer, triggerEvent, c, wrapper)
 		wrapper.Call(c)
 		triggerEvent.Resource.Metadata["status_code"] = fmt.Sprint(c.Writer.Status())
 	}
