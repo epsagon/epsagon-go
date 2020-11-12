@@ -1,6 +1,8 @@
 package tracer
 
 import (
+	"time"
+
 	"github.com/epsagon/epsagon-go/protocol"
 )
 
@@ -16,6 +18,8 @@ type MockedEpsagonTracer struct {
 	PanicAddEvent     bool
 	PanicAddException bool
 	PanicStop         bool
+	DelayAddEvent     bool
+	DelayedEventsChan chan bool
 	stopped           bool
 }
 
@@ -50,7 +54,15 @@ func (t *MockedEpsagonTracer) AddEvent(e *protocol.Event) {
 	if t.PanicAddEvent {
 		panic("panic in AddEvent()")
 	}
-	*t.Events = append(*t.Events, e)
+	if t.DelayAddEvent {
+		go func() {
+			time.Sleep(time.Second)
+			*t.Events = append(*t.Events, e)
+			t.DelayedEventsChan <- true
+		}()
+	} else {
+		*t.Events = append(*t.Events, e)
+	}
 }
 
 // AddException implementes mocked AddEvent
