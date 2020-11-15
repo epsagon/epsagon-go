@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
@@ -93,12 +94,35 @@ var _ = Describe("gin_wrapper", func() {
 				).To(Equal("ok"))
 			})
 			It("Creates a runner and trigger events for handler invocation", func() {
+				config := &epsagon.Config{Config: tracer.Config{
+					Disable:  true,
+					TestMode: true,
+				}}
+				eventsRecievedChan := make(chan bool)
+				tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
+					Events:            &events,
+					Exceptions:        &exceptions,
+					Labels:            make(map[string]interface{}),
+					Config:            &config.Config,
+					DelayAddEvent:     true,
+					DelayedEventsChan: eventsRecievedChan,
+				}
 				mockedEngine.TestHandler = func(handler gin.HandlerFunc) {
 					handler(testGinContext)
 				}
 				wrapper.GET("/test", func(c *gin.Context) {
 					called = true
 				})
+				timer := time.NewTimer(time.Second * 2)
+				for eventsRecieved := 0; eventsRecieved < 2; {
+					select {
+					case <-eventsRecievedChan:
+						eventsRecieved++
+					case <-timer.C:
+						// timeout - events should have been recieved
+						Expect(false).To(Equal(true))
+					}
+				}
 				Expect(len(events)).To(Equal(2))
 				var runnerEvent *protocol.Event
 				for _, event := range events {

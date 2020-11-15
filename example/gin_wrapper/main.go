@@ -42,7 +42,7 @@ func main() {
 
 		client := http.Client{
 			Transport: epsagonhttp.NewTracingTransport(epsagongin.EpsagonContext(c))}
-		resp, err := client.Get("http://example.com")
+		resp, err := client.Get("http://www.example.com")
 
 		if err == nil {
 			respBody, err := ioutil.ReadAll(resp.Body)
