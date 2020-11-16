@@ -2,6 +2,7 @@ package epsagongin
 
 import (
 	"context"
+	"os"
 	"fmt"
 	"net/http"
 
@@ -127,12 +128,19 @@ func (router *GinRouterWrapper) HEAD(relativePath string, handlers ...gin.Handle
 	return router.Handle(http.MethodHead, relativePath, handlers...)
 }
 
+// Run is a shortcut for router.IRouter.(*gin.Engine).Run()
+func (router *GinRouterWrapper) Run(addr ...string) {
+	router.IRouter.(*gin.Engine).Run(addr)
+}
+
 func (grw *wrappedGinWriter) Header() http.Header {
 	return grw.htrw.Header()
 }
+
 func (grw *wrappedGinWriter) Write(data []byte) (int, error) {
 	return grw.htrw.Write(data)
 }
+
 func (grw *wrappedGinWriter) WriteHeader(statusCode int) {
 	grw.htrw.WriteHeader(statusCode)
 }
