@@ -13,14 +13,13 @@ import (
 )
 
 func main() {
-	// r := gin.Default()
 	config := epsagon.NewTracerConfig(
-		"erez-test-gin", "",
+		"gin-wrapper-test", "",
 	)
 	config.MetadataOnly = false
 	r := epsagongin.GinRouterWrapper{
 		IRouter:  gin.Default(),
-		Hostname: "my_site",
+		Hostname: "my-site",
 		Config:   config,
 	}
 
@@ -55,6 +54,13 @@ func main() {
 			"message": "pong",
 		})
 	})
-	// r.Run()
-	r.IRouter.(*gin.Engine).Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+
+	/* listen and serve on 0.0.0.0:<PORT> */
+	/* for windows - localhost:<PORT> */
+	/* Port arg format: ":<PORT>" "*/
+	err := r.Run(":3001")
+
+	if err != nil {
+		fmt.Println(err)
+	}
 }
