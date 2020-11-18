@@ -16,7 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const TEST_RESPONSE_STRING = "response_test_string"
+const testResponseString = "response_test_string"
 
 func TestEpsagonHTTPWrappers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -40,7 +40,7 @@ func verifyResponseSuccess(response *http.Response, err error) {
 	responseData, err := ioutil.ReadAll(response.Body)
 	Expect(err).To(BeNil())
 	responseString := string(responseData)
-	Expect(responseString).To(Equal(TEST_RESPONSE_STRING))
+	Expect(responseString).To(Equal(testResponseString))
 }
 
 type mockTransport struct {
@@ -54,17 +54,17 @@ func (m *mockTransport) RoundTrip(req *http.Request) (resp *http.Response, err e
 
 var _ = Describe("ClientWrapper", func() {
 	var (
-		events        []*protocol.Event
-		exceptions    []*protocol.Exception
-		requests      []*http.Request
-		testServer    *httptest.Server
-		response_data []byte
+		events       []*protocol.Event
+		exceptions   []*protocol.Exception
+		requests     []*http.Request
+		testServer   *httptest.Server
+		responseData []byte
 	)
 	BeforeEach(func() {
 		requests = make([]*http.Request, 0)
 		events = make([]*protocol.Event, 0)
 		exceptions = make([]*protocol.Exception, 0)
-		response_data = []byte(TEST_RESPONSE_STRING)
+		responseData = []byte(testResponseString)
 		tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 			Events:     &events,
 			Exceptions: &exceptions,
@@ -73,7 +73,7 @@ var _ = Describe("ClientWrapper", func() {
 		testServer = httptest.NewServer(http.HandlerFunc(
 			func(res http.ResponseWriter, req *http.Request) {
 				requests = append(requests, req)
-				res.Write(response_data)
+				res.Write(responseData)
 			}))
 	})
 	AfterEach(func() {
@@ -118,7 +118,7 @@ var _ = Describe("ClientWrapper", func() {
 				client := Wrap(http.Client{})
 				req, err := http.NewRequest(
 					http.MethodGet,
-					fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN),
+					fmt.Sprintf("https://test.%s.com", AppsyncAPISubdomain),
 					nil,
 				)
 				if err != nil {
@@ -135,7 +135,7 @@ var _ = Describe("ClientWrapper", func() {
 				client := Wrap(http.Client{})
 				req, err := http.NewRequest(
 					http.MethodGet,
-					fmt.Sprintf("https://%s", EPSAGON_DOMAIN),
+					fmt.Sprintf("https://%s", EpsagonDomain),
 					nil,
 				)
 				if err != nil {
@@ -161,7 +161,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				Expect(events[0].Resource.Metadata["response_body"]).To(
-					Equal(string(response_data)))
+					Equal(string(responseData)))
 				verifyTraceIDExists(events[0])
 			})
 		})
@@ -176,7 +176,7 @@ var _ = Describe("ClientWrapper", func() {
 		Context("request to whitelisted url", func() {
 			It("Adds event with trace ID", func() {
 				client := Wrap(http.Client{})
-				client.Get(fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN))
+				client.Get(fmt.Sprintf("https://test.%s.com", AppsyncAPISubdomain))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
 				verifyTraceIDExists(events[0])
@@ -185,7 +185,7 @@ var _ = Describe("ClientWrapper", func() {
 		Context("request to blacklisted url", func() {
 			It("Adds event with trace ID", func() {
 				client := Wrap(http.Client{})
-				client.Get(fmt.Sprintf("https://%s", EPSAGON_DOMAIN))
+				client.Get(fmt.Sprintf("https://%s", EpsagonDomain))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				verifyTraceIDNotExists(events[0])
@@ -219,7 +219,7 @@ var _ = Describe("ClientWrapper", func() {
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				Expect(events[0].Resource.Metadata["response_body"]).To(
-					Equal(string(response_data)))
+					Equal(string(responseData)))
 				Expect(events[0].Resource.Metadata["request_body"]).To(
 					Equal(data))
 				verifyTraceIDExists(events[0])
@@ -261,7 +261,7 @@ var _ = Describe("ClientWrapper", func() {
 				client := Wrap(http.Client{})
 				data := "{\"hello\":\"world\"}"
 				client.Post(
-					fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN),
+					fmt.Sprintf("https://test.%s.com", AppsyncAPISubdomain),
 					"application/json",
 					strings.NewReader(data))
 				Expect(events).To(HaveLen(1))
@@ -274,7 +274,7 @@ var _ = Describe("ClientWrapper", func() {
 				client := Wrap(http.Client{})
 				data := "{\"hello\":\"world\"}"
 				client.Post(
-					fmt.Sprintf("https://%s", EPSAGON_DOMAIN),
+					fmt.Sprintf("https://%s", EpsagonDomain),
 					"application/json",
 					strings.NewReader(data))
 				Expect(events).To(HaveLen(1))
@@ -307,7 +307,7 @@ var _ = Describe("ClientWrapper", func() {
 				client.PostForm(
 					testServer.URL,
 					map[string][]string{
-						"hello": []string{"world", "of", "serverless"},
+						"hello": {"world", "of", "serverless"},
 					},
 				)
 				Expect(requests).To(HaveLen(1))
@@ -323,7 +323,7 @@ var _ = Describe("ClientWrapper", func() {
 				response, err := client.PostForm(
 					testServer.URL,
 					map[string][]string{
-						"hello": []string{"world", "of", "serverless"},
+						"hello": {"world", "of", "serverless"},
 					},
 				)
 				verifyResponseSuccess(response, err)
@@ -333,9 +333,9 @@ var _ = Describe("ClientWrapper", func() {
 			It("Adds event with trace ID", func() {
 				client := Wrap(http.Client{})
 				client.PostForm(
-					fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN),
+					fmt.Sprintf("https://test.%s.com", AppsyncAPISubdomain),
 					map[string][]string{
-						"hello": []string{"world", "of", "serverless"},
+						"hello": {"world", "of", "serverless"},
 					},
 				)
 				Expect(events).To(HaveLen(1))
@@ -347,9 +347,9 @@ var _ = Describe("ClientWrapper", func() {
 			It("Adds event with trace ID", func() {
 				client := Wrap(http.Client{})
 				client.PostForm(
-					fmt.Sprintf("https://%s", EPSAGON_DOMAIN),
+					fmt.Sprintf("https://%s", EpsagonDomain),
 					map[string][]string{
-						"hello": []string{"world", "of", "serverless"},
+						"hello": {"world", "of", "serverless"},
 					},
 				)
 				Expect(events).To(HaveLen(1))
@@ -363,7 +363,7 @@ var _ = Describe("ClientWrapper", func() {
 				client.PostForm(
 					testServer.URL+"blabla",
 					map[string][]string{
-						"hello": []string{"world", "of", "serverless"},
+						"hello": {"world", "of", "serverless"},
 					},
 				)
 				Expect(requests).To(HaveLen(0))
@@ -399,7 +399,7 @@ var _ = Describe("ClientWrapper", func() {
 		Context("request to whitelisted url", func() {
 			It("Adds event with trace ID", func() {
 				client := Wrap(http.Client{})
-				client.Head(fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN))
+				client.Head(fmt.Sprintf("https://test.%s.com", AppsyncAPISubdomain))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
 				verifyTraceIDExists(events[0])
@@ -408,7 +408,7 @@ var _ = Describe("ClientWrapper", func() {
 		Context("request to blacklisted url", func() {
 			It("Adds event with trace ID", func() {
 				client := Wrap(http.Client{})
-				client.Head(fmt.Sprintf("https://%s", EPSAGON_DOMAIN))
+				client.Head(fmt.Sprintf("https://%s", EpsagonDomain))
 				Expect(events).To(HaveLen(1))
 				Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
 				verifyTraceIDNotExists(events[0])
@@ -470,7 +470,7 @@ var _ = Describe("ClientWrapper", func() {
 				client := &http.Client{Transport: NewTracingTransport()}
 				req, err := http.NewRequest(
 					http.MethodGet,
-					fmt.Sprintf("https://test.%s.com", APPSYNC_API_SUBDOMAIN),
+					fmt.Sprintf("https://test.%s.com", AppsyncAPISubdomain),
 					nil,
 				)
 				if err != nil {
@@ -487,7 +487,7 @@ var _ = Describe("ClientWrapper", func() {
 				client := &http.Client{Transport: NewTracingTransport()}
 				req, err := http.NewRequest(
 					http.MethodGet,
-					fmt.Sprintf("https://%s", EPSAGON_DOMAIN),
+					fmt.Sprintf("https://%s", EpsagonDomain),
 					nil,
 				)
 				if err != nil {

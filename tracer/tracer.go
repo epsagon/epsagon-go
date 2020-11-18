@@ -36,10 +36,16 @@ const MaxLabelsSize = 10 * 1024
 // LabelsKey is the key for labels in resource metadata
 const LabelsKey = "labels"
 
+// IsTrimmedKey metadata key to indicate trimmed trace
 const IsTrimmedKey = "is_trimmed"
 
+// EpsagonHTTPTraceIDKey metadata key to indicate http trace id
 const EpsagonHTTPTraceIDKey = "http_trace_id"
+
+// EpsagonRequestTraceIDKey metadata key to indicate request trace id
 const EpsagonRequestTraceIDKey = "request_trace_id"
+
+// AwsServiceKey metadata key to indicate aws service key
 const AwsServiceKey = "aws.service"
 
 var strongKeys = map[string]bool{
@@ -208,7 +214,7 @@ func (tracer *epsagonTracer) stripEvents(traceLength int, marshaler *jsonpb.Mars
 			continue
 		}
 		eventSize = len(eventJSON)
-		for key, _ := range event.Resource.Metadata {
+		for key := range event.Resource.Metadata {
 			if !isStrongKey(key) {
 				delete(event.Resource.Metadata, key)
 			}
@@ -367,7 +373,7 @@ func CreateTracer(config *Config) Tracer {
 	return tracer
 }
 
-// CreateTracer will initiallize a global epsagon tracer
+// CreateGlobalTracer will initiallize a global epsagon tracer
 func CreateGlobalTracer(config *Config) Tracer {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -470,7 +476,7 @@ func (tracer *epsagonTracer) Stop() {
 	}
 }
 
-// StopTracer will close the tracer and send all the data to the collector
+// StopGlobalTracer will close the tracer and send all the data to the collector
 func StopGlobalTracer() {
 	if GlobalTracer == nil || GlobalTracer.Stopped() {
 		// TODO

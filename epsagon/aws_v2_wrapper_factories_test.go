@@ -10,14 +10,14 @@ import (
 	"testing"
 )
 
-const TEST_ACCOUNT = "test_account"
-const TEST_USER_ID = "test_user_id"
-const TEST_ARN = "test_arn"
+const TestAccount = "test_account"
+const TestUserID = "test_user_id"
+const TestArn = "test_arn"
 
 type CallerIdentityMock struct {
 	Account *string
 	Arn     *string
-	UserId  *string
+	UserID  *string
 }
 
 func TestEpsagonFactoriesTracer(t *testing.T) {
@@ -40,36 +40,36 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 				}
 			})
 			It("Metadata Only is false, partial data", func() {
-				account_data := TEST_ACCOUNT
+				accountData := TestAccount
 				request.Data = &CallerIdentityMock{
-					Account: &account_data,
+					Account: &accountData,
 				}
 				epsagonawsv2factories.StsDataFactory(request, resource, false, tracer.GlobalTracer)
-				Expect(resource.Metadata["Account"]).To(Equal(TEST_ACCOUNT))
+				Expect(resource.Metadata["Account"]).To(Equal(TestAccount))
 			})
 			It("Metadata Only is false, full data", func() {
-				account_data := TEST_ACCOUNT
-				user_id_data := TEST_USER_ID
-				arn_data := TEST_ARN
+				accountData := TestAccount
+				userIDData := TestUserID
+				arnData := TestArn
 				request.Data = &CallerIdentityMock{
-					Account: &account_data,
-					Arn:     &arn_data,
-					UserId:  &user_id_data,
+					Account: &accountData,
+					Arn:     &arnData,
+					UserID:  &userIDData,
 				}
 				epsagonawsv2factories.StsDataFactory(request, resource, false, tracer.GlobalTracer)
 				Expect(len(resource.Metadata)).To(Equal(3))
-				Expect(resource.Metadata["Account"]).To(Equal(TEST_ACCOUNT))
-				Expect(resource.Metadata["Arn"]).To(Equal(TEST_ARN))
-				Expect(resource.Metadata["UserId"]).To(Equal(TEST_USER_ID))
+				Expect(resource.Metadata["Account"]).To(Equal(TestAccount))
+				Expect(resource.Metadata["Arn"]).To(Equal(TestArn))
+				Expect(resource.Metadata["UserID"]).To(Equal(TestUserID))
 			})
 			It("Metadata Only is true", func() {
-				account_data := TEST_ACCOUNT
-				user_id_data := TEST_USER_ID
-				arn_data := TEST_ARN
+				accountData := TestAccount
+				userIDData := TestUserID
+				arnData := TestArn
 				request.Data = &CallerIdentityMock{
-					Account: &account_data,
-					Arn:     &arn_data,
-					UserId:  &user_id_data,
+					Account: &accountData,
+					Arn:     &arnData,
+					UserID:  &userIDData,
 				}
 				epsagonawsv2factories.StsDataFactory(request, resource, true, tracer.GlobalTracer)
 				Expect(len(resource.Metadata)).To(Equal(0))

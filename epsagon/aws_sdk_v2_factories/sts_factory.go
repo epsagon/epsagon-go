@@ -7,7 +7,7 @@ import (
 	"reflect"
 )
 
-// STSEventDataFactory to create epsagon Resource from aws.Request to STS
+// StsDataFactory to create epsagon Resource from aws.Request to STS
 func StsDataFactory(
 	r *aws.Request,
 	res *protocol.Resource,
