@@ -8,6 +8,7 @@ env:
 
 before_install:
   - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+  - GO_FILES=$(find . -iname '*.go' -type f | grep -v /vendor/) # All the .go files, excluding vendor/
 
 install:
   - go mod download
@@ -15,6 +16,7 @@ install:
   - go mod tidy
 
 script:
-  - golint -set_exit_status $(go list ./...)
+  - test -z $(gofmt -d -s -l $GO_FILES)         # Fail if a .go file hasn't been formatted with gofmt
+  - golint -set_exit_status $(go list ./...) # Fail if golint fails on any file
   - go vet -v ./...
   - go test ./...
