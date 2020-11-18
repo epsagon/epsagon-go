@@ -131,7 +131,7 @@ func (router *GinRouterWrapper) HEAD(relativePath string, handlers ...gin.Handle
 func (router *GinRouterWrapper) Run(addr ...string) error {
 	engine, ok := router.IRouter.(*gin.Engine)
 
-	if ! ok {
+	if !ok {
 		return fmt.Errorf("Could not start Gin engine")
 	}
 
