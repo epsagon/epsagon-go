@@ -51,25 +51,6 @@ func handleSNSdefault(r *request.Request, res *protocol.Resource, metadataOnly b
 	if ok {
 		res.Name = targetName
 	}
-	return
-	topicArn, ok := getFieldStringPtr(inputValue, "TopicArn")
-	if ok {
-		splitTopic := strings.Split(topicArn, ":")
-		topicName := splitTopic[len(splitTopic)-1]
-		if topicName == InvalidFieldValue {
-			targetArn, ok := getFieldStringPtr(inputValue, "TargetArn")
-			if ok {
-				splitTarget := strings.Split(targetArn, ":")
-				targetName := splitTopic[len(splitTarget)-1]
-				if targetName != InvalidFieldValue {
-					res.Name = targetName
-				}
-
-			}
-		} else {
-			res.Name = splitTopic[len(splitTopic)-1]
-		}
-	}
 }
 
 func handleSNSCreateTopic(r *request.Request, res *protocol.Resource, metadataOnly bool, _ tracer.Tracer) {
