@@ -6,10 +6,12 @@ import (
 	. "github.com/onsi/gomega"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
 	awsmetadata "github.com/aws/aws-sdk-go/aws/client/metadata"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 
 	"github.com/epsagon/epsagon-go/protocol"
@@ -55,6 +57,38 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 				Expect(events[0].Resource.Type).To(Equal("sqs"))
 				Expect(events[0].Resource.Operation).To(Equal("GetQueueUrl"))
 				Expect(events[0].Resource.Name).To(Equal(sqsQueueName))
+			})
+		})
+		Context("use of SNS publish with topic ARN", func() {
+			It("adds an event with the correct data", func() {
+				sess := WrapSession(session.Must(session.NewSession()))
+				svcSNS := sns.New(sess)
+				targetArn := "arn:aws:sns:us-east-1:000000000000:some-target-name"
+				_, _ = svcSNS.Publish(&sns.PublishInput{
+					Message:  aws.String("message test"),
+					TopicArn: &targetArn,
+				})
+				Expect(len(events)).To(Equal(1))
+				Expect(len(exceptions)).To(Equal(0))
+				Expect(events[0].Resource.Type).To(Equal("sns"))
+				Expect(events[0].Resource.Operation).To(Equal("Publish"))
+				Expect(events[0].Resource.Name).To(Equal("some-target-name"))
+			})
+		})
+		Context("use of SNS publish with target ARN", func() {
+			It("adds an event with the correct data", func() {
+				sess := WrapSession(session.Must(session.NewSession()))
+				svcSNS := sns.New(sess)
+				targetArn := "arn:aws:sns:us-east-1:000000000000:some-target-name"
+				_, _ = svcSNS.Publish(&sns.PublishInput{
+					Message:   aws.String("message test"),
+					TargetArn: &targetArn,
+				})
+				Expect(len(events)).To(Equal(1))
+				Expect(len(exceptions)).To(Equal(0))
+				Expect(events[0].Resource.Type).To(Equal("sns"))
+				Expect(events[0].Resource.Operation).To(Equal("Publish"))
+				Expect(events[0].Resource.Name).To(Equal("some-target-name"))
 			})
 		})
 		Context("use of unknown operation", func() {

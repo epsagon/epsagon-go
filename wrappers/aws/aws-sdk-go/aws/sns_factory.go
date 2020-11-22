@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const InvalidFieldValue = "<invalid Value>"
+
 func snsEventDataFactory(
 	r *request.Request,
 	res *protocol.Resource,
@@ -27,12 +29,46 @@ func snsEventDataFactory(
 	)
 }
 
+// gets the target name
+func getSNStargetName(inputValue reflect.Value, targetKey string) (string, bool) {
+	arnString, ok := getFieldStringPtr(inputValue, targetKey)
+	if !ok {
+		return "", false
+	}
+	arnSplit := strings.Split(arnString, ":")
+	targetName := arnSplit[len(arnSplit)-1]
+	return targetName, targetName != InvalidFieldValue
+}
+
 func handleSNSdefault(r *request.Request, res *protocol.Resource, metadataOnly bool, _ tracer.Tracer) {
 	inputValue := reflect.ValueOf(r.Params).Elem()
+	targetName, ok := getSNStargetName(inputValue, "TopicArn")
+	if ok {
+		res.Name = targetName
+		return
+	}
+	targetName, ok = getSNStargetName(inputValue, "TargetArn")
+	if ok {
+		res.Name = targetName
+	}
+	return
 	topicArn, ok := getFieldStringPtr(inputValue, "TopicArn")
 	if ok {
 		splitTopic := strings.Split(topicArn, ":")
-		res.Name = splitTopic[len(splitTopic)-1]
+		topicName := splitTopic[len(splitTopic)-1]
+		if topicName == InvalidFieldValue {
+			targetArn, ok := getFieldStringPtr(inputValue, "TargetArn")
+			if ok {
+				splitTarget := strings.Split(targetArn, ":")
+				targetName := splitTopic[len(splitTarget)-1]
+				if targetName != InvalidFieldValue {
+					res.Name = targetName
+				}
+
+			}
+		} else {
+			res.Name = splitTopic[len(splitTopic)-1]
+		}
 	}
 }
 
