@@ -149,7 +149,23 @@ func (tracer *epsagonTracer) sendTraces() {
 	client := &http.Client{Timeout: sendTimeout}
 
 	if !tracer.Config.Disable {
-		HandleSendTracesResponse(client.Post(tracer.Config.CollectorURL, "application/json", tracesReader))
+		if len(tracer.Config.Token) == 0 {
+			if tracer.Config.Debug {
+				log.Printf("Epsagon: empty token, not sending traces\n")
+			}
+			return
+		}
+		req, err := http.NewRequest(http.MethodPost, tracer.Config.CollectorURL, tracesReader)
+		if err == nil {
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tracer.Config.Token))
+			HandleSendTracesResponse(client.Do(req))
+		} else {
+			if tracer.Config.Debug {
+				log.Printf("Epsagon: Encountered an error while trying to send traces: %v\n", err)
+			}
+		}
+
 	}
 }
 
