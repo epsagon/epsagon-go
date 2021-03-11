@@ -70,6 +70,9 @@ type Tracer interface {
 	Start()
 	Running() bool
 	// Stop the tracer collecting data and send trace
+	SendStopSignal()
+	// Stop the tracer collecting data and send trace, waiting
+	// for the tracer to finish running
 	Stop()
 	Stopped() bool
 	GetConfig() *Config
@@ -480,7 +483,7 @@ func (tracer *epsagonTracer) SendStopSignal() {
 	tracer.closeCmd <- struct{}{}
 }
 
-// Stop stops the tracer running routine
+// Stop stops the tracer running routine, waiting for the tracer to finish
 func (tracer *epsagonTracer) Stop() {
 	select {
 	case <-tracer.stopped:
