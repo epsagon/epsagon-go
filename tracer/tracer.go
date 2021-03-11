@@ -476,12 +476,17 @@ func AddException(exception *protocol.Exception) {
 }
 
 // Stop stops the tracer running routine
+func (tracer *epsagonTracer) SendStopSignal() {
+	tracer.closeCmd <- struct{}{}
+}
+
+// Stop stops the tracer running routine
 func (tracer *epsagonTracer) Stop() {
 	select {
 	case <-tracer.stopped:
 		return
 	default:
-		tracer.closeCmd <- struct{}{}
+		tracer.SendStopSignal()
 		<-tracer.stopped
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
-	"github.com/epsagon/epsagon-go/wrappers/net/http"
+	epsagonhttp "github.com/epsagon/epsagon-go/wrappers/net/http"
 	"github.com/gin-gonic/gin"
 )
 
@@ -65,7 +65,7 @@ func wrapGinHandler(handler gin.HandlerFunc, hostname string, relativePath strin
 	return func(c *gin.Context) {
 		wrapperTracer := tracer.CreateTracer(&config.Config)
 		wrapperTracer.Start()
-		defer wrapperTracer.Stop()
+		defer wrapperTracer.SendStopSignal()
 
 		c.Set(TracerKey, wrapperTracer)
 		wrapper := epsagon.WrapGenericFunction(
@@ -131,7 +131,7 @@ func (router *GinRouterWrapper) HEAD(relativePath string, handlers ...gin.Handle
 func (router *GinRouterWrapper) Run(addr ...string) error {
 	engine, ok := router.IRouter.(*gin.Engine)
 
-	if ! ok {
+	if !ok {
 		return fmt.Errorf("Could not start Gin engine")
 	}
 
