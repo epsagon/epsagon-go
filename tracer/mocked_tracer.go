@@ -37,6 +37,14 @@ func (t *MockedEpsagonTracer) Running() bool {
 }
 
 // Stop implementes mocked Stop
+func (t *MockedEpsagonTracer) SendStopSignal() {
+	if t.PanicStop {
+		panic("panic in Stop()")
+	}
+	t.stopped = true
+}
+
+// Stop implementes mocked Stop
 func (t *MockedEpsagonTracer) Stop() {
 	if t.PanicStop {
 		panic("panic in Stop()")
