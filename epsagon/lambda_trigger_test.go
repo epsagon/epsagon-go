@@ -70,15 +70,6 @@ func verifyLabelValue(key string, value string, labelsMap map[string]string) {
 	Expect(labelValue).To(Equal(value))
 }
 
-func ddbDataToJson(key string, value string) string {
-	mapData := map[string]lambdaEvents.DynamoDBAttributeValue{
-		key: lambdaEvents.NewStringAttribute(value),
-	}
-	dataBytes, err := getImageMapBytes(mapData)
-	Expect(err).To(BeNil())
-	return string(dataBytes)
-}
-
 var _ = Describe("epsagon trigger suite", func() {
 	Describe("addLambdaTrigger", func() {
 		var (
@@ -115,15 +106,14 @@ var _ = Describe("epsagon trigger suite", func() {
 				Expect(len(events)).To(BeNumerically("==", 1))
 				Expect(events[0].Resource.Type).To(Equal("dynamodb"))
 				verifyLabelValue("region", "us-east-1", events[0].Resource.Metadata)
-
 				verifyLabelValue(
 					"New Image",
-					ddbDataToJson("test2", "2"),
+					"{\"test2\":\"{\\n  S: \\\"2\\\"\\n}\"}",
 					events[0].Resource.Metadata,
 				)
 				verifyLabelValue(
 					"Old Image",
-					ddbDataToJson("test1", "1"),
+					"{\"test1\":\"{\\n  S: \\\"1\\\"\\n}\"}",
 					events[0].Resource.Metadata,
 				)
 			})
