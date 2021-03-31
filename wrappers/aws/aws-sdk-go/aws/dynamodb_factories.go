@@ -278,7 +278,6 @@ func handleDynamoDBQuery(
 
 	updateMapFromInt64(outputValue, responseMap, "Items Count", "Count")
 	updateMapFromInt64(outputValue, responseMap, "Scanned Items Count", "ScannedCount")
-	updateMapWithFieldToJSON(outputValue, responseMap, "ConsumedCapacity")
 	updateMapWithFieldToJSON(outputValue, responseMap, "ResponseMetadata")
 	if !metadataOnly {
 		itemsField := outputValue.FieldByName("Items")
@@ -286,6 +285,7 @@ func handleDynamoDBQuery(
 		updateWithStringValue(inputValue, parameters, "KeyConditionExpression")
 		updateWithStringValue(inputValue, parameters, "FilterExpression")
 		updateWithStringValue(inputValue, parameters, "ReturnConsumedCapacity")
+		updateMapWithFieldToJSON(outputValue, responseMap, "ConsumedCapacity")
 		updateMapWithFieldToJSON(inputValue, parameters, "ExpressionAttributeNames")
 		keyConditionsField := inputValue.FieldByName("KeyConditions")
 		parameters["KeyConditions"] = deserializeKeyConditions(keyConditionsField)
