@@ -6,16 +6,17 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"runtime/debug"
+	"strconv"
+	"strings"
+
 	lambdaEvents "github.com/aws/aws-lambda-go/events"
 	lambdaContext "github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
-	"reflect"
-	"runtime/debug"
-	"strconv"
-	"strings"
 )
 
 type triggerFactory func(event interface{}, metadataOnly bool) *protocol.Event
@@ -255,6 +256,18 @@ func unmarshalToStringMap(dav map[string]lambdaEvents.DynamoDBAttributeValue) (m
 	return serializedItems, nil
 }
 
+func getImageMapBytes(imageMap map[string]lambdaEvents.DynamoDBAttributeValue) ([]byte, error) {
+	itemMap, err := unmarshalToStringMap(imageMap)
+	if err != nil {
+		return nil, err
+	}
+	itemBytes, jsonError := json.Marshal(itemMap)
+	if jsonError != nil {
+		return nil, err
+	}
+	return itemBytes, nil
+}
+
 func triggerDynamoDBEvent(rawEvent interface{}, metadataOnly bool) *protocol.Event {
 	event, ok := rawEvent.(lambdaEvents.DynamoDBEvent)
 	if !ok {
@@ -286,15 +299,12 @@ func triggerDynamoDBEvent(rawEvent interface{}, metadataOnly bool) *protocol.Eve
 		},
 	}
 
-	itemMap, err := unmarshalToStringMap(event.Records[0].Change.NewImage)
-
+	itemBytes, err := getImageMapBytes(event.Records[0].Change.NewImage)
 	if err != nil {
 		return triggerEvent
 	}
-
-	itemBytes, jsonError := json.Marshal(itemMap)
-
-	if jsonError != nil {
+	oldItemBytes, oldImageErr := getImageMapBytes(event.Records[0].Change.OldImage)
+	if oldImageErr != nil {
 		return triggerEvent
 	}
 
@@ -304,6 +314,7 @@ func triggerDynamoDBEvent(rawEvent interface{}, metadataOnly bool) *protocol.Eve
 
 	if !metadataOnly {
 		triggerEvent.Resource.Metadata["New Image"] = string(itemBytes)
+		triggerEvent.Resource.Metadata["Old Image"] = string(oldItemBytes)
 	}
 
 	return triggerEvent
