@@ -26,16 +26,16 @@ func dynamodbEventDataFactory(
 		res.Name = tableName
 	}
 	handleSpecificOperations := map[string]specificOperationHandler{
-		"PutItem":          handleDynamoDBPutItem,
-		"GetItem":          handleDynamoDBGetItem,
-		"DeleteItem":       handleDynamoDBDeleteItem,
-		"UpdateItem":       handleDynamoDBUpdateItem,
-		"Scan":             handleDynamoDBScan,
-		"Query":            handleDynamoDBQuery,
-		"QueryWithContext": handleDynamoDBQuery,
-		"BatchWriteItem":   handleDynamoDBBatchWriteItem,
-		//"TransactWriteItems":            handleDynamoDBTransactWriteItems,
-		//"TransactWriteItemsWithContext": handleDynamoDBTransactWriteItems,
+		"PutItem":                       handleDynamoDBPutItem,
+		"GetItem":                       handleDynamoDBGetItem,
+		"DeleteItem":                    handleDynamoDBDeleteItem,
+		"UpdateItem":                    handleDynamoDBUpdateItem,
+		"Scan":                          handleDynamoDBScan,
+		"Query":                         handleDynamoDBQuery,
+		"QueryWithContext":              handleDynamoDBQuery,
+		"BatchWriteItem":                handleDynamoDBBatchWriteItem,
+		"TransactWriteItems":            handleDynamoDBTransactWriteItems,
+		"TransactWriteItemsWithContext": handleDynamoDBTransactWriteItems,
 	}
 	handler := handleSpecificOperations[res.Operation]
 	if handler != nil {
@@ -201,6 +201,40 @@ func deserializeKeyConditions(keyConditionsField reflect.Value) interface{} {
 	return conditionMap
 }
 
+func formatTransactItem(transactItem *dynamodb.TransactWriteItem) (string, string, string) {
+	if transactItem.Delete != nil {
+		return "Delete", transactItem.Delete.String(), *transactItem.Delete.TableName
+	}
+	if transactItem.Put != nil {
+		return "Put", transactItem.Put.String(), *transactItem.Put.TableName
+	}
+	if transactItem.Update != nil {
+		return "Update", transactItem.Update.String(), *transactItem.Update.TableName
+	}
+	return "<unknown operation>", "", ""
+}
+
+func deserializeTransactItems(itemsField reflect.Value) (interface{}, string) {
+	if isValueZero(itemsField) {
+		return []*dynamodb.TransactWriteItem{}, ""
+	}
+	tableName := ""
+	tempTableName := ""
+	input := itemsField.Interface().([]*dynamodb.TransactWriteItem)
+	formattedTransactItems := make([][]string, 0, len(input))
+	for _, transactItem := range input {
+		if transactItem != nil {
+			values := make([]string, 2)
+			values[0], values[1], tempTableName = formatTransactItem(transactItem)
+			formattedTransactItems = append(formattedTransactItems, values)
+			if len(tableName) == 0 && len(tempTableName) > 0 {
+				tableName = tempTableName
+			}
+		}
+	}
+	return formattedTransactItems, tableName
+}
+
 func handleDynamoDBScan(
 	r *request.Request,
 	res *protocol.Resource,
@@ -330,4 +364,32 @@ func handleDynamoDBBatchWriteItem(
 			res.Metadata["Items"] = deserializeItems(itemsValue, currentTracer)
 		}
 	}
+}
+
+func handleDynamoDBTransactWriteItems(
+	r *request.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	currentTracer tracer.Tracer,
+) {
+	inputValue := reflect.ValueOf(r.Params).Elem()
+	outputValue := reflect.ValueOf(r.Data).Elem()
+	responseMap := map[string]interface{}{}
+	parameters := map[string]interface{}{}
+	tableName := ""
+
+	if !metadataOnly {
+		updateMapWithFieldToJSON(outputValue, responseMap, "ConsumedCapacity")
+		updateWithStringValue(inputValue, parameters, "ReturnConsumedCapacity")
+		updateWithStringValue(inputValue, parameters, "ReturnItemCollectionMetrics")
+		itemsField := inputValue.FieldByName("TransactItems")
+		parameters["TransactItems"], tableName = deserializeTransactItems(itemsField)
+		if len(tableName) > 0 {
+			res.Name = tableName
+		}
+	}
+	if len(responseMap) > 0 && updateWithJsonMap(res.Metadata, "Response", responseMap) != nil {
+		return
+	}
+	updateWithJsonMap(res.Metadata, "Parameters", parameters)
 }
