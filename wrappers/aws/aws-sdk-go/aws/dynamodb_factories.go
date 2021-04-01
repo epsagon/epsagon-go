@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strconv"
+
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
-	"reflect"
 )
 
 func dynamodbEventDataFactory(
@@ -24,12 +26,16 @@ func dynamodbEventDataFactory(
 		res.Name = tableName
 	}
 	handleSpecificOperations := map[string]specificOperationHandler{
-		"PutItem":        handleDynamoDBPutItem,
-		"GetItem":        handleDynamoDBGetItem,
-		"DeleteItem":     handleDynamoDBDeleteItem,
-		"UpdateItem":     handleDynamoDBUpdateItem,
-		"Scan":           handleDynamoDBScan,
-		"BatchWriteItem": handleDynamoDBBatchWriteItem,
+		"PutItem":          handleDynamoDBPutItem,
+		"GetItem":          handleDynamoDBGetItem,
+		"DeleteItem":       handleDynamoDBDeleteItem,
+		"UpdateItem":       handleDynamoDBUpdateItem,
+		"Scan":             handleDynamoDBScan,
+		"Query":            handleDynamoDBQuery,
+		"QueryWithContext": handleDynamoDBQuery,
+		"BatchWriteItem":   handleDynamoDBBatchWriteItem,
+		//"TransactWriteItems":            handleDynamoDBTransactWriteItems,
+		//"TransactWriteItemsWithContext": handleDynamoDBTransactWriteItems,
 	}
 	handler := handleSpecificOperations[res.Operation]
 	if handler != nil {
@@ -37,20 +43,24 @@ func dynamodbEventDataFactory(
 	}
 }
 
-func deserializeAttributeMap(inputField reflect.Value) map[string]string {
-	formattedItem := make(map[string]string)
-	input := inputField.Interface().(map[string]*dynamodb.AttributeValue)
+func deserializeAttributeMap(input map[string]*dynamodb.AttributeValue) map[string]string {
+	formattedData := make(map[string]string)
 	for k, v := range input {
-		formattedItem[k] = v.String()
+		formattedData[k] = v.String()
 	}
-	return formattedItem
+	return formattedData
+}
+
+func deserializeRawAttributeMap(inputField reflect.Value) map[string]string {
+	input := inputField.Interface().(map[string]*dynamodb.AttributeValue)
+	return deserializeAttributeMap(input)
 }
 
 func jsonAttributeMap(inputField reflect.Value, currentTracer tracer.Tracer) string {
 	if inputField == (reflect.Value{}) {
 		return ""
 	}
-	formattedMap := deserializeAttributeMap(inputField)
+	formattedMap := deserializeRawAttributeMap(inputField)
 	stream, err := json.Marshal(formattedMap)
 	if err != nil {
 		currentTracer.AddExceptionTypeAndMessage("aws-sdk-go", fmt.Sprintf("%v", err))
@@ -70,7 +80,7 @@ func handleDynamoDBPutItem(
 	if itemField == (reflect.Value{}) {
 		return
 	}
-	formattedItem := deserializeAttributeMap(itemField)
+	formattedItem := deserializeRawAttributeMap(itemField)
 	formattedItemStream, err := json.Marshal(formattedItem)
 	if err != nil {
 		// TODO send tracer exception?
@@ -120,7 +130,7 @@ func handleDynamoDBUpdateItem(
 ) {
 	inputValue := reflect.ValueOf(r.Params).Elem()
 	eavField := inputValue.FieldByName("ExpressionAttributeValues")
-	eav := deserializeAttributeMap(eavField)
+	eav := deserializeRawAttributeMap(eavField)
 	eavStream, err := json.Marshal(eav)
 	if err != nil {
 		return
@@ -140,20 +150,55 @@ func handleDynamoDBUpdateItem(
 }
 
 func deserializeItems(itemsField reflect.Value, currentTracer tracer.Tracer) string {
-	if itemsField == (reflect.Value{}) {
+	if isValueZero(itemsField) {
 		return ""
 	}
-	formattedItems := make([]map[string]string, itemsField.Len())
-	for ind := 0; ind < itemsField.Len(); ind++ {
-		formattedItems = append(formattedItems,
-			deserializeAttributeMap(itemsField.Index(ind)))
-	}
+
+	formattedItems := deserializeItemsRaw(itemsField, currentTracer)
 	formattedItemsStream, err := json.Marshal(formattedItems)
 	if err != nil {
 		currentTracer.AddExceptionTypeAndMessage("aws-sdk-go",
-			fmt.Sprintf("sederializeItems: %v", err))
+			fmt.Sprintf("deserializeItems: %v", err))
 	}
 	return string(formattedItemsStream)
+}
+
+func deserializeItemsRaw(itemsField reflect.Value, currentTracer tracer.Tracer) interface{} {
+	if isValueZero(itemsField) {
+		return ""
+	}
+	formattedItems := make([]map[string]string, 0, itemsField.Len())
+	for ind := 0; ind < itemsField.Len(); ind++ {
+		formattedItem := deserializeRawAttributeMap(itemsField.Index(ind))
+		if formattedItem != nil && len(formattedItem) > 0 {
+			formattedItems = append(formattedItems, formattedItem)
+		}
+	}
+	return formattedItems
+}
+
+func deserializeCondition(condition *dynamodb.Condition) map[string]interface{} {
+	formattedData := make(map[string]interface{})
+	formattedData["ComparisonOperator"] = *(condition.ComparisonOperator)
+	attributes := make([]string, len(condition.AttributeValueList))
+	for _, attribute := range condition.AttributeValueList {
+		attributes = append(attributes, attribute.String())
+	}
+	formattedData["AttributeValueList"] = attributes
+	return formattedData
+}
+
+func deserializeKeyConditions(keyConditionsField reflect.Value) interface{} {
+	if isValueZero(keyConditionsField) {
+		return map[string]interface{}{}
+	}
+
+	conditionMap := make(map[string]interface{})
+	input := keyConditionsField.Interface().(map[string]*dynamodb.Condition)
+	for k, v := range input {
+		conditionMap[k] = deserializeCondition(v)
+	}
+	return conditionMap
 }
 
 func handleDynamoDBScan(
@@ -169,6 +214,89 @@ func handleDynamoDBScan(
 	if !metadataOnly {
 		res.Metadata["Items"] = deserializeItems(itemsField, currentTracer)
 	}
+}
+
+func updateWithJsonMap(
+	destination map[string]string,
+	destinationKey string,
+	data map[string]interface{},
+) bool {
+	stream, err := json.Marshal(data)
+	if err != nil {
+		return false
+	}
+	destination[destinationKey] = string(stream)
+	return true
+}
+
+func updateWithStringValue(
+	inputValue reflect.Value,
+	destination map[string]interface{},
+	key string,
+) {
+	value, ok := getFieldStringPtr(inputValue, key)
+	if ok {
+		destination[key] = value
+	}
+}
+
+func updateMapFromInt64(
+	inputValue reflect.Value,
+	destination map[string]interface{},
+	destinationKey string,
+	sourceKey string,
+) {
+	field := inputValue.FieldByName(sourceKey)
+	if isValueZero(field) {
+		return
+	}
+	destination[destinationKey] = strconv.FormatInt(field.Elem().Int(), 10)
+}
+
+func updateMapWithFieldToJSON(
+	inputValue reflect.Value,
+	destination map[string]interface{},
+	key string,
+) {
+	field := inputValue.FieldByName(key)
+	if isValueZero(field) {
+		return
+	}
+	destination[key] = field.Interface()
+}
+
+func handleDynamoDBQuery(
+	r *request.Request,
+	res *protocol.Resource,
+	metadataOnly bool,
+	currentTracer tracer.Tracer,
+) {
+	inputValue := reflect.ValueOf(r.Params).Elem()
+	outputValue := reflect.ValueOf(r.Data).Elem()
+	responseMap := map[string]interface{}{}
+	parameters := map[string]interface{}{}
+
+	updateMapFromInt64(outputValue, responseMap, "Items Count", "Count")
+	updateMapFromInt64(outputValue, responseMap, "Scanned Items Count", "ScannedCount")
+	updateMapWithFieldToJSON(outputValue, responseMap, "ResponseMetadata")
+	if !metadataOnly {
+		itemsField := outputValue.FieldByName("Items")
+		responseMap["Items"] = deserializeItemsRaw(itemsField, currentTracer)
+		updateWithStringValue(inputValue, parameters, "KeyConditionExpression")
+		updateWithStringValue(inputValue, parameters, "FilterExpression")
+		updateWithStringValue(inputValue, parameters, "ReturnConsumedCapacity")
+		updateMapWithFieldToJSON(outputValue, responseMap, "ConsumedCapacity")
+		updateMapWithFieldToJSON(inputValue, parameters, "ExpressionAttributeNames")
+		keyConditionsField := inputValue.FieldByName("KeyConditions")
+		parameters["KeyConditions"] = deserializeKeyConditions(keyConditionsField)
+		eavField := inputValue.FieldByName("ExpressionAttributeValues")
+		eav := deserializeRawAttributeMap(eavField)
+		parameters["Expression Attribute Values"] = eav
+	}
+	if !updateWithJsonMap(res.Metadata, "Response", responseMap) {
+		return
+	}
+	updateWithJsonMap(res.Metadata, "Parameters", parameters)
 }
 
 func handleDynamoDBBatchWriteItem(
