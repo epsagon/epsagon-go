@@ -220,13 +220,13 @@ func updateWithJsonMap(
 	destination map[string]string,
 	destinationKey string,
 	data map[string]interface{},
-) error {
+) bool {
 	stream, err := json.Marshal(data)
 	if err != nil {
-		return err
+		return false
 	}
 	destination[destinationKey] = string(stream)
-	return nil
+	return true
 }
 
 func updateWithStringValue(
@@ -293,7 +293,7 @@ func handleDynamoDBQuery(
 		eav := deserializeRawAttributeMap(eavField)
 		parameters["Expression Attribute Values"] = eav
 	}
-	if updateWithJsonMap(res.Metadata, "Response", responseMap) != nil {
+	if !updateWithJsonMap(res.Metadata, "Response", responseMap) {
 		return
 	}
 	updateWithJsonMap(res.Metadata, "Parameters", parameters)
