@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 
@@ -280,6 +281,97 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 				Expect(parameters).ShouldNot(HaveKey("ExpressionAttributeNames"))
 				Expect(response).ShouldNot(HaveKey("Items"))
 			})
+		})
+	})
+	Context("sanity with simple dynamodb data - transact write items", func() {
+		var (
+			req             request.Request
+			attrValue       string
+			secondAttrValue string
+			tableName       string
+			param           dynamodb.TransactWriteItemsInput
+			tracerConfig    tracer.Config
+			items           []*dynamodb.TransactWriteItem
+		)
+		BeforeEach(func() {
+			attrValue = "world"
+			secondAttrValue = "second-world"
+			tableName = "test-table"
+			item, err := dynamodbattribute.MarshalMap(
+				map[string]string{
+					"hello": attrValue,
+				},
+			)
+			Expect(err).To(BeNil())
+			secondItem, err2 := dynamodbattribute.MarshalMap(
+				map[string]string{
+					"hello2": secondAttrValue,
+				},
+			)
+			Expect(err2).To(BeNil())
+			items = make([]*dynamodb.TransactWriteItem, 2)
+			items = append(items, &dynamodb.TransactWriteItem{
+				Put: &dynamodb.Put{
+					TableName: &tableName,
+					Item:      item,
+				},
+			})
+			items = append(items, &dynamodb.TransactWriteItem{
+				Put: &dynamodb.Put{
+					TableName: &tableName,
+					Item:      secondItem,
+				},
+			})
+			param = dynamodb.TransactWriteItemsInput{
+				TransactItems: items,
+			}
+			req = request.Request{
+				ClientInfo: awsmetadata.ClientInfo{
+					ServiceName: "dynamodb",
+				},
+				Operation: &request.Operation{
+					Name: "TransactWriteItems",
+				},
+				Params: &param,
+				Data:   &dynamodb.TransactWriteItemsOutput{},
+			}
+			tracerConfig = tracer.Config{}
+			tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
+				Config: &tracerConfig,
+			}
+		})
+		It("Extracts basic data", func() {
+			res := extractResourceInformation(&req, tracer.GlobalTracer)
+			Expect(res.Name).To(Equal(tableName))
+			Expect(res.Metadata).Should(HaveKey("Parameters"))
+			var parameters map[string]interface{}
+			parametersRaw := res.Metadata["Parameters"]
+			err := json.Unmarshal([]byte(parametersRaw), &parameters)
+			if err != nil {
+				Fail("json failed")
+			}
+			Expect(parameters).Should(HaveKey("TransactItems"))
+			transactItems := parameters["TransactItems"].([]interface{})
+			Expect(len(transactItems)).To(Equal(2))
+			item := transactItems[0].([]interface{})
+			Expect(item[0].(string)).To(Equal("Put"))
+			Expect(item[1].(string)).To(Equal("{\n  Item: {\n    hello: {\n      S: \"world\"\n    }\n  },\n  TableName: \"test-table\"\n}"))
+			secondItem := transactItems[1].([]interface{})
+			Expect(secondItem[0].(string)).To(Equal("Put"))
+			Expect(secondItem[1].(string)).To(Equal("{\n  Item: {\n    hello2: {\n      S: \"second-world\"\n    }\n  },\n  TableName: \"test-table\"\n}"))
+		})
+		It("Wont add data if MetadataOnly is set to true", func() {
+			tracerConfig.MetadataOnly = true
+			res := extractResourceInformation(&req, tracer.GlobalTracer)
+			Expect(res.Name).To(Equal(""))
+			Expect(res.Metadata).Should(HaveKey("Parameters"))
+			var parameters map[string]interface{}
+			parametersRaw := res.Metadata["Parameters"]
+			err := json.Unmarshal([]byte(parametersRaw), &parameters)
+			if err != nil {
+				Fail("json failed")
+			}
+			Expect(parameters).ShouldNot(HaveKey("TransactItems"))
 		})
 	})
 	Describe("extractResourceInformation", func() {
