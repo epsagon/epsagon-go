@@ -285,15 +285,17 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 	})
 	Context("sanity with simple dynamodb data - transact write items", func() {
 		var (
-			req          request.Request
-			attrValue    string
-			tableName    string
-			param        dynamodb.TransactWriteItemsInput
-			tracerConfig tracer.Config
-			items        []*dynamodb.TransactWriteItem
+			req             request.Request
+			attrValue       string
+			secondAttrValue string
+			tableName       string
+			param           dynamodb.TransactWriteItemsInput
+			tracerConfig    tracer.Config
+			items           []*dynamodb.TransactWriteItem
 		)
 		BeforeEach(func() {
 			attrValue = "world"
+			secondAttrValue = "second-world"
 			tableName = "test-table"
 			item, err := dynamodbattribute.MarshalMap(
 				map[string]string{
@@ -301,11 +303,23 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 				},
 			)
 			Expect(err).To(BeNil())
-			items = make([]*dynamodb.TransactWriteItem, 1)
+			secondItem, err2 := dynamodbattribute.MarshalMap(
+				map[string]string{
+					"hello2": secondAttrValue,
+				},
+			)
+			Expect(err2).To(BeNil())
+			items = make([]*dynamodb.TransactWriteItem, 2)
 			items = append(items, &dynamodb.TransactWriteItem{
 				Put: &dynamodb.Put{
 					TableName: &tableName,
 					Item:      item,
+				},
+			})
+			items = append(items, &dynamodb.TransactWriteItem{
+				Put: &dynamodb.Put{
+					TableName: &tableName,
+					Item:      secondItem,
 				},
 			})
 			param = dynamodb.TransactWriteItemsInput{
@@ -338,10 +352,13 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 			}
 			Expect(parameters).Should(HaveKey("TransactItems"))
 			transactItems := parameters["TransactItems"].([]interface{})
-			Expect(len(transactItems)).To(Equal(1))
+			Expect(len(transactItems)).To(Equal(2))
 			item := transactItems[0].([]interface{})
 			Expect(item[0].(string)).To(Equal("Put"))
 			Expect(item[1].(string)).To(Equal("{\n  Item: {\n    hello: {\n      S: \"world\"\n    }\n  },\n  TableName: \"test-table\"\n}"))
+			secondItem := transactItems[1].([]interface{})
+			Expect(secondItem[0].(string)).To(Equal("Put"))
+			Expect(secondItem[1].(string)).To(Equal("{\n  Item: {\n    hello2: {\n      S: \"second-world\"\n    }\n  },\n  TableName: \"test-table\"\n}"))
 		})
 		It("Wont add data if MetadataOnly is set to true", func() {
 			tracerConfig.MetadataOnly = true
