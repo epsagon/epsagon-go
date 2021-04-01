@@ -186,7 +186,7 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 		Context("sanity with simple dynamodb data - query items", func() {
 			var (
 				req          request.Request
-				world        string
+				attrValue    string
 				tableName    string
 				param        dynamodb.QueryInput
 				data         dynamodb.QueryOutput
@@ -194,18 +194,18 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 				items        []map[string]*dynamodb.AttributeValue
 			)
 			BeforeEach(func() {
-				world = "world"
+				attrValue = "world"
 				tableName = "test-table"
 				param = dynamodb.QueryInput{
 					ExpressionAttributeNames: map[string]*string{
-						"hello": &world,
+						"hello": &attrValue,
 					},
 					TableName: &tableName,
 				}
 				items = make([]map[string]*dynamodb.AttributeValue, 1)
 				items = append(items, map[string]*dynamodb.AttributeValue{
 					"hello": &dynamodb.AttributeValue{
-						S: &world,
+						S: &attrValue,
 					},
 				})
 				data = dynamodb.QueryOutput{
@@ -238,12 +238,12 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 				parametersRaw := res.Metadata["Parameters"]
 				err := json.Unmarshal([]byte(parametersRaw), &parameters)
 				if err != nil {
-					Fail("json failed")
+					Fail("json parameters data failed")
 				}
 				responseRaw := res.Metadata["Response"]
 				err = json.Unmarshal([]byte(responseRaw), &response)
 				if err != nil {
-					Fail("json failed")
+					Fail("json response data failed")
 				}
 
 				Expect(parameters).Should(HaveKey("ExpressionAttributeNames"))
