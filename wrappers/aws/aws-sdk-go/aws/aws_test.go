@@ -286,18 +286,18 @@ var _ = Describe("epsagon aws sdk wrapper suite", func() {
 	Context("sanity with simple dynamodb data - transact write items", func() {
 		var (
 			req          request.Request
-			world        string
+			attrValue    string
 			tableName    string
 			param        dynamodb.TransactWriteItemsInput
 			tracerConfig tracer.Config
 			items        []*dynamodb.TransactWriteItem
 		)
 		BeforeEach(func() {
-			world = "world"
+			attrValue = "world"
 			tableName = "test-table"
 			item, err := dynamodbattribute.MarshalMap(
 				map[string]string{
-					"hello": world,
+					"hello": attrValue,
 				},
 			)
 			Expect(err).To(BeNil())

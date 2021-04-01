@@ -388,7 +388,7 @@ func handleDynamoDBTransactWriteItems(
 			res.Name = tableName
 		}
 	}
-	if len(responseMap) > 0 && updateWithJsonMap(res.Metadata, "Response", responseMap) != nil {
+	if len(responseMap) > 0 && !updateWithJsonMap(res.Metadata, "Response", responseMap) {
 		return
 	}
 	updateWithJsonMap(res.Metadata, "Parameters", parameters)
