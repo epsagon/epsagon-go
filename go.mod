@@ -4,7 +4,7 @@ go 1.11
 
 require (
 	github.com/aws/aws-lambda-go v1.17.0
-	github.com/aws/aws-sdk-go v1.32.6
+	github.com/aws/aws-sdk-go v1.34.28
 	github.com/aws/aws-sdk-go-v2 v0.23.0
 	github.com/containerd/containerd v1.4.1
 	github.com/containerd/ttrpc v1.0.2 // indirect
@@ -25,6 +25,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/ugorji/go v1.1.13 // indirect
+	go.mongodb.org/mongo-driver v1.5.2 // indirect
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
 	golang.org/x/sys v0.0.0-20201027140754-0fcbb8f4928c // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
