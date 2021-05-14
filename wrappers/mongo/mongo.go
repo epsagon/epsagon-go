@@ -5,7 +5,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
+	"github.com/google/uuid"
+
 	//"github.com/golang/protobuf/ptypes/any"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -58,7 +61,7 @@ func (coll *MongoCollectionWrapper) FindOne(
 		filter interface{},
 		opts ...*options.FindOneOptions) *mongo.SingleResult {
 
-	findOneEvent := func() *mongo.SingleResult{
+	findOne := func() *mongo.SingleResult{
 		res := coll.Collection.FindOne(
 			ctx,
 			filter,
@@ -70,19 +73,57 @@ func (coll *MongoCollectionWrapper) FindOne(
 	}
 
 
-	return wrapEvent(findOneEvent, coll.Config)
+	return wrapCall(findOne, coll.Config)
 }
 
-func wrapEvent(
+func wrapCall(
 	handler func() *mongo.SingleResult,
 	config *epsagon.Config,
 	//opts ...any.Any,
 ) *mongo.SingleResult{
-	eventTracer := tracer.CreateTracer(&config.Config)
+	//eventTracer := tracer.CreateTracer(&config.Config)
+	var arg context.Context
+	currentTracer := epsagon.ExtractTracer(arg)
+
 	eventTracer.Start()
-	defer eventTracer.SendStopSignal()
+	fmt.Println("Started Tracer")
+
+	defer func() {
+		eventTracer.SendStopSignal()
+		fmt.Println("stopped")
+	}()
+
+	fmt.Println("adding event")
+	eventTracer.AddEvent(
+		createMongoEvent(
+			"MyColl",
+			"FindOne",
+
+		),
+	)
+	fmt.Println("added event")
+
 
 	return handler()
 
-
 }
+
+func createMongoEvent(
+	name, method string,
+	//err error
+	) *protocol.Event {
+
+	return &protocol.Event{
+		Id: "mongo.driver-" + uuid.New().String(),
+		Origin: "mongo.driver",
+		ErrorCode: protocol.ErrorCode_OK,
+		Resource: &protocol.Resource{
+			Name:	name,
+			Type:	"mongo",
+			Operation: method,
+			Metadata: map[string]string{},
+		},
+	}
+}
+
+
