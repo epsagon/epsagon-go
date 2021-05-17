@@ -1,11 +1,11 @@
 module github.com/epsagon/epsagon-go
 
-go 1.11
+go 1.15
 
 require (
 	github.com/aws/aws-lambda-go v1.17.0
 	github.com/aws/aws-sdk-go v1.32.6
-	github.com/aws/aws-sdk-go-v2 v0.23.0
+	github.com/aws/aws-sdk-go-v2 v1.5.0
 	github.com/containerd/containerd v1.4.1
 	github.com/containerd/ttrpc v1.0.2 // indirect
 	github.com/containerd/typeurl v1.0.1 // indirect

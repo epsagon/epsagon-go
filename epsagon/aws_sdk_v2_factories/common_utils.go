@@ -6,12 +6,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
+	"net/http"
 	"reflect"
 	"strconv"
 )
 
 type specificOperationHandler func(
-	r *aws.Request,
+	r *http.Request,
 	res *protocol.Resource,
 	metadataOnly bool,
 	currentTracer tracer.Tracer,
