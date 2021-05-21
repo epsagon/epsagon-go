@@ -6,6 +6,10 @@ require (
 	github.com/aws/aws-lambda-go v1.17.0
 	github.com/aws/aws-sdk-go v1.32.6
 	github.com/aws/aws-sdk-go-v2 v1.5.0
+	github.com/aws/aws-sdk-go-v2/config v1.2.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.3.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.7.0 // indirect
+	github.com/aws/smithy-go v1.4.0 // indirect
 	github.com/containerd/containerd v1.4.1
 	github.com/containerd/ttrpc v1.0.2 // indirect
 	github.com/containerd/typeurl v1.0.1 // indirect
