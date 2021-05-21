@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
@@ -14,12 +14,12 @@ import (
 
 // DynamodbEventDataFactory to create epsagon Resource from aws.Request to DynamoDB
 func DynamodbEventDataFactory(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	currentTracer tracer.Tracer,
 ) {
-	inputValue := reflect.ValueOf(r.Params).Elem()
+	inputValue := reflect.ValueOf(r.Req).Elem()
 	tableName, ok := getFieldStringPtr(inputValue, "TableName")
 	if ok {
 		res.Name = tableName
@@ -37,9 +37,9 @@ func DynamodbEventDataFactory(
 
 func deserializeAttributeMap(inputField reflect.Value) map[string]string {
 	formattedItem := make(map[string]string)
-	input := inputField.Interface().(map[string]dynamodb.AttributeValue)
+	input := inputField.Interface().(map[string]types.AttributeValueMemberS)
 	for k, v := range input {
-		formattedItem[k] = v.String()
+		formattedItem[k] = v.Value
 	}
 	return formattedItem
 }
@@ -58,12 +58,12 @@ func jsonAttributeMap(inputField reflect.Value, currentTracer tracer.Tracer) str
 }
 
 func handleDynamoDBPutItem(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	_ tracer.Tracer,
 ) {
-	inputValue := reflect.ValueOf(r.Params).Elem()
+	inputValue := reflect.ValueOf(r.Req).Elem()
 	itemField := inputValue.FieldByName("Item")
 	if itemField == (reflect.Value{}) {
 		return
@@ -83,40 +83,40 @@ func handleDynamoDBPutItem(
 }
 
 func handleDynamoDBGetItem(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	currentTracer tracer.Tracer,
 ) {
-	inputValue := reflect.ValueOf(r.Params).Elem()
+	inputValue := reflect.ValueOf(r.Req).Elem()
 	jsonKeyField := jsonAttributeMap(inputValue.FieldByName("Key"), currentTracer)
 	res.Metadata["Key"] = jsonKeyField
 
 	if !metadataOnly {
-		outputValue := reflect.ValueOf(r.Data).Elem()
+		outputValue := reflect.ValueOf(r.Res).Elem()
 		jsonItemField := jsonAttributeMap(outputValue.FieldByName("Item"), currentTracer)
 		res.Metadata["Item"] = jsonItemField
 	}
 }
 
 func handleDynamoDBDeleteItem(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	currentTracer tracer.Tracer,
 ) {
-	inputValue := reflect.ValueOf(r.Params).Elem()
+	inputValue := reflect.ValueOf(r.Req).Elem()
 	jsonKeyField := jsonAttributeMap(inputValue.FieldByName("Key"), currentTracer)
 	res.Metadata["Key"] = jsonKeyField
 }
 
 func handleDynamoDBUpdateItem(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	currentTracer tracer.Tracer,
 ) {
-	inputValue := reflect.ValueOf(r.Params).Elem()
+	inputValue := reflect.ValueOf(r.Req).Elem()
 	eavField := inputValue.FieldByName("ExpressionAttributeValues")
 	eav := deserializeAttributeMap(eavField)
 	eavStream, err := json.Marshal(eav)
@@ -155,12 +155,12 @@ func deserializeItems(itemsField reflect.Value, currentTracer tracer.Tracer) str
 }
 
 func handleDynamoDBScan(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	currentTracer tracer.Tracer,
 ) {
-	outputValue := reflect.ValueOf(r.Params).Elem()
+	outputValue := reflect.ValueOf(r.Req).Elem()
 	updateMetadataFromInt64(outputValue, "Count", "Items Count", res.Metadata)
 	updateMetadataFromInt64(outputValue, "ScannedCount", "Scanned Items Count", res.Metadata)
 	itemsField := outputValue.FieldByName("Items")
@@ -170,16 +170,16 @@ func handleDynamoDBScan(
 }
 
 func handleDynamoDBBatchWriteItem(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	currentTracer tracer.Tracer,
 ) {
-	inputValue := reflect.ValueOf(r.Params).Elem()
+	inputValue := reflect.ValueOf(r.Req).Elem()
 	requestItemsField := inputValue.FieldByName("RequestItems")
 	if requestItemsField != (reflect.Value{}) {
 		var tableName string
-		requestItems, ok := requestItemsField.Interface().(map[string][]*dynamodb.WriteRequest)
+		requestItems, ok := requestItemsField.Interface().(map[string][]*dynamodb.PutItemInput)
 		if !ok {
 			currentTracer.AddExceptionTypeAndMessage("aws-sdk-go",
 				"handleDynamoDBBatchWriteItem: Failed to cast RequestItems")
@@ -192,9 +192,9 @@ func handleDynamoDBBatchWriteItem(
 		res.Name = tableName
 		// TODO not ignore other tables
 		if !metadataOnly {
-			items := make([]map[string]dynamodb.AttributeValue, len(requestItems))
+			items := make([]map[string]types.AttributeValue, len(requestItems))
 			for _, writeRequest := range requestItems[tableName] {
-				items = append(items, writeRequest.PutRequest.Item)
+				items = append(items, writeRequest.ExpressionAttributeValues)
 			}
 			itemsValue := reflect.ValueOf(items)
 			res.Metadata["Items"] = deserializeItems(itemsValue, currentTracer)

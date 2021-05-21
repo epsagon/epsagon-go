@@ -1,7 +1,6 @@
 package epsagonawsv2factories
 
 import (
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
@@ -9,7 +8,7 @@ import (
 
 // STSEventDataFactory to create epsagon Resource from aws.Request to STS
 func StsDataFactory(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	currentTracer tracer.Tracer,
@@ -21,13 +20,13 @@ func StsDataFactory(
 }
 
 func handleStsGetCallerIdentityRequest(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	_ tracer.Tracer,
 ) {
 	if !metadataOnly {
-		outputValue := reflect.ValueOf(r.Data).Elem()
+		outputValue := reflect.ValueOf(r.Req).Elem()
 		for _, key := range []string{"Account", "Arn", "UserId"} {
 			updateMetadataField(outputValue, key, res)
 		}
