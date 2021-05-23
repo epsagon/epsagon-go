@@ -19,12 +19,11 @@ type (
 		Service string
 		Region string
 		Operation string
-		Goos string
 
 		Req *smithyHttp.Request
 		Res *smithyHttp.Response
-		Endpoint string
-		HTTPResponse int
+		Input interface{}
+		Output interface{}
 		RequestTime time.Time
 		ResponseTime time.Time
 		Duration time.Duration
@@ -48,11 +47,11 @@ func handleSpecificOperation(
 	currentTracer tracer.Tracer,
 ) {
 
-	fmt.Println("HANDLING SPECIFIC s3 OP")
 	handler := handlers[res.Operation]
 	if handler == nil {
 		handler = defaultHandler
 	}
+
 	if handler != nil {
 		handler(r, res, metadataOnly, currentTracer)
 	}
@@ -64,6 +63,14 @@ func getFieldStringPtr(value reflect.Value, fieldName string) (string, bool) {
 		return "", false
 	}
 	return field.Elem().String(), true
+}
+
+func getFieldNumPtrAsString(value reflect.Value, fieldName string) (string, bool) {
+	field := value.FieldByName(fieldName)
+	if field == (reflect.Value{}) {
+		return "", false
+	}
+	return fmt.Sprintf("%v", field), true
 }
 
 func updateMetadataField(data reflect.Value, key string, res *protocol.Resource) {
@@ -85,6 +92,14 @@ func updateMetadataFromBytes(
 func updateMetadataFromValue(
 	value reflect.Value, fieldName string, targetKey string, metadata map[string]string) {
 	fieldValue, ok := getFieldStringPtr(value, fieldName)
+	if ok {
+		metadata[targetKey] = fieldValue
+	}
+}
+
+func updateMetadataFromNumValue(
+	value reflect.Value, fieldName string, targetKey string, metadata map[string]string) {
+	fieldValue, ok := getFieldNumPtrAsString(value, fieldName)
 	if ok {
 		metadata[targetKey] = fieldValue
 	}
