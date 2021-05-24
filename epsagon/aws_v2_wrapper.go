@@ -57,7 +57,7 @@ type factory func(*awsFactories.AWSCall, *protocol.Resource, bool, tracer.Tracer
 var awsResourceEventFactories = map[string]factory{
 	"s3":       awsFactories.S3EventDataFactory,
 	"dynamodb": awsFactories.DynamodbEventDataFactory,
-	"sts":      awsFactories.StsDataFactory,
+	"sts":      awsFactories.StsEventDataFactory,
 }
 
 func extractResourceInformation(r *awsFactories.AWSCall, currentTracer tracer.Tracer) *protocol.Resource {
