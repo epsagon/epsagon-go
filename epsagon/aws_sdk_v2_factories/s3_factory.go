@@ -103,7 +103,7 @@ func handleS3ListObject(
 		for i := 0; i < length; i++ {
 			var key, etag string
 			var size int64
-			fileObject := contentsField.Index(i)  //.Elem()
+			fileObject := contentsField.Index(i)
 			etag = strings.Trim(
 				fileObject.FieldByName("ETag").Elem().String(),
 				"\"",

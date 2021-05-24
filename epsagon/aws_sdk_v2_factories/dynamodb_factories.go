@@ -83,7 +83,7 @@ func handleDynamoDBPutItem(
 	formattedItemStream, err := json.Marshal(formattedItem)
 	if err != nil {
 		tracer.AddException(&protocol.Exception{
-			Type: "put-item",
+			Type: "aws-sdk-go-v2",
 			Message: fmt.Sprintf(
 				"failed to Deserialize Item to Put %v",
 				formattedItem,

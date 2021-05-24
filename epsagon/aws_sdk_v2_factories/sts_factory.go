@@ -26,9 +26,10 @@ func handleStsGetCallerIdentityRequest(
 	_ tracer.Tracer,
 ) {
 	if ! metadataOnly {
-		inputValue := reflect.ValueOf(r.Input).Elem()
+		outputValue := reflect.ValueOf(r.Output).Elem()
 		for _, key := range []string{"Account", "Arn", "UserId"} {
-			updateMetadataField(inputValue, key, res)
+			updateMetadataField(outputValue, key, res)
 		}
+
 	}
 }

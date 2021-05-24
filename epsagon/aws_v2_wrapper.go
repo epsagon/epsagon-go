@@ -10,11 +10,10 @@ import (
 	"log"
 )
 
-
 // WrapAwsV2Service wrap aws service with epsgon
+// example usage:
 // svc := epsagon.WrapAwsV2Service(dynamodb.New(cfg)).(*dynamodb.Client)
 func WrapAwsV2Service(svcClient awsFactories.AWSClient, args ...context.Context) awsFactories.AWSClient {
-
 	apiOptions := extractApiOptions(svcClient)
 	awsCall := &awsFactories.AWSCall{}
 	currentTracer := ExtractTracer(args)
@@ -24,10 +23,8 @@ func WrapAwsV2Service(svcClient awsFactories.AWSClient, args ...context.Context)
 		awsFactories.InitializeMiddleware(awsCall, currentTracer, completeEventData),
 		awsFactories.FinalizeMiddleware(awsCall, currentTracer),
 	)
-
 	return svcClient
 }
-
 
 func completeEventData(r *awsFactories.AWSCall, currentTracer tracer.Tracer) {
 	defer GeneralEpsagonRecover("aws-sdk-go wrapper", "", currentTracer)
@@ -75,13 +72,13 @@ func extractResourceInformation(r *awsFactories.AWSCall, currentTracer tracer.Tr
 	return &res
 }
 
-func defaultFactory(input interface{}, res *protocol.Resource, metadataOnly bool, currentTracer tracer.Tracer) {
+func defaultFactory(r *awsFactories.AWSCall, res *protocol.Resource, metadataOnly bool, currentTracer tracer.Tracer) {
 	if currentTracer.GetConfig().Debug {
 		log.Println("EPSAGON DEBUG:: entering defaultFactory")
 	}
 	if !metadataOnly {
-		extractInterfaceToMetadata(input, res)
-		//extractInterfaceToMetadata(input, res)
+		extractInterfaceToMetadata(r.Input, res)
+		extractInterfaceToMetadata(r.Output, res)
 	}
 }
 

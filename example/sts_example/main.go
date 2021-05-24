@@ -19,7 +19,6 @@ func ddbHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRe
 	}
 	cfg.Region = "eu-west-1"
 	svc := epsagon.WrapAwsV2Service(sts.NewFromConfig(cfg)).(*sts.Client)
-	//req := svc.GetCallerIdentityRequest(&sts.GetCallerIdentityInput{})
 
 	resp, err := svc.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
