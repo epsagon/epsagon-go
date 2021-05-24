@@ -6,8 +6,8 @@ import (
 	"reflect"
 )
 
-// STSEventDataFactory to create epsagon Resource from aws.Request to STS
-func StsDataFactory(
+// StsEventDataFactory to create epsagon Resource from aws.Request to STS
+func StsEventDataFactory(
 	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
@@ -25,8 +25,8 @@ func handleStsGetCallerIdentityRequest(
 	metadataOnly bool,
 	_ tracer.Tracer,
 ) {
-	if !metadataOnly {
-		outputValue := reflect.ValueOf(r.Req).Elem()
+	if ! metadataOnly {
+		outputValue := reflect.ValueOf(r.Output).Elem()
 		for _, key := range []string{"Account", "Arn", "UserId"} {
 			updateMetadataField(outputValue, key, res)
 		}
