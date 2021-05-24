@@ -1,8 +1,7 @@
 package epsagon
 
 import (
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
+	awsFactories "github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
@@ -29,11 +28,11 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 	Describe("sts_factory", func() {
 		Context("Happy Flows", func() {
 			var (
-				request  *aws.Request
+				r  *awsFactories.AWSCall
 				resource *protocol.Resource
 			)
 			BeforeEach(func() {
-				request = &aws.Request{}
+				r = &awsFactories.AWSCall{}
 				resource = &protocol.Resource{
 					Metadata:  map[string]string{},
 					Operation: "GetCallerIdentity",
@@ -41,22 +40,22 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 			})
 			It("Metadata Only is false, partial data", func() {
 				account_data := TEST_ACCOUNT
-				request.Data = &CallerIdentityMock{
+				r.Input = &CallerIdentityMock{
 					Account: &account_data,
 				}
-				epsagonawsv2factories.StsDataFactory(request, resource, false, tracer.GlobalTracer)
+				awsFactories.StsEventDataFactory(r, resource, false, tracer.GlobalTracer)
 				Expect(resource.Metadata["Account"]).To(Equal(TEST_ACCOUNT))
 			})
 			It("Metadata Only is false, full data", func() {
 				account_data := TEST_ACCOUNT
 				user_id_data := TEST_USER_ID
 				arn_data := TEST_ARN
-				request.Data = &CallerIdentityMock{
+				r.Input = &CallerIdentityMock{
 					Account: &account_data,
 					Arn:     &arn_data,
 					UserId:  &user_id_data,
 				}
-				epsagonawsv2factories.StsDataFactory(request, resource, false, tracer.GlobalTracer)
+				awsFactories.StsEventDataFactory(r, resource, false, tracer.GlobalTracer)
 				Expect(len(resource.Metadata)).To(Equal(3))
 				Expect(resource.Metadata["Account"]).To(Equal(TEST_ACCOUNT))
 				Expect(resource.Metadata["Arn"]).To(Equal(TEST_ARN))
@@ -66,12 +65,12 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 				account_data := TEST_ACCOUNT
 				user_id_data := TEST_USER_ID
 				arn_data := TEST_ARN
-				request.Data = &CallerIdentityMock{
+				r.Input = &CallerIdentityMock{
 					Account: &account_data,
 					Arn:     &arn_data,
 					UserId:  &user_id_data,
 				}
-				epsagonawsv2factories.StsDataFactory(request, resource, true, tracer.GlobalTracer)
+				awsFactories.StsEventDataFactory(r, resource, true, tracer.GlobalTracer)
 				Expect(len(resource.Metadata)).To(Equal(0))
 			})
 		})
