@@ -6,6 +6,7 @@ import (
 	awsMiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	smithyMiddleware "github.com/aws/smithy-go/middleware"
 	smithyHttp "github.com/aws/smithy-go/transport/http"
+	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 	"strings"
@@ -44,14 +45,24 @@ func InitializeMiddleware (
 					out smithyMiddleware.InitializeOutput, metadata smithyMiddleware.Metadata, err error,
 				) {
 
+					awsCall.StartTime = tracer.GetTimestamp()
 					awsCall.Input = in.Parameters
 
 					out, metadata, err = next.HandleInitialize(ctx, in)
 					if err != nil {
+						tracer.AddException(&protocol.Exception{
+							Type:                 "aws-sdk-go-v2",
+							Message:              err.Error(),
+							Traceback:            "",
+							Time:                 tracer.GetTimestamp(),
+						})
 						return out, metadata, err
 					}
 
-					awsCall.Output = out.Result
+					if out != (smithyMiddleware.InitializeOutput{}) {
+						awsCall.Output = out.Result
+					}
+
 					completeEvent(awsCall, currentTracer)
 
 					return out, metadata, nil
@@ -75,12 +86,21 @@ func FinalizeMiddleware (awsCall *AWSCall, currentTracer tracer.Tracer) func(sta
 					out smithyMiddleware.FinalizeOutput, metadata smithyMiddleware.Metadata, err error,
 				) {
 					out, metadata, err = next.HandleFinalize(ctx, in)
+
+
 					if err != nil {
-						return out, metadata, err
+						tracer.AddException(&protocol.Exception{
+							Type:                 "go-aws-sdk-v2",
+							Message:              err.Error(),
+							Traceback:            "",
+							Time:                 tracer.GetTimestamp(),
+						})
 					}
 
-					requestID, _ := awsMiddleware.GetRequestIDMetadata(metadata)
-					awsCall.RequestID = requestID
+					requestID, ok := awsMiddleware.GetRequestIDMetadata(metadata)
+					if ok {
+						awsCall.RequestID = requestID
+					}
 
 					awsCall.Region = awsMiddleware.GetRegion(ctx)
 					awsCall.Operation = awsMiddleware.GetOperationName(ctx)
@@ -89,22 +109,12 @@ func FinalizeMiddleware (awsCall *AWSCall, currentTracer tracer.Tracer) func(sta
 					if len(service) == 0 {
 						service = awsMiddleware.GetServiceID(ctx)
 					}
+
 					awsCall.Service = strings.ToLower(service)
 					_ = awsMiddleware.AddRequestUserAgentMiddleware(stack)
 
-					requestTime, _ := awsMiddleware.GetServerTime(metadata)
-					awsCall.RequestTime = requestTime
-
-					responseTime, _ := awsMiddleware.GetResponseAt(metadata)
-					awsCall.ResponseTime = responseTime
-
-					duration, _ := awsMiddleware.GetAttemptSkew(metadata)
-					awsCall.Duration = duration
-
-
 					awsCall.Req = in.Request.(*smithyHttp.Request)
 					awsCall.Res = awsMiddleware.GetRawResponse(metadata).(*smithyHttp.Response)
-
 
 					return out, metadata, nil
 				},
