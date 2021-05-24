@@ -40,7 +40,7 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 			})
 			It("Metadata Only is false, partial data", func() {
 				account_data := TEST_ACCOUNT
-				r.Input = &CallerIdentityMock{
+				r.Output = &CallerIdentityMock{
 					Account: &account_data,
 				}
 				awsFactories.StsEventDataFactory(r, resource, false, tracer.GlobalTracer)
@@ -50,7 +50,7 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 				account_data := TEST_ACCOUNT
 				user_id_data := TEST_USER_ID
 				arn_data := TEST_ARN
-				r.Input = &CallerIdentityMock{
+				r.Output = &CallerIdentityMock{
 					Account: &account_data,
 					Arn:     &arn_data,
 					UserId:  &user_id_data,
@@ -65,7 +65,7 @@ var _ = Describe("aws_sdk_v2_factories", func() {
 				account_data := TEST_ACCOUNT
 				user_id_data := TEST_USER_ID
 				arn_data := TEST_ARN
-				r.Input = &CallerIdentityMock{
+				r.Output = &CallerIdentityMock{
 					Account: &account_data,
 					Arn:     &arn_data,
 					UserId:  &user_id_data,
