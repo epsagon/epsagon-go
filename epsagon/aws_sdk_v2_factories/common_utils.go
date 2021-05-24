@@ -24,8 +24,8 @@ type (
 		Res *smithyHttp.Response
 		Input interface{}
 		Output interface{}
-		RequestTime time.Time
-		ResponseTime time.Time
+		StartTime float64
+		EndTime float64
 		Duration time.Duration
 	}
 )
