@@ -112,7 +112,6 @@ func handleDynamoDBGetItem(
 
 	if !metadataOnly {
 		outputValue := reflect.ValueOf(r.Output).Elem()
-		fmt.Println(outputValue.FieldByName("Item"))
 		jsonItemField := jsonAttributeMap(outputValue.FieldByName("Item"), currentTracer)
 		res.Metadata["Item"] = jsonItemField
 	}
