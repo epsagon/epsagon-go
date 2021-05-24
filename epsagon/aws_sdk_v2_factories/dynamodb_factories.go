@@ -33,6 +33,7 @@ func DynamodbEventDataFactory(
 	handleSpecificOperation(r, res, metadataOnly, handleSpecificOperations, nil, currentTracer)
 }
 
+// commonDynamoOperationHandler handles all DDB ops as first entry
 func commonDynamoOperationHandler(r *AWSCall, res *protocol.Resource, metadataOnly bool) {
 	inputValue := reflect.ValueOf(r.Input).Elem()
 	responseValue := reflect.ValueOf(r.Res).Elem()
