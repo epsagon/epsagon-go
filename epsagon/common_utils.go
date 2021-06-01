@@ -121,9 +121,9 @@ func NewReadCloser(body []byte, err error) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader(body))
 }
 
-// extractApiOptions extracts and returns an SVC's middleware API Options
-// extraction goes == AWSClient -> options -> APIOptions
-func extractApiOptions(svcClient awsFactories.AWSClient) reflect.Value {
+// extractAPIOptions extracts and returns an SVC's middleware API Options
+// extraction goes == awsClient -> options -> APIOptions
+func extractAPIOptions(svcClient awsFactories.AWSClient) reflect.Value {
 	// New pointer to unexported field "options"
 	optionsField := reflect.ValueOf(svcClient).Elem().FieldByName("options")
 	options := NewPointerAtField(optionsField).Interface()

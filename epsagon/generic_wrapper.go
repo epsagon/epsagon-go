@@ -89,7 +89,7 @@ func (wrapper *GenericWrapper) addRunnerEvent() {
 func (wrapper *GenericWrapper) transformArguments(args ...interface{}) []reflect.Value {
 	actualLength := len(args)
 	if wrapper.injectContext {
-		actualLength += 1
+		actualLength++
 	}
 	if wrapper.handler.Type().NumIn() != actualLength {
 		msg := fmt.Sprintf(

@@ -14,7 +14,7 @@ import (
 // example usage:
 // svc := epsagon.WrapAwsV2Service(dynamodb.New(cfg)).(*dynamodb.Client)
 func WrapAwsV2Service(svcClient awsFactories.AWSClient, args ...context.Context) awsFactories.AWSClient {
-	apiOptions := extractApiOptions(svcClient)
+	apiOptions := extractAPIOptions(svcClient)
 	awsCall := &awsFactories.AWSCall{}
 	currentTracer := ExtractTracer(args)
 

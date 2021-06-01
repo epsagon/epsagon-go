@@ -12,8 +12,11 @@ import (
 )
 
 type (
+	// AWSClient represents the AWS SVC client passed to the wrapper
 	AWSClient interface {}
-	AWSCall struct {
+
+	// AWSCall replaces aws.Request struct
+	AWSCall   struct {
 		RequestID string
 		PartitionID string
 		Service string
