@@ -76,9 +76,9 @@ func handleS3PutObject(
 }
 
 type s3File struct {
-	key  string	`json:"key"`
-	size int64	`json:"size"`
-	etag string	`json:"etag"`
+	key  string
+	size int64
+	etag string
 }
 
 func handleS3ListObject(
