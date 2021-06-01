@@ -1,6 +1,6 @@
 module github.com/epsagon/epsagon-go
 
-go 1.11
+go 1.15
 
 require (
 	github.com/aws/aws-lambda-go v1.17.0
