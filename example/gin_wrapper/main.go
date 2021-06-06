@@ -16,6 +16,7 @@ func main() {
 	config := epsagon.NewTracerConfig(
 		"gin-wrapper-test", "",
 	)
+
 	config.MetadataOnly = false
 	r := epsagongin.GinRouterWrapper{
 		IRouter:  gin.Default(),

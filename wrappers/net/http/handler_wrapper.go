@@ -51,6 +51,7 @@ func CreateHTTPTriggerEvent(wrapperTracer tracer.Tracer, request *http.Request, 
 			},
 		},
 	}
+
 	if !wrapperTracer.GetConfig().MetadataOnly {
 		event.Resource.Metadata["query_string_parameters"] = processRawQuery(
 			request.URL, wrapperTracer)
