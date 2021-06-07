@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "./";
+
+service TestApp {
+  rpc DoUnaryRequest (UnaryRequest) returns (UnaryResponse) {}
+}
+
+message UnaryRequest {
+  string message = 1;
+}
+
+message UnaryResponse {
+  string message = 1;
+}

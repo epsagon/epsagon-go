@@ -12,35 +12,33 @@ import (
 )
 
 
-// UnaryServerInterceptor returns a new unary server interceptor for OpenTracing.
-func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor {
+// UnaryClientInterceptor returns a new unary server interceptor for OpenTracing.
+func UnaryClientInterceptor(config *epsagon.Config) grpc.UnaryClientInterceptor {
 	if config == nil {
 		config = &epsagon.Config{}
 	}
 
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func (ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		wrapperTracer := tracer.CreateTracer(&config.Config)
 		wrapperTracer.Start()
 		defer wrapperTracer.Stop()
 
-		Event := createGRPCEvent(wrapperTracer, ctx, info.FullMethod, "grpc-server")
+		Event := createGRPCEvent(wrapperTracer, ctx, method, "grpc-client")
+		decorateGRPCRequest(Event.Resource, ctx, method, req)
 
 		defer wrapperTracer.AddEvent(Event)
+		err := invoker(ctx, method, req, reply, cc, opts...)
 
-		resp, err := handler(ctx, req)
 		duration := tracer.GetTimestamp() - Event.StartTime
-
 		Event.Duration = duration
-
-		decorateGRPCRequest(Event.Resource, ctx, info.FullMethod, req)
 
 		if err != nil {
 			Event.ErrorCode = protocol.ErrorCode_ERROR
 		}
 
 		Event.Resource.Metadata["status_code"] = strconv.Itoa(int(status.Code(err)))
-		Event.Resource.Metadata["grpc.response.body"] = fmt.Sprintf("%+v" , resp)
+		Event.Resource.Metadata["grpc.response.body"] = fmt.Sprintf("%+v" , reply)
 
-		return resp, err
+		return err
 	}
 }
