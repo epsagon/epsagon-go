@@ -23,7 +23,7 @@ func UnaryClientInterceptor(config *epsagon.Config) grpc.UnaryClientInterceptor 
 		wrapperTracer.Start()
 		defer wrapperTracer.Stop()
 
-		Event := createGRPCEvent(wrapperTracer, ctx, method, "grpc-client")
+		Event := createGRPCEvent(method, "grpc-client")
 		decorateGRPCRequest(Event.Resource, ctx, method, req)
 
 		defer wrapperTracer.AddEvent(Event)
@@ -32,11 +32,15 @@ func UnaryClientInterceptor(config *epsagon.Config) grpc.UnaryClientInterceptor 
 		duration := tracer.GetTimestamp() - Event.StartTime
 		Event.Duration = duration
 
-		if err != nil {
-			Event.ErrorCode = protocol.ErrorCode_ERROR
-		}
 
 		Event.Resource.Metadata["status_code"] = strconv.Itoa(int(status.Code(err)))
+		Event.Resource.Metadata["span.kind"] = "client"
+
+		if err != nil {
+			Event.ErrorCode = protocol.ErrorCode_ERROR
+			return err
+		}
+
 		Event.Resource.Metadata["grpc.response.body"] = fmt.Sprintf("%+v" , reply)
 
 		return err

@@ -15,7 +15,11 @@ import (
 
 func TestUnaryClientInterceptor (t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Gin Wrapper")
+	RunSpecs(t, "gRPC Client Wrapper")
+}
+
+func VerifyGenericClientGRPCEventTags(r *protocol.Resource) {
+	Expect(r.Metadata["span.kind"]).To(Equal("client"))
 }
 
 var _ = Describe("gRPC Client Wrapper", func ()  {
@@ -28,8 +32,7 @@ var _ = Describe("gRPC Client Wrapper", func ()  {
 		dummyServer	   *grpc.Server
 		dummyConn	   *grpc.ClientConn
 	)
-
-	BeforeEach(func(t *testing.T) {
+	BeforeEach(func() {
 		config = &epsagon.Config{Config: tracer.Config{
 			Disable:  true,
 			TestMode: true,
@@ -46,21 +49,19 @@ var _ = Describe("gRPC Client Wrapper", func ()  {
 		}
 
 		request = &testapp.UnaryRequest{Message: "Test Message"}
-		response = &testapp.UnaryResponse{}
+		response = &testapp.UnaryResponse{Message: "Test App Server Response"}
 
-		dummyServer, dummyConn = newTestServerAndConn(t, config)
+		dummyServer, dummyConn = newTestServerAndConn(config, true, false)
 	})
-
-	AfterEach(func (t *testing.T) {
+	AfterEach(func () {
 		tracer.GlobalTracer = nil
 		err := dummyConn.Close()
 		if err != nil {
-			t.Fatal("failure to finish Connection", err)
 		}
 		dummyServer.Stop()
 	})
 
-	Context("test sanity", func() {
+	Context("test unary requests", func() {
 		It("Sending valid request and validate response without errors", func() {
 			client := testapp.NewTestAppClient(dummyConn)
 
@@ -68,9 +69,30 @@ var _ = Describe("gRPC Client Wrapper", func ()  {
 			defer cancel()
 
 			resp, err := client.DoUnaryRequest(ctx, request)
-			Expect(err).To(Not(Equal(nil)))
-			Expect(resp.Message).To(Equal(response))
+			Expect(err).To(BeNil())
+			Expect(resp.Message).To(Equal(response.Message))
+			Expect(events).To(HaveLen(1))
+			Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+			// TODO: verfiy trace ID
+			//verifyTraceIDExists(events[0])
+			VerifyGenericClientGRPCEventTags(events[0].Resource)
+			Expect(events[0].Resource.Metadata["status_code"]).To(Equal("0"))
+		})
 
+		It ("Send request to errored server and validate error", func () {
+			client := testapp.NewTestAppClient(dummyConn)
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			resp, err := client.DoUnaryRequestWithError(ctx, request)
+
+			Expect(err).ToNot(BeNil())
+			Expect(resp).To(BeNil())
+			Expect(events).To(HaveLen(1))
+			Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
+			Expect(events[0].Resource.Metadata["status_code"]).To(Equal("2"))
+			VerifyGenericClientGRPCEventTags(events[0].Resource)
 		})
 	})
 })

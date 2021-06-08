@@ -14,7 +14,7 @@ import (
 )
 
 
-func createGRPCEvent(wrapperTracer tracer.Tracer, ctx context.Context, method string, eventID string) *protocol.Event {
+func createGRPCEvent(method string, eventID string) *protocol.Event {
 	errorcode := protocol.ErrorCode_OK
 
 	return &protocol.Event{

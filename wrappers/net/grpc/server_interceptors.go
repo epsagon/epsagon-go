@@ -23,7 +23,7 @@ func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor 
 		wrapperTracer.Start()
 		defer wrapperTracer.Stop()
 
-		Event := createGRPCEvent(wrapperTracer, ctx, info.FullMethod, "grpc-server")
+		Event := createGRPCEvent(info.FullMethod, "grpc-server")
 
 		defer wrapperTracer.AddEvent(Event)
 
@@ -40,6 +40,7 @@ func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor 
 
 		Event.Resource.Metadata["status_code"] = strconv.Itoa(int(status.Code(err)))
 		Event.Resource.Metadata["grpc.response.body"] = fmt.Sprintf("%+v" , resp)
+		Event.Resource.Metadata["span.kind"] = "server"
 
 		return resp, err
 	}
