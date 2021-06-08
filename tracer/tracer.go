@@ -41,6 +41,7 @@ const IsTrimmedKey = "is_trimmed"
 const EpsagonHTTPTraceIDKey = "http_trace_id"
 const EpsagonRequestTraceIDKey = "request_trace_id"
 const AwsServiceKey = "aws.service"
+const EpsagonGRPCraceIDKey = "grpc_trace_id"
 
 var strongKeys = map[string]bool{
 	EpsagonHTTPTraceIDKey:    true,

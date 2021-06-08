@@ -22,6 +22,13 @@ func VerifyGenericClientGRPCEventTags(r *protocol.Resource) {
 	Expect(r.Metadata["span.kind"]).To(Equal("client"))
 }
 
+func verifyTraceIDExists(event *protocol.Event) {
+	traceID, ok := event.Resource.Metadata[tracer.EpsagonGRPCraceIDKey]
+	Expect(ok).To(BeTrue())
+	Expect(traceID).To(Not(BeZero()))
+}
+
+
 var _ = Describe("gRPC Client Wrapper", func ()  {
 	var (
 		events         []*protocol.Event
@@ -73,10 +80,9 @@ var _ = Describe("gRPC Client Wrapper", func ()  {
 			Expect(resp.Message).To(Equal(response.Message))
 			Expect(events).To(HaveLen(1))
 			Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
-			// TODO: verfiy trace ID
-			//verifyTraceIDExists(events[0])
 			VerifyGenericClientGRPCEventTags(events[0].Resource)
 			Expect(events[0].Resource.Metadata["status_code"]).To(Equal("0"))
+			verifyTraceIDExists(events[0])
 		})
 
 		It ("Send request to errored server and validate error", func () {
@@ -93,6 +99,7 @@ var _ = Describe("gRPC Client Wrapper", func ()  {
 			Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
 			Expect(events[0].Resource.Metadata["status_code"]).To(Equal("2"))
 			VerifyGenericClientGRPCEventTags(events[0].Resource)
+			verifyTraceIDExists(events[0])
 		})
 	})
 })

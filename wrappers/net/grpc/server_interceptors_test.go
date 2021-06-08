@@ -111,7 +111,6 @@ var _ = Describe("gRPC Server Wrapper", func ()  {
 		request = &testapp.UnaryRequest{Message: "Test Message"}
 		response = &testapp.UnaryResponse{Message: "Test App Server Response"}
 
-		dummyServer, dummyConn = newTestServerAndConn(config, false, true)
 	})
 	AfterEach(func () {
 		tracer.GlobalTracer = nil
@@ -121,7 +120,30 @@ var _ = Describe("gRPC Server Wrapper", func ()  {
 		dummyServer.Stop()
 	})
 
+	Context("test request with client intercepted to", func() {
+		BeforeEach(func() {
+			dummyServer, dummyConn = newTestServerAndConn(config, true, true)
+		})
+
+		It("test unary request with client instrumented", func() {
+			client := testapp.NewTestAppClient(dummyConn)
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			resp, err := client.DoUnaryRequest(ctx, request)
+			Expect(err).To(BeNil())
+			Expect(resp.Message).To(Equal(response.Message))
+			Expect(events).To(HaveLen(2))
+			Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+			Expect(events[1].ErrorCode).To(Equal(protocol.ErrorCode_OK))
+		})
+	})
+
 	Context("test unary requests", func() {
+		BeforeEach(func() {
+			dummyServer, dummyConn = newTestServerAndConn(config, false, true)
+		})
 		It("Sending valid request and validate response without errors", func() {
 			client := testapp.NewTestAppClient(dummyConn)
 
@@ -133,8 +155,6 @@ var _ = Describe("gRPC Server Wrapper", func ()  {
 			Expect(resp.Message).To(Equal(response.Message))
 			Expect(events).To(HaveLen(1))
 			Expect(events[0].ErrorCode).To(Equal(protocol.ErrorCode_OK))
-			// TODO: verfiy trace ID
-			//verifyTraceIDExists(events[0])
 			VerifyGenericServerGRPCEventTags(events[0].Resource)
 			Expect(events[0].Resource.Metadata["status_code"]).To(Equal("0"))
 		})
