@@ -104,6 +104,7 @@ The following frameworks are supported by Epsagon:
 |[Generic Function](#generic)            |All                        |
 |[HTTP](#http)                           |All                        |
 |[Gin](#gin)                             |All                        |
+|[Mongo](#mongo)                         |All                        |
 
 
 ### AWS Lambda
@@ -265,6 +266,72 @@ If you want to instument other integrated libraries inside the gin handler you c
 client := http.Client{
     Transport: epsagonhttp.NewTracingTransport(epsagongin.EpsagonContext(c))}
 resp, err := client.Get("http://example.com")
+```
+
+### Mongo
+
+Trace through all Mongo collection operations with Epsagon:
+
+```go
+
+package main
+
+import (
+	"context"
+	"github.com/epsagon/epsagon-go/epsagon"
+	epsagonmongo "github.com/epsagon/epsagon-go/wrappers/mongo"
+	"time"
+
+)
+
+
+func main() {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(
+		ctx,
+		options.Client().ApplyURI("mongodb://..."),
+	)
+	defer func() {
+		if err = client.Disconnect(ctx); err != nil {
+			panic(err)
+		}
+	}()
+
+	db := client.Database("DB")
+	coll := epsagonmongo.WrapMongoCollection(
+		db.Collection("COLL"),
+	)
+
+	res, err = coll.InsertMany(
+		context.Background(),
+		[]interface{}{
+			bson.D{
+				{"name", "hello"},
+				{"age", "33"},
+			},
+			bson.D{
+				{"name", "world"},
+				{"age", "44"},
+			},
+		},
+	)
+	if err != nil  {
+		...
+	}
+}
+
+
+func main() {
+	config := epsagon.NewTracerConfig("test-mongo-app", "")
+	config.MetadataOnly = false
+	epsagon.GoWrapper(
+		config,
+		dbAPI,
+	)()
+
+}
 ```
 
 ## Integrations
