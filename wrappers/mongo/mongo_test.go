@@ -1,13 +1,8 @@
 package epsagonmongo
 
 import (
-	//"bytes"
 	"context"
-	//"encoding/json"
-	//"io/ioutil"
-	//"net/http/httptest"
 	"testing"
-	//"time"
 
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
