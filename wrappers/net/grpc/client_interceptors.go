@@ -65,7 +65,7 @@ func UnaryClientInterceptor(config *epsagon.Config) grpc.UnaryClientInterceptor 
 		wrapperTracer.Start()
 		defer wrapperTracer.Stop()
 
-		Event := createGRPCEvent(method, "grpc-client")
+		Event := createGRPCEvent("runner", method, "grpc-client")
 		InjectEpsagonTracerContextID(ctx, Event)
 
 		decorateGRPCRequest(Event.Resource, ctx, method, req)

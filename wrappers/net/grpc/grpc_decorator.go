@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
@@ -14,12 +15,12 @@ import (
 )
 
 
-func createGRPCEvent(method string, eventID string) *protocol.Event {
+func createGRPCEvent(origin string, method string, eventID string) *protocol.Event {
 	errorcode := protocol.ErrorCode_OK
 
 	return &protocol.Event{
 		Id:        eventID + uuid.New().String(),
-		Origin:    "runner",
+		Origin:    origin,
 		StartTime: tracer.GetTimestamp(),
 		ErrorCode: errorcode,
 		Resource: &protocol.Resource{
@@ -27,6 +28,14 @@ func createGRPCEvent(method string, eventID string) *protocol.Event {
 			Operation: method,
 			Metadata:  map[string]string{},
 		},
+	}
+}
+
+
+func decoratePostGRPCRunner(handlerWrapper *epsagon.GenericWrapper) {
+	runner := handlerWrapper.GetRunnerEvent()
+	if runner != nil {
+		runner.Resource.Type = "grpc"
 	}
 }
 

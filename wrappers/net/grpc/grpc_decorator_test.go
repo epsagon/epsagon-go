@@ -78,10 +78,10 @@ var _ = Describe("createGRPCEvent", func() {
 	Context("Test Create gRPC event sanity", func() {
 		It("test sanity", func() {
 
-			event = createGRPCEvent(TestMethod, "TestEventID")
+			event = createGRPCEvent("trigger", TestMethod, "TestEventID")
 
 			Expect(event.ErrorCode).To(Equal(protocol.ErrorCode_OK))
-			Expect(event.Origin).To(Equal("runner"))
+			Expect(event.Origin).To(Equal("trigger"))
 			Expect(event.Resource.Type).To(Equal("grpc"))
 			Expect(event.Resource.Operation).To(Equal(TestMethod))
 			Expect(event.Resource.Metadata).To(Equal(map[string]string{}))

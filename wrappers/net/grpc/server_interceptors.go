@@ -28,7 +28,6 @@ func addTraceIdToEventFromContext(ctx context.Context, event *protocol.Event) {
 	}
 }
 
-
 // UnaryServerInterceptor returns a new unary server interceptor for OpenTracing.
 func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor {
 	if config == nil {
@@ -40,27 +39,38 @@ func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor 
 		wrapperTracer.Start()
 		defer wrapperTracer.Stop()
 
-		Event := createGRPCEvent(info.FullMethod, "grpc-server")
+		Event := createGRPCEvent("trigger", info.FullMethod, "grpc-server")
+
+		wrapper := epsagon.WrapGenericFunction(
+			handler, config, wrapperTracer, false, info.FullMethod,
+		)
+
+		defer decoratePostGRPCRunner(wrapper)
 
 		addTraceIdToEventFromContext(ctx, Event)
 
 		defer wrapperTracer.AddEvent(Event)
 
-		resp, err := handler(ctx, req)
+		wrapperResponse := wrapper.Call(ctx, req)
+
+		resp := wrapperResponse[0].Elem()
+
 		duration := tracer.GetTimestamp() - Event.StartTime
 
 		Event.Duration = duration
 
 		decorateGRPCRequest(Event.Resource, ctx, info.FullMethod, req)
 
-		if err != nil {
+		var err error = nil
+		if !wrapperResponse[1].IsNil() {
 			Event.ErrorCode = protocol.ErrorCode_ERROR
+			err = wrapperResponse[1].Interface().(error)
 		}
 
 		Event.Resource.Metadata["status_code"] = strconv.Itoa(int(status.Code(err)))
 		Event.Resource.Metadata["grpc.response.body"] = fmt.Sprintf("%+v" , resp)
 		Event.Resource.Metadata["span.kind"] = "server"
 
-		return resp, err
+		return resp.Interface().(interface{}), err
 	}
 }
