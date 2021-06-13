@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"log"
 	"strconv"
 	"strings"
 )
@@ -33,20 +32,12 @@ func generateEpsagonTraceID() string {
 	return fmt.Sprintf("%s:%s:%s:1", traceID, spanID, parentSpanID)
 }
 
-func InjectEpsagonTracerContextID(ctx context.Context, event *protocol.Event) {
-	md, ok := metadata.FromIncomingContext(ctx)
-
-	if !ok {
-		log.Printf("EPSAGON DEBUG Couldn't inject TraceID to context: %+v\n", ctx)
-		md = metadata.New(nil)
-	}
-
+func InjectEpsagonTracerContextID(ctx context.Context, event *protocol.Event) context.Context {
 	traceID := generateEpsagonTraceID()
 
-	md.Set(EPSAGON_TRACEID_HEADER_KEY, traceID)
 	addTraceIdToEvent(traceID, event)
 
-	ctx = metadata.NewOutgoingContext(ctx, md)
+	return metadata.AppendToOutgoingContext(ctx, EPSAGON_TRACEID_HEADER_KEY, traceID)
 }
 
 func addTraceIdToEvent(traceID string, event *protocol.Event) {
@@ -66,7 +57,7 @@ func UnaryClientInterceptor(config *epsagon.Config) grpc.UnaryClientInterceptor 
 		defer wrapperTracer.Stop()
 
 		Event := createGRPCEvent("runner", method, "grpc-client")
-		InjectEpsagonTracerContextID(ctx, Event)
+		ctx = InjectEpsagonTracerContextID(ctx, Event)
 
 		decorateGRPCRequest(Event.Resource, ctx, method, req)
 
