@@ -1,205 +1,504 @@
 
-package mongoepsagon
+package epsagonmongo
 
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/epsagon/epsagon-go/protocol"
-	"github.com/epsagon/epsagon-go/tracer"
-	//"time"
-
-	//"github.com/epsagon/epsagon-go/tracer"
-	"github.com/google/uuid"
-
-	//"github.com/golang/protobuf/ptypes/any"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 
-//type MongoCall struct {
-//	opName string
-//	startTime *time.Time
-//	database *MongoDatabaseWrapper
-//	collection *MongoCollectionWrapper
-//
-//}
-
 type MongoDatabaseWrapper struct {
-	Database *mongo.Database
-	Config *epsagon.Config
+	database *mongo.Database
 }
 
 type MongoCollectionWrapper struct {
-	Database *mongo.Database
-	Collection *mongo.Collection
-	Config *epsagon.Config
+	database *mongo.Database
+	collection *mongo.Collection
 }
-func WrapMongoCollection(database *mongo.Database, collection *mongo.Collection, config *epsagon.Config) *MongoCollectionWrapper {
+
+func WrapMongoCollection(collection *mongo.Collection) *MongoCollectionWrapper {
 	return &MongoCollectionWrapper{
-		Database: database,
-		Collection: collection,
-		Config: config,
+		database: collection.Database(),
+		collection: collection,
 	}
 }
 
 func WrapMongoDatabase(database *mongo.Database) *MongoDatabaseWrapper {
 	return &MongoDatabaseWrapper{
-		Database: database,
-		//Config: config,
+		database: database,
 	}
 }
 
 func (db *MongoDatabaseWrapper) Client() *mongo.Client {
-	return db.Database.Client()
+	return db.database.Client()
 }
 
 func (db *MongoDatabaseWrapper) Name() string {
-	return db.Database.Name()
+	return db.database.Name()
 }
 
-func (db *MongoDatabaseWrapper) Collection(name string, opts ...*options.CollectionOptions) *MongoCollectionWrapper {
+func (db *MongoDatabaseWrapper) Collection(name string, opts ...*mongoOptions.CollectionOptions) *MongoCollectionWrapper {
 	return &MongoCollectionWrapper{
-		Database: db.Database,
-		Collection: db.Database.Collection(name, opts...),
-		Config: db.Config,
+		database: db.database,
+		collection: db.database.Collection(name, opts...),
 	}
 }
 
-func completeMongoEvent(res *protocol.Resource, startTime float64, args ...context.Context) {
-	//traceArgs := make([]context.Context, 1)
-	currentTracer := epsagon.ExtractTracer(args)
-	//currentTracer.
-
-	endTime := tracer.GetTimestamp()
-	event := &protocol.Event{
-		Id: "mongodb-" + uuid.New().String(),
-		Origin: "mongodb",
-		ErrorCode: protocol.ErrorCode_OK,
-		Resource: res,
-		StartTime: startTime,
+func (coll *MongoCollectionWrapper) Database(args ...interface{}) *MongoDatabaseWrapper {
+	return &MongoDatabaseWrapper{
+		database:	coll.database,
 	}
-	event.Duration = endTime - event.StartTime
-	currentTracer.AddEvent(event)
-
 }
 
-func createMongoResource(opName string, coll *MongoCollectionWrapper) *protocol.Resource {
-	res := &protocol.Resource{
-		Name: coll.Database.Name() + "." + coll.Collection.Name(),
-		Type: "mongodb",
-		Operation: opName,
-		Metadata: make(map[string]string),
-
+func (coll *MongoCollectionWrapper) Clone(opts ...*mongoOptions.CollectionOptions) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.Clone(
+		opts...,
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
 	}
+	marshalToMetadata(event.Resource.Metadata, "params", opts)
+	completeMongoEvent(event)
 
-	return res
+	return response, err
 }
+
 
 func (coll *MongoCollectionWrapper) InsertOne(args ...interface{}) (interface{}, error) {
-
-
-	if len(args) < 2 {
-		return nil, fmt.Errorf("Not enough Args")
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.InsertOne(
+		args[0].(context.Context),
+		args[1],
+		//args[2].(*mongoOptions.InsertOneOptions),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
 	}
 
-	startTime := tracer.GetTimestamp()
-	//insert := func() ([]interface{}, error)
-	res := createMongoResource("InsertOne", coll)
-	//return coll.Collection.InsertOne(args...)
+	marshalToMetadata(event.Resource.Metadata, "document", args[1])
+	marshalToMetadata(event.Resource.Metadata, "response", response)
+	completeMongoEvent(event)
+	return response, err
+}
 
-	completeMongoEvent(res, startTime)
+func (coll *MongoCollectionWrapper) InsertMany(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.InsertMany(
+		args[0].(context.Context),
+		args[1].([]interface{}),
+		//args[2:].(*options.InsertManyOptions)
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
 
-	fmt.Println(args[0])
-	return nil, nil
+	marshalToMetadata(event.Resource.Metadata, "documents", args[1])
+	marshalToMetadata(event.Resource.Metadata, "response", *response)
+	completeMongoEvent(event)
+	return response, err
 }
 
 
-//func (coll *MongoCollectionWrapper) FindOne(
-//		ctx context.Context,
-//		filter interface{},
-//		opts ...*options.FindOneOptions) *mongo.SingleResult {
-//
-//	findOne := func() *mongo.SingleResult{
-//		res := coll.Collection.FindOne(
-//			ctx,
-//			filter,
-//			opts...,
-//		)
-//
-//		fmt.Println(res)
-//		return res
-//	}
-//
-//
-//	return wrapCall(findOne, coll.Config)
-//}
+func (coll *MongoCollectionWrapper) BulkWrite(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.BulkWrite(
+		args[0].(context.Context),
+		args[1].([]mongo.WriteModel),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
 
-//func wrapCall(
-//	handler func() *mongo.SingleResult,
-//	config *epsagon.Config,
-//	//opts ...any.Any,
-//	args ...context.Context,
-//) *mongo.SingleResult {
-//	//eventTracer := tracer.CreateTracer(&config.Config)
-//	//var arg context.Context
-//	currentTracer := epsagon.ExtractTracer(args)
-//
-//	startTime := tracer.GetTimestamp()
-//
-//
-//	event := protocol.Event{
-//		Id:                   uuid.NewString(),
-//		StartTime:            startTime,
-//		Resource:             nil,
-//		Origin:               "mongo",
-//		Duration:             0,
-//		ErrorCode:            0,
-//		Exception:            nil,
-//		XXX_NoUnkeyedLiteral: struct{}{},
-//		XXX_unrecognized:     nil,
-//		XXX_sizecache:        0,
-//	}
-//
-//	fmt.Println("Started Tracer")
-//
-//	//defer func() {
-//	//	currentTracer.SendStopSignal()
-//	//	fmt.Println("stopped")
-//	//}()
-//
-//	fmt.Println("adding event")
-//	currentTracer.AddEvent(
-//		createMongoEvent(
-//			"MyColl",
-//			"FindOne",
-//
-//		),
-//	)
-//	fmt.Println("added event")
-//
-//
-//	return handler()
-//
-//}
-
-//func createMongoEvent(
-//	name, method string,
-//	//err error
-//	) *protocol.Event {
-//
-//	return &protocol.Event{
-//		Id: "mongo.driver-" + uuid.New().String(),
-//		Origin: "mongo.driver",
-//		ErrorCode: protocol.ErrorCode_OK,
-//		Resource: &protocol.Resource{
-//			Name:	name,
-//			Type:	"mongo",
-//			Operation: method,
-//			Metadata: map[string]string{},
-//		},
-//	}
-//}
+	marshalToMetadata(event.Resource.Metadata, "documents", args[1])
+	completeMongoEvent(event)
+	return response, err
+}
 
 
+func (coll *MongoCollectionWrapper) DeleteOne(args ...interface{}) (interface{}, error){
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.DeleteOne(
+		args[0].(context.Context),
+		args[1].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "params", args[1])
+	marshalToMetadata(event.Resource.Metadata, "response", *response)
+	completeMongoEvent(event)
+	return response, err
+}
+
+
+func (coll *MongoCollectionWrapper) DeleteMany(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.DeleteMany(
+		args[0].(context.Context),
+		args[1].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "params", args[1])
+	marshalToMetadata(event.Resource.Metadata, "response", response)
+	completeMongoEvent(event)
+	return response, err
+}
+
+func (coll *MongoCollectionWrapper) UpdateOne(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.UpdateOne(
+		args[0].(context.Context),
+		args[1].(interface{}),
+		args[2].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "filter", args[1])
+	marshalToMetadata(event.Resource.Metadata, "update_conditions", args[2])
+	extractStructFields(event.Resource.Metadata, "response", *response)
+	completeMongoEvent(event)
+	return response, err
+}
+
+
+func (coll *MongoCollectionWrapper) UpdateMany(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.UpdateMany(
+		args[0].(context.Context),
+		args[1].(interface{}),
+		args[2].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "filter", args[1])
+	marshalToMetadata(event.Resource.Metadata, "update_conditions", args[2])
+	extractStructFields(event.Resource.Metadata, "response", *response)
+	completeMongoEvent(event)
+	return response, err
+}
+
+
+func (coll *MongoCollectionWrapper) UpdateByID(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.UpdateByID(
+		args[0].(context.Context),
+		args[1].(interface{}),
+		args[2].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "id", args[1])
+	marshalToMetadata(event.Resource.Metadata, "update_conditions", args[2])
+	extractStructFields(event.Resource.Metadata, "response", response)
+	completeMongoEvent(event)
+	return response, err
+}
+
+
+func (coll *MongoCollectionWrapper) ReplaceOne(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.ReplaceOne(
+		args[0].(context.Context),
+		args[1].(interface{}),
+		args[2].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "filter", args[1])
+	marshalToMetadata(event.Resource.Metadata, "replacement", args[2])
+	extractStructFields(event.Resource.Metadata, "response", *response)
+	completeMongoEvent(event)
+	return response, err
+}
+
+func (coll *MongoCollectionWrapper) Aggregate(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.Aggregate(
+		args[0].(context.Context),
+		args[1].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	docs, err := readCursor(response)
+	if err != nil {
+		logOperationFailure("Could not complete readCursor", err.Error())
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "params", args[1])
+	marshalToMetadata(event.Resource.Metadata, "response", docs)
+	completeMongoEvent(event)
+	return response, err
+}
+
+
+func (coll *MongoCollectionWrapper) CountDocuments(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.CountDocuments(
+		args[0].(context.Context),
+		args[1].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "filter", args[1])
+	event.Resource.Metadata["count"] = fmt.Sprintf("%d", response)
+	completeMongoEvent(event)
+	return response, err
+}
+
+func (coll *MongoCollectionWrapper) EstimatedDocumentCount(args ...interface{}) (interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.EstimatedDocumentCount(
+		args[0].(context.Context),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	event.Resource.Metadata["estimated_count"] = fmt.Sprintf("%d", response)
+	completeMongoEvent(event)
+	return response, err
+}
+
+func (coll *MongoCollectionWrapper) Distinct(args ...interface{}) ([]interface{}, error) {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.Distinct(
+		args[0].(context.Context),
+		args[1].(string),
+		args[2].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	event.Resource.Metadata["field_name"] = args[1].(string)
+	marshalToMetadata(event.Resource.Metadata, "filter", args[2])
+	completeMongoEvent(event)
+	return response, err
+}
+
+func (coll *MongoCollectionWrapper) Find(args ...interface{}) interface{} {
+	event := startMongoEvent(currentFuncName(), coll)
+	response, err := coll.collection.Find(
+		args[0].(context.Context),
+		args[1].(interface{}),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+
+	docs, err := readCursor(response)
+	if err != nil {
+		logOperationFailure("Could not complete readCursor", err.Error())
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "filter", args[1])
+	marshalToMetadata(event.Resource.Metadata, "documents", docs)
+	completeMongoEvent(event)
+	return response
+}
+
+
+func (coll *MongoCollectionWrapper) FindOne(args ...interface{}) interface{} {
+	event := startMongoEvent(currentFuncName(), coll)
+	response := coll.collection.FindOne(
+		args[0].(context.Context),
+		args[1].(interface{}),
+	)
+
+	var document map[string]string
+	decodedResponse := reflect.ValueOf(response).
+		MethodByName("Decode").
+		Call([]reflect.Value{ reflect.ValueOf(&document) })
+	if err := decodedResponse[0]; err.Interface() != nil {
+		logOperationFailure("Could not complete Decode SingleResult", err.String())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.String(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "params", args[1])
+	marshalToMetadata(event.Resource.Metadata, "document", document)
+	completeMongoEvent(event)
+	return response
+}
+
+
+func (coll *MongoCollectionWrapper) FindOneAndDelete(args ...interface{}) interface{} {
+	event := startMongoEvent(currentFuncName(), coll)
+	response := coll.collection.FindOneAndDelete(
+		args[0].(context.Context),
+		args[1].(interface{}),
+	)
+
+	var document map[string]string
+	decodedResponse := reflect.ValueOf(response).
+		MethodByName("Decode").
+		Call([]reflect.Value{ reflect.ValueOf(&document) })
+	if err := decodedResponse[0]; err.Interface() != nil {
+		logOperationFailure("Could not complete Decode SingleResult", err.String())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.String(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "params", args[1])
+	marshalToMetadata(event.Resource.Metadata, "document", document)
+	completeMongoEvent(event)
+	return response
+}
+
+
+func (coll *MongoCollectionWrapper) FindOneAndReplace(args ...interface{}) interface{} {
+	event := startMongoEvent(currentFuncName(), coll)
+	response := coll.collection.FindOneAndReplace(
+		args[0].(context.Context),
+		args[1].(interface{}),
+		args[2].(interface{}),
+	)
+	var document map[string]string
+	decodedResponse := reflect.ValueOf(response).
+		MethodByName("Decode").
+		Call([]reflect.Value{ reflect.ValueOf(&document) })
+	if err := decodedResponse[0]; err.Interface() != nil {
+		logOperationFailure("Could not complete Decode SingleResult", err.String())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.String(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "filter", args[1])
+	marshalToMetadata(event.Resource.Metadata, "replacement", args[2])
+	marshalToMetadata(event.Resource.Metadata, "document", document)
+	completeMongoEvent(event)
+	return response
+
+}
+
+
+func (coll *MongoCollectionWrapper) FindOneAndUpdate(args ...interface{}) interface{} {
+	event := startMongoEvent(currentFuncName(), coll)
+	response := coll.collection.FindOneAndReplace(
+		args[0].(context.Context),
+		args[1].(interface{}),
+		args[2].(interface{}),
+	)
+	var document map[string]string
+	decodedResponse := reflect.ValueOf(response).
+		MethodByName("Decode").
+		Call([]reflect.Value{ reflect.ValueOf(&document) })
+	if err := decodedResponse[0]; err.Interface() != nil {
+		logOperationFailure("Could not complete Decode SingleResult", err.String())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.String(),
+		)
+	}
+
+	marshalToMetadata(event.Resource.Metadata, "filter", args[1])
+	marshalToMetadata(event.Resource.Metadata, "update", args[2])
+	marshalToMetadata(event.Resource.Metadata, "document", document)
+	completeMongoEvent(event)
+	return response
+}
+
+
+func (coll *MongoCollectionWrapper) Drop(args ...interface{}) error {
+	event := startMongoEvent(currentFuncName(), coll)
+	err := coll.collection.Drop(
+		args[0].(context.Context),
+	)
+	if err != nil {
+		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+			"mongo-driver",
+			err.Error(),
+		)
+	}
+	completeMongoEvent(event)
+	return err
+}

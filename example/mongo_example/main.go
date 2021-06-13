@@ -9,18 +9,14 @@ import (
 	"os"
 	"time"
 
-	//"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-type singleRes struct {
-	Value string
-	Key string
-}
 
-func exemplar() {
+func dbAPI() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -38,44 +34,103 @@ func exemplar() {
 
 	err = client.Ping(ctx, readpref.Primary())
 
-	db := epsagonmongo.WrapMongoDatabase(
-		client.Database("epsagon"),
+	db := client.Database("DB")
+
+	// WRAP THE MONGO COLLECTION with WrapMongoCollection()
+	coll := epsagonmongo.WrapMongoCollection(
+		db.Collection("COLL"),
 	)
 
-	coll := db.Collection("godev")
-	fmt.Println(coll)
+	type doc struct {
+		Name string
+	}
+	var res interface{}
 
 
 
-	coll.InsertOne(
+	fmt.Println("##InsertOne")
+	res, err = coll.InsertOne(
 		context.Background(),
-		struct {
-			name string
-		}{ "jon" },
+		doc{Name: "bon"},
+	)
+	if err != nil  {
+		panic(err)
+	}
+
+
+	fmt.Println("##InsertMany")
+	res, err = coll.InsertMany(
+		context.Background(),
+		[]interface{}{
+			bson.D{
+				{"name", "hello"},
+				{"age", "33"},
+			},
+			bson.D{
+				{"name", "world"},
+				{"age", "44"},
+			},
+		},
+	)
+	if err != nil  {
+		panic(err)
+	}
+
+
+
+	fmt.Println("##FindOne")
+	coll.FindOne(
+		context.Background(),
+		bson.D{{"name", "bon"}},
 	)
 
 
-	//collection := client.Database("epsagon").Collection("godev")
-	//epsagonColl := epsagonmongo.WrapMongoCollection(
-	//	client.Database("epsagon"),
-	//	collection,
-	//	//epsagon.NewTracerConfig(
-	//	//	"mongo-dev",
-	//	//	"38a22955-dee3-4991-8db8-afa09fc9cef6",
-	//	//),
-	//)
+	fmt.Println("##Find")
+	coll.Find(context.Background(), bson.M{})
 
 
-	//var res singleRes
-	//err = epsagonColl.FindOne(
-	//	ctx,
-	//	bson.D{{"key", "value"}},
-	//).Decode(&res)
-	//if err != nil || err == mongo.ErrNoDocuments {
-	//	panic(err)
-	//}
+	fmt.Println("##Aggregate")
+	res, err = coll.Aggregate(
+		context.Background(),
+		mongo.Pipeline{
+			bson.D{{"$match", bson.D{{"name", "bon"}}}},
+		},
+	)
+	if err != nil || err == mongo.ErrNoDocuments {
+		panic(err)
+	}
 
 
+	fmt.Println("##CountDocuments")
+	res, err = coll.CountDocuments(
+		context.Background(),
+		bson.D{{"name", "bon"}},
+	)
+	fmt.Println(res)
+	if err != nil || err == mongo.ErrNoDocuments {
+		panic(err)
+	}
+
+	fmt.Println("##DeleteOne")
+	res, err = coll.DeleteOne(
+		context.Background(),
+		bson.D{{"name", "bon"}},
+	)
+	fmt.Println(res)
+	if err != nil || err == mongo.ErrNoDocuments {
+		panic(err)
+	}
+
+	fmt.Println("##UpdateOne")
+	res, err = coll.UpdateOne(
+		context.Background(),
+		bson.D{{"name", "bon"}},
+		bson.D{{"$set", bson.D{{"name", "son"}}}},
+	)
+	fmt.Println(res)
+	if err != nil || err == mongo.ErrNoDocuments {
+		panic(err)
+	}
 }
 
 
@@ -85,7 +140,7 @@ func main() {
 	if err != nil {
 		return
 	}
-	err = os.Setenv("EPSAGON_COLLECTOR_URL", "https://dev.tc.epsagon.com")
+	err = os.Setenv("EPSAGON_COLLECTOR_URL", "")
 	if err != nil {
 		return
 	}
@@ -101,7 +156,7 @@ func main() {
 	config.MetadataOnly = false
 	epsagon.GoWrapper(
 		config,
-		exemplar,
+		dbAPI,
 	)()
 
 }

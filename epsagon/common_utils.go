@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"reflect"
-
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/onsi/gomega/types"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"reflect"
 )
 
 // DefaultErrorType Default custom error type
@@ -117,6 +117,10 @@ func NewReadCloser(body []byte, err error) io.ReadCloser {
 		return &errorReader{err: err}
 	}
 	return ioutil.NopCloser(bytes.NewReader(body))
+}
+
+func DebugLog(args ...interface{}) {
+	log.Println("[EPSAGON]", args)
 }
 
 type errorReader struct {
