@@ -22,12 +22,12 @@ func currentFuncName() string {
 	current := make([]uintptr, 1)
 
 	if level := runtime.Callers(2, current); level == 0 {
-	return ""
+		return ""
 	}
 
 	caller := runtime.FuncForPC(current[0] - 1)
 	if caller == nil {
-	return ""
+		return ""
 	}
 	sysFuncName := caller.Name()
 	return partitionByDelimiterAtIndex(sysFuncName, ".", -1)
@@ -53,7 +53,7 @@ func completeMongoEvent(event *protocol.Event, args ...context.Context) {
 
 func createMongoResource(opName string, coll *MongoCollectionWrapper) *protocol.Resource {
 	return &protocol.Resource{
-		Name: coll.database.Name() + "." + coll.collection.Name(),
+		Name: coll.Database().Name() + "." + coll.collection.Name(),
 		Type: "mongodb",
 		Operation: opName,
 		Metadata: make(map[string]string),
@@ -89,11 +89,11 @@ func marshalToMetadata(
 	metadata map[string]string,
 	metaField string,
 	s interface{},
+	debug bool,
 ) {
 	docBytes, err := json.Marshal(s)
 	if err != nil {
-		epsagon.DebugLog("Could not Marshal JSON")
-		epsagon.DebugLog(err)
+		epsagon.DebugLog(debug, "Could not Marshal JSON", err)
 	}
 	docString := string(docBytes)
 	if docString == "" {
@@ -111,7 +111,7 @@ func readCursor(cursor *mongo.Cursor) ([]map[string]string, error) {
 
 func logOperationFailure(messages ...string) {
 	for _, m := range messages {
-		epsagon.DebugLog("[MONGO]", m)
+		epsagon.DebugLog(true, "[MONGO]", m)
 	}
 }
 

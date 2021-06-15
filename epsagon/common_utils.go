@@ -121,8 +121,11 @@ func NewReadCloser(body []byte, err error) io.ReadCloser {
 
 
 // DebugLog logs helpful debugging messages
-func DebugLog(args ...interface{}) {
-	log.Println("[EPSAGON]", args)
+
+func DebugLog(debugMode bool, args ...interface{}) {
+	if debugMode {
+		log.Println("[EPSAGON]", args)
+	}
 }
 
 type errorReader struct {

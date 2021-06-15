@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-lambda-go v1.17.0
 	github.com/aws/aws-sdk-go v1.34.28
 	github.com/aws/aws-sdk-go-v2 v0.23.0
+	github.com/benweissmann/memongo v0.1.1 // indirect
 	github.com/containerd/containerd v1.4.1
 	github.com/containerd/ttrpc v1.0.2 // indirect
 	github.com/containerd/typeurl v1.0.1 // indirect

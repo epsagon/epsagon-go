@@ -3,7 +3,9 @@ package epsagonmongo
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/benweissmann/memongo"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
@@ -14,7 +16,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var mongoServerURI string
+var docsInserted int64 = 0
+
 func TestMongoWrapper(t *testing.T) {
+	mongoServer, err := memongo.Start("4.2.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mongoServer.Stop()
+	mongoServerURI = mongoServer.URI()
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Mongo Driver Test Suite")
 }
@@ -26,14 +38,12 @@ var _ = Describe("mongo_wrapper", func() {
 			events          	[]*protocol.Event
 			exceptions      	[]*protocol.Exception
 			wrapper         	*MongoCollectionWrapper
-			//called 				 .bool
 			testContext			context.Context
 			testDatabaseName	string
 			testCollectionName	string
-			//testDocument		interface{}
+			cancel				func()
 		)
 		BeforeEach(func() {
-			//called =  .false
 			config := &epsagon.Config{Config: tracer.Config{
 				Disable:  true,
 				TestMode: true,
@@ -50,18 +60,23 @@ var _ = Describe("mongo_wrapper", func() {
 
 			testCollectionName = "collectionName"
 			testDatabaseName = "databaseName"
-			testContext = context.Background()
-			client, _ := mongo.Connect(testContext, options.Client().ApplyURI("mongodb://localhost:27017"))
+			testContext, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+
+			client, _ := mongo.Connect(testContext, options.Client().ApplyURI(mongoServerURI))
 			wrapper = &MongoCollectionWrapper{
-				database: client.Database(testDatabaseName),
 				collection: client.Database(testDatabaseName).Collection(testCollectionName),
+				currentTracer: tracer.GlobalTracer,
 			}
+		})
+		AfterEach(func() {
+			cancel()
 		})
 		Context("Writing DB", func() {
 			It("calls InsertOne", func() {
 				_, err := wrapper.InsertOne(context.Background(), struct {
 					Name string
 				}{"TestName"})
+				docsInserted++
 				Expect(err).To(BeNil())
 			})
 			It("calls InsertMany", func() {
@@ -75,6 +90,7 @@ var _ = Describe("mongo_wrapper", func() {
 						{"age", "44"},
 					},
 				})
+				docsInserted += 2
 				Expect(err).To(BeNil())
 			})
 		})
@@ -89,7 +105,15 @@ var _ = Describe("mongo_wrapper", func() {
 				wrapper.Find(
 					context.Background(),
 					bson.M{},
-					)
+				)
+			})
+			It("calls CountDocuments", func() {
+				res, err := wrapper.CountDocuments(
+					context.Background(),
+					bson.D{{}},
+				)
+				Expect(err).To(BeNil())
+				Expect(res).To(Equal(docsInserted))
 			})
 		})
 	})
