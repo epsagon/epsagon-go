@@ -6,34 +6,16 @@ import (
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"strconv"
-	"strings"
 )
-
 
 const EPSAGON_TRACEID_HEADER_KEY = "epsagon-trace-id"
 
-func generateRandomUUID() string {
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		panic("failed to generate random UUID")
-	}
-	return strings.ReplaceAll(uuid.String(), "-", "")
-}
-
-func generateEpsagonTraceID() string {
-	traceID := generateRandomUUID()
-	spanID := generateRandomUUID()[:16]
-	parentSpanID := generateRandomUUID()[:16]
-	return fmt.Sprintf("%s:%s:%s:1", traceID, spanID, parentSpanID)
-}
-
 func InjectEpsagonTracerContextID(ctx context.Context, event *protocol.Event) context.Context {
-	traceID := generateEpsagonTraceID()
+	traceID := epsagon.GenerateEpsagonTraceID()
 
 	addTraceIdToEvent(traceID, event)
 
@@ -41,25 +23,22 @@ func InjectEpsagonTracerContextID(ctx context.Context, event *protocol.Event) co
 }
 
 func addTraceIdToEvent(traceID string, event *protocol.Event) {
-	event.Resource.Metadata[tracer.EpsagonGRPCraceIDKey] = traceID
+	event.Resource.Metadata[tracer.EpsagonGRPCTraceIDKey] = traceID
 }
 
 
 // UnaryClientInterceptor returns a new unary server interceptor for OpenTracing.
-func UnaryClientInterceptor(config *epsagon.Config) grpc.UnaryClientInterceptor {
-	if config == nil {
-		config = &epsagon.Config{}
-	}
+func UnaryClientInterceptor(args ...context.Context) grpc.UnaryClientInterceptor {
 
+	wrapperTracer := epsagon.ExtractTracer(args)
 	return func (ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		wrapperTracer := tracer.CreateTracer(&config.Config)
-		wrapperTracer.Start()
-		defer wrapperTracer.Stop()
 
-		Event := createGRPCEvent("runner", method, "grpc-client")
+		Event := createGRPCEvent("grpc.client", method, "grpc-client")
 		ctx = InjectEpsagonTracerContextID(ctx, Event)
 
-		decorateGRPCRequest(Event.Resource, ctx, method, req)
+		if !wrapperTracer.GetConfig().MetadataOnly {
+			extractGRPCRequest(Event.Resource, ctx, method, req)
+		}
 
 		defer wrapperTracer.AddEvent(Event)
 		err := invoker(ctx, method, req, reply, cc, opts...)

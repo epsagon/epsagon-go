@@ -32,7 +32,7 @@ func createGRPCEvent(origin string, method string, eventID string) *protocol.Eve
 }
 
 
-func decoratePostGRPCRunner(handlerWrapper *epsagon.GenericWrapper) {
+func postGRPCRunner(handlerWrapper *epsagon.GenericWrapper) {
 	runner := handlerWrapper.GetRunnerEvent()
 	if runner != nil {
 		runner.Resource.Type = "grpc"
@@ -40,7 +40,7 @@ func decoratePostGRPCRunner(handlerWrapper *epsagon.GenericWrapper) {
 }
 
 
-func decorateGRPCRequest(Resource *protocol.Resource, ctx context.Context, fullMethod string, req interface{}) {
+func extractGRPCRequest(Resource *protocol.Resource, ctx context.Context, fullMethod string, req interface{}) {
 	method := strings.TrimPrefix(fullMethod, "/")
 
 	var hdrs http.Header

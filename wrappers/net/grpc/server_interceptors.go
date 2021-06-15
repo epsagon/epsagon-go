@@ -13,18 +13,24 @@ import (
 	"strconv"
 )
 
-func addTraceIdToEventFromContext(ctx context.Context, event *protocol.Event) {
+func addTraceIdToEventFromContext(ctx context.Context, event *protocol.Event, debugMode bool) {
 	md, ok := metadata.FromIncomingContext(ctx)
 
 	if !ok {
-		log.Printf("EPSAGON DEBUG Couldn't extract metadata from context: %+v\n", ctx)
+		if debugMode {
+			log.Printf("EPSAGON DEBUG Couldn't extract metadata from context: %+v\n", ctx)
+		}
+		return
 	}
 
 	traceIDs := md.Get(EPSAGON_TRACEID_HEADER_KEY)
+
 	if len(traceIDs) == 1 {
-		event.Resource.Metadata[tracer.EpsagonGRPCraceIDKey] = traceIDs[0]
+		event.Resource.Metadata[tracer.EpsagonGRPCTraceIDKey] = traceIDs[0]
 	} else {
-		log.Printf("EPSAGON DEBUG Couldn't extract TraceID from metadata: %+v\n", md)
+		if debugMode {
+			log.Printf("EPSAGON DEBUG Couldn't extract TraceID from metadata: %+v\n", md)
+		}
 	}
 }
 
@@ -45,13 +51,14 @@ func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor 
 			handler, config, wrapperTracer, false, info.FullMethod,
 		)
 
-		defer decoratePostGRPCRunner(wrapper)
+		defer postGRPCRunner(wrapper)
 
-		addTraceIdToEventFromContext(ctx, Event)
+		addTraceIdToEventFromContext(ctx, Event, wrapperTracer.GetConfig().Debug)
 
 		defer wrapperTracer.AddEvent(Event)
 
-		wrapperResponse := wrapper.Call(ctx, req)
+		newContext := epsagon.ContextWithTracer(wrapperTracer, ctx)
+		wrapperResponse := wrapper.Call(newContext, req)
 
 		resp := wrapperResponse[0].Elem()
 
@@ -59,7 +66,9 @@ func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor 
 
 		Event.Duration = duration
 
-		decorateGRPCRequest(Event.Resource, ctx, info.FullMethod, req)
+		if !wrapperTracer.GetConfig().MetadataOnly {
+			extractGRPCRequest(Event.Resource, ctx, info.FullMethod, req)
+		}
 
 		var err error = nil
 		if !wrapperResponse[1].IsNil() {
@@ -67,9 +76,11 @@ func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor 
 			err = wrapperResponse[1].Interface().(error)
 		}
 
-		Event.Resource.Metadata["status_code"] = strconv.Itoa(int(status.Code(err)))
-		Event.Resource.Metadata["grpc.response.body"] = fmt.Sprintf("%+v" , resp)
-		Event.Resource.Metadata["span.kind"] = "server"
+		if !wrapperTracer.GetConfig().MetadataOnly {
+			Event.Resource.Metadata["status_code"] = strconv.Itoa(int(status.Code(err)))
+			Event.Resource.Metadata["grpc.response.body"] = fmt.Sprintf("%+v" , resp)
+			Event.Resource.Metadata["span.kind"] = "server"
+		}
 
 		return resp.Interface().(interface{}), err
 	}

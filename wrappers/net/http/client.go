@@ -2,7 +2,6 @@ package epsagonhttp
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -111,7 +110,7 @@ func (t *TracingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 		reqHeaders, reqBody = epsagon.ExtractRequestData(req)
 	}
 	if !isBlacklistedURL(req.URL) {
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{epsagon.GenerateEpsagonTraceID()}
 	}
 
 	resp, err = t.transport.RoundTrip(req)
@@ -165,21 +164,6 @@ func shouldAddHeaderByURL(rawUrl string) bool {
 	return !isBlacklistedURL(parsedURL)
 }
 
-func generateRandomUUID() string {
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		panic("failed to generate random UUID")
-	}
-	return strings.ReplaceAll(uuid.String(), "-", "")
-}
-
-func generateEpsagonTraceID() string {
-	traceID := generateRandomUUID()
-	spanID := generateRandomUUID()[:16]
-	parentSpanID := generateRandomUUID()[:16]
-	return fmt.Sprintf("%s:%s:%s:1", traceID, spanID, parentSpanID)
-}
-
 func addTraceIdToEvent(req *http.Request, event *protocol.Event) {
 	traceIDs, ok := req.Header[EPSAGON_TRACEID_HEADER_KEY]
 	if ok && len(traceIDs) > 0 {
@@ -231,7 +215,7 @@ func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 	defer epsagon.GeneralEpsagonRecover("net.http.Client", "Client.Do", c.tracer)
 	startTime := tracer.GetTimestamp()
 	if !isBlacklistedURL(req.URL) {
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{epsagon.GenerateEpsagonTraceID()}
 	}
 	resp, err = c.Client.Do(req)
 	called = true
@@ -261,7 +245,7 @@ func (c *ClientWrapper) Get(rawUrl string) (resp *http.Response, err error) {
 		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
 		resp, err = c.Client.Get(rawUrl)
 	} else {
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{epsagon.GenerateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
 	called = true
@@ -288,7 +272,7 @@ func (c *ClientWrapper) Post(
 		resp, err = c.Client.Post(rawUrl, contentType, body)
 	} else {
 		req.Header.Set("Content-Type", contentType)
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{epsagon.GenerateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
 	called = true
@@ -315,7 +299,7 @@ func (c *ClientWrapper) PostForm(
 		resp, err = c.Client.PostForm(rawUrl, data)
 	} else {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{epsagon.GenerateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
 	called = true
@@ -340,7 +324,7 @@ func (c *ClientWrapper) Head(rawUrl string) (resp *http.Response, err error) {
 		// err might be nil if rawUrl is invalid. Then, wrapping without any HTTP trace correlation
 		resp, err = c.Client.Head(rawUrl)
 	} else {
-		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{generateEpsagonTraceID()}
+		req.Header[EPSAGON_TRACEID_HEADER_KEY] = []string{epsagon.GenerateEpsagonTraceID()}
 		resp, err = c.Client.Do(req)
 	}
 	called = true

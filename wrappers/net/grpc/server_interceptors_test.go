@@ -56,7 +56,7 @@ func newTestServerAndConn(
 			grpc.WithDialer(bufDialer),
 			grpc.WithInsecure(),
 			grpc.WithBlock(), // create the connection synchronously
-			grpc.WithUnaryInterceptor(UnaryClientInterceptor(config)),
+			grpc.WithUnaryInterceptor(UnaryClientInterceptor()),
 		)
 	} else {
 		conn, err = grpc.Dial("bufnet",

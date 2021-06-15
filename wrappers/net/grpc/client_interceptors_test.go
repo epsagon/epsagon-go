@@ -23,7 +23,7 @@ func VerifyGenericClientGRPCEventTags(r *protocol.Resource) {
 }
 
 func verifyTraceIDExists(event *protocol.Event) {
-	traceID, ok := event.Resource.Metadata[tracer.EpsagonGRPCraceIDKey]
+	traceID, ok := event.Resource.Metadata[tracer.EpsagonGRPCTraceIDKey]
 	Expect(ok).To(BeTrue())
 	Expect(traceID).To(Not(BeZero()))
 }

@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/onsi/gomega/types"
@@ -31,6 +33,21 @@ func GeneralEpsagonRecover(exceptionType, msg string, currentTracer tracer.Trace
 	if r := recover(); r != nil && currentTracer != nil {
 		currentTracer.AddExceptionTypeAndMessage(exceptionType, fmt.Sprintf("%s:%+v", msg, r))
 	}
+}
+
+func generateRandomUUID() string {
+	uuid, err := uuid.NewRandom()
+	if err != nil {
+		panic("failed to generate random UUID")
+	}
+	return strings.ReplaceAll(uuid.String(), "-", "")
+}
+
+func GenerateEpsagonTraceID() string {
+	traceID := generateRandomUUID()
+	spanID := generateRandomUUID()[:16]
+	parentSpanID := generateRandomUUID()[:16]
+	return fmt.Sprintf("%s:%s:%s:1", traceID, spanID, parentSpanID)
 }
 
 // NewTracerConfig creates a new tracer Config
