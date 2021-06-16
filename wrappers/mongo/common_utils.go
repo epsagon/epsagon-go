@@ -17,14 +17,13 @@ import (
 	"strings"
 )
 
-
+// currentFuncName returns the name of the caller function as a string
+// for func Foo() { x := currentFuncName }, x == "Foo"
 func currentFuncName() string {
 	current := make([]uintptr, 1)
-
 	if level := runtime.Callers(2, current); level == 0 {
 		return ""
 	}
-
 	caller := runtime.FuncForPC(current[0] - 1)
 	if caller == nil {
 		return ""
@@ -60,6 +59,8 @@ func createMongoResource(opName string, coll *MongoCollectionWrapper) *protocol.
 	}
 }
 
+// extractStructFields parses the fields from a struct and adds it to metadata under field name metaField
+// attempts to convert to int if possible, else keeps as a string
 func extractStructFields(
 	metadata map[string]string,
 	metaField string,
@@ -85,6 +86,7 @@ func extractStructFields(
 	metadata[metaField] = string(doc)
 }
 
+// marshalToMetadata marshals any object to JSON and adds it as a string to metadata under metaFielf
 func marshalToMetadata(
 	metadata map[string]string,
 	metaField string,
@@ -102,7 +104,8 @@ func marshalToMetadata(
 	metadata[metaField] = docString
 }
 
-
+// readCursor accepts a cursor and returns a slice of maps
+// each map represents a mongo document
 func readCursor(cursor *mongo.Cursor) ([]map[string]string, error) {
 	var documents []map[string]string
 	err := cursor.All(context.Background(), &documents)
@@ -115,6 +118,7 @@ func logOperationFailure(messages ...string) {
 	}
 }
 
+// partition a string by delimiter and return the partitioned at the index
 func partitionByDelimiterAtIndex(original, delimiter string, index int) string {
 	s := strings.Split(original, delimiter)
 	i := moduloFloor(len(s), index)
@@ -122,6 +126,8 @@ func partitionByDelimiterAtIndex(original, delimiter string, index int) string {
 
 }
 
+// flooring an index by size
+// useful for wrapping around negative indices to positive
 func moduloFloor(size, index int) int {
 	return (index + size) % size
 }
