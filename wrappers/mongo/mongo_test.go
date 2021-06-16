@@ -82,12 +82,12 @@ var _ = Describe("mongo_wrapper", func() {
 			It("calls InsertMany", func() {
 				_, err := wrapper.InsertMany(context.Background(), []interface{}{
 					bson.D{
-						{"name", "hello"},
-						{"age", "33"},
+						{Key: "name", Value: "hello"},
+						{Key: "age", Value: "33"},
 					},
 					bson.D{
-						{"name", "world"},
-						{"age", "44"},
+						{Key: "name", Value: "world"},
+						{Key: "age", Value: "44"},
 					},
 				})
 				docsInserted += 2
@@ -98,7 +98,7 @@ var _ = Describe("mongo_wrapper", func() {
 			It("calls FindOne", func() {
 				wrapper.FindOne(
 					context.Background(),
-					bson.D{{"name", "helloworld"}},
+					bson.D{{Key: "name", Value: "helloworld"}},
 				)
 			})
 			It("calls Find", func() {

@@ -63,12 +63,12 @@ func dbAPI() {
 		context.Background(),
 		[]interface{}{
 			bson.D{
-				{"name", "hello"},
-				{"age", "33"},
+				{Key: "name", Value: "hello"},
+				{Key: "age", Value: "33"},
 			},
 			bson.D{
-				{"name", "world"},
-				{"age", "44"},
+				{Key: "name", Value: "world"},
+				{Key: "age", Value: "44"},
 			},
 		},
 	)
@@ -81,7 +81,7 @@ func dbAPI() {
 	fmt.Println("##FindOne")
 	coll.FindOne(
 		context.Background(),
-		bson.D{{"name", "bon"}},
+		bson.D{{Key: "name", Value: "bon"}},
 	)
 
 
@@ -93,7 +93,7 @@ func dbAPI() {
 	res, err = coll.Aggregate(
 		context.Background(),
 		mongo.Pipeline{
-			bson.D{{"$match", bson.D{{"name", "bon"}}}},
+			bson.D{{Key: "$match", Value: bson.D{{Key: "name", Value: "bon"}}}},
 		},
 	)
 	if err != nil || err == mongo.ErrNoDocuments {
@@ -104,7 +104,7 @@ func dbAPI() {
 	fmt.Println("##CountDocuments")
 	res, err = coll.CountDocuments(
 		context.Background(),
-		bson.D{{"name", "bon"}},
+		bson.D{{Key: "name", Value: "bon"}},
 	)
 	fmt.Println(res)
 	if err != nil || err == mongo.ErrNoDocuments {
@@ -114,7 +114,7 @@ func dbAPI() {
 	fmt.Println("##DeleteOne")
 	res, err = coll.DeleteOne(
 		context.Background(),
-		bson.D{{"name", "bon"}},
+		bson.D{{Key: "name", Value: "bon"}},
 	)
 	fmt.Println(res)
 	if err != nil || err == mongo.ErrNoDocuments {
@@ -124,8 +124,8 @@ func dbAPI() {
 	fmt.Println("##UpdateOne")
 	res, err = coll.UpdateOne(
 		context.Background(),
-		bson.D{{"name", "bon"}},
-		bson.D{{"$set", bson.D{{"name", "son"}}}},
+		bson.D{{Key: "name", Value: "bon"}},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "name", Value: "son"}}}},
 	)
 	fmt.Println(res)
 	if err != nil || err == mongo.ErrNoDocuments {
