@@ -139,7 +139,6 @@ func (matcher *matchUserError) Match(actual interface{}) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf("excpects userError, got %v", actual)
 	}
-
 	if !reflect.DeepEqual(uErr.exception, matcher.exception) {
 		return false, fmt.Errorf("expected\n\t%v\nexception, got\n\t%v", matcher.exception, uErr.exception)
 	}
