@@ -297,13 +297,11 @@ func main() {
 	app.Listen("0.0.0.0:3000")
 }
 app.Post("/", func(c *fiber.Ctx) error {
-		client := http.Client{Transport: epsagonhttp.NewTracingTransport(c.UserContext())}
-		client.Get(fmt.Sprintf("https://www.epsagon.com/"))
 		return c.SendString("Hello, World 👋!")
 	})
 ```
 
-If you want to instument other integrated libraries inside the fiber handler you can get the Epsagon context from the gin.Context to do that:
+If you want to instument other integrated libraries inside the fiber handler you can get the Epsagon context from the fiber.Ctx UserContext function to do that:
 
 ```go
 client := http.Client{
