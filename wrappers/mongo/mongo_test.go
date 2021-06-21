@@ -65,7 +65,7 @@ var _ = Describe("mongo_wrapper", func() {
 			client, _ := mongo.Connect(testContext, options.Client().ApplyURI(mongoServerURI))
 			wrapper = &MongoCollectionWrapper{
 				collection: client.Database(testDatabaseName).Collection(testCollectionName),
-				currentTracer: tracer.GlobalTracer,
+				tracer: tracer.GlobalTracer,
 			}
 		})
 		AfterEach(func() {

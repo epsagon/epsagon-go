@@ -16,15 +16,15 @@ import (
 // MongoCollectionWrapper is Epsagon's wrapper for mongo.Collection
 type MongoCollectionWrapper struct {
 	collection		*mongo.Collection
-	currentTracer 	tracer.Tracer
+	tracer 	tracer.Tracer
 }
 
 func WrapMongoCollection(
 	collection *mongo.Collection, ctx ...context.Context,
 ) *MongoCollectionWrapper {
 	return &MongoCollectionWrapper{
-		collection: collection,
-		currentTracer: epsagon.ExtractTracer(ctx),
+		collection:	collection,
+		tracer: 	epsagon.ExtractTracer(ctx),
 	}
 }
 
@@ -58,6 +58,7 @@ func (coll *MongoCollectionWrapper) Clone(opts ...*mongoOptions.CollectionOption
 func (coll *MongoCollectionWrapper) InsertOne(
 	ctx context.Context, document interface{}, opts ...*mongoOptions.InsertOneOptions,
 ) (*mongo.InsertOneResult, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.InsertOne(
 		ctx,
@@ -72,8 +73,8 @@ func (coll *MongoCollectionWrapper) InsertOne(
 		)
 	}
 
-	marshalToMetadata(event.Resource.Metadata, "document", document, coll.currentTracer.GetConfig().Debug)
-	marshalToMetadata(event.Resource.Metadata, "response", response, coll.currentTracer.GetConfig().Debug)
+	marshalToMetadata(event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug)
+	marshalToMetadata(event.Resource.Metadata, "response", response, coll.tracer.GetConfig().Debug)
 	completeMongoEvent(event)
 	return response, err
 }
@@ -81,6 +82,7 @@ func (coll *MongoCollectionWrapper) InsertOne(
 func (coll *MongoCollectionWrapper) InsertMany(
 	ctx context.Context, documents []interface{}, opts ...*mongoOptions.InsertManyOptions,
 ) (*mongo.InsertManyResult, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.InsertMany(
 		ctx,
@@ -95,8 +97,8 @@ func (coll *MongoCollectionWrapper) InsertMany(
 		)
 	}
 
-	marshalToMetadata(event.Resource.Metadata, "documents", documents, coll.currentTracer.GetConfig().Debug)
-	marshalToMetadata(event.Resource.Metadata, "response", *response, coll.currentTracer.GetConfig().Debug)
+	marshalToMetadata(event.Resource.Metadata, "documents", documents, coll.tracer.GetConfig().Debug)
+	marshalToMetadata(event.Resource.Metadata, "response", *response, coll.tracer.GetConfig().Debug)
 	completeMongoEvent(event)
 	return response, err
 }
@@ -105,6 +107,7 @@ func (coll *MongoCollectionWrapper) InsertMany(
 func (coll *MongoCollectionWrapper) BulkWrite(
 	ctx context.Context, models []mongo.WriteModel, opts ...*mongoOptions.BulkWriteOptions,
 ) (*mongo.BulkWriteResult, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.BulkWrite(
 		ctx,
@@ -119,7 +122,7 @@ func (coll *MongoCollectionWrapper) BulkWrite(
 		)
 	}
 
-	marshalToMetadata(event.Resource.Metadata, "documents", models, coll.currentTracer.GetConfig().Debug)
+	marshalToMetadata(event.Resource.Metadata, "documents", models, coll.tracer.GetConfig().Debug)
 	completeMongoEvent(event)
 	return response, err
 }
@@ -127,7 +130,8 @@ func (coll *MongoCollectionWrapper) BulkWrite(
 
 func (coll *MongoCollectionWrapper) DeleteOne(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.DeleteOptions,
-) (*mongo.DeleteResult, error){
+) (*mongo.DeleteResult, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.DeleteOne(
 		ctx,
@@ -143,10 +147,10 @@ func (coll *MongoCollectionWrapper) DeleteOne(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "params", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "response", *response, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "response", *response, coll.tracer.GetConfig().Debug,
 	)
 	completeMongoEvent(event)
 	return response, err
@@ -156,6 +160,7 @@ func (coll *MongoCollectionWrapper) DeleteOne(
 func (coll *MongoCollectionWrapper) DeleteMany(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.DeleteOptions,
 ) (*mongo.DeleteResult, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.DeleteMany(
 		ctx,
@@ -171,10 +176,10 @@ func (coll *MongoCollectionWrapper) DeleteMany(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "params", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "response", response, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "response", response, coll.tracer.GetConfig().Debug,
 	)
 	completeMongoEvent(event)
 	return response, err
@@ -183,6 +188,7 @@ func (coll *MongoCollectionWrapper) DeleteMany(
 func (coll *MongoCollectionWrapper) UpdateOne(
 	ctx context.Context, filter interface{}, update interface{}, opts ...*mongoOptions.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.UpdateOne(
 		ctx,
@@ -199,10 +205,10 @@ func (coll *MongoCollectionWrapper) UpdateOne(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "update_conditions", update, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "update_conditions", update, coll.tracer.GetConfig().Debug,
 	)
 	extractStructFields(event.Resource.Metadata, "response", *response)
 	completeMongoEvent(event)
@@ -213,6 +219,7 @@ func (coll *MongoCollectionWrapper) UpdateOne(
 func (coll *MongoCollectionWrapper) UpdateMany(
 	ctx context.Context, filter interface{}, update interface{}, opts ...*mongoOptions.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.UpdateMany(
 		ctx,
@@ -229,10 +236,10 @@ func (coll *MongoCollectionWrapper) UpdateMany(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "update_conditions", update, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "update_conditions", update, coll.tracer.GetConfig().Debug,
 	)
 	extractStructFields(event.Resource.Metadata, "response", *response)
 	completeMongoEvent(event)
@@ -243,6 +250,7 @@ func (coll *MongoCollectionWrapper) UpdateMany(
 func (coll *MongoCollectionWrapper) UpdateByID(
 	ctx context.Context, id interface{}, update interface{}, opts ...*mongoOptions.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.UpdateByID(
 		ctx,
@@ -259,10 +267,10 @@ func (coll *MongoCollectionWrapper) UpdateByID(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "id", id, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "id", id, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "update_conditions", update, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "update_conditions", update, coll.tracer.GetConfig().Debug,
 	)
 	extractStructFields(event.Resource.Metadata, "response", response)
 	completeMongoEvent(event)
@@ -273,6 +281,7 @@ func (coll *MongoCollectionWrapper) UpdateByID(
 func (coll *MongoCollectionWrapper) ReplaceOne(
 	ctx context.Context, filter interface{}, replacement interface{}, opts ...*mongoOptions.ReplaceOptions,
 ) (*mongo.UpdateResult, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.ReplaceOne(
 		ctx,
@@ -289,10 +298,10 @@ func (coll *MongoCollectionWrapper) ReplaceOne(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "replacement", replacement, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "replacement", replacement, coll.tracer.GetConfig().Debug,
 	)
 	extractStructFields(event.Resource.Metadata, "response", *response)
 	completeMongoEvent(event)
@@ -302,6 +311,7 @@ func (coll *MongoCollectionWrapper) ReplaceOne(
 func (coll *MongoCollectionWrapper) Aggregate(
 	ctx context.Context, pipeline interface{}, opts ...*mongoOptions.AggregateOptions,
 ) (*mongo.Cursor, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.Aggregate(
 		ctx,
@@ -322,10 +332,10 @@ func (coll *MongoCollectionWrapper) Aggregate(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "params", pipeline, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "params", pipeline, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "response", docs, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "response", docs, coll.tracer.GetConfig().Debug,
 	)
 	completeMongoEvent(event)
 	return response, err
@@ -335,6 +345,7 @@ func (coll *MongoCollectionWrapper) Aggregate(
 func (coll *MongoCollectionWrapper) CountDocuments(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.CountOptions,
 ) (int64, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.CountDocuments(
 		ctx,
@@ -350,7 +361,7 @@ func (coll *MongoCollectionWrapper) CountDocuments(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
 	)
 	event.Resource.Metadata["count"] = fmt.Sprintf("%d", response)
 	completeMongoEvent(event)
@@ -360,6 +371,7 @@ func (coll *MongoCollectionWrapper) CountDocuments(
 func (coll *MongoCollectionWrapper) EstimatedDocumentCount(
 	ctx context.Context, opts ...*mongoOptions.EstimatedDocumentCountOptions,
 ) (int64, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.EstimatedDocumentCount(
 		ctx,
@@ -381,6 +393,7 @@ func (coll *MongoCollectionWrapper) EstimatedDocumentCount(
 func (coll *MongoCollectionWrapper) Distinct(
 	ctx context.Context, fieldName string, filter interface{}, opts ...*mongoOptions.DistinctOptions,
 ) ([]interface{}, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.Distinct(
 		ctx,
@@ -398,7 +411,7 @@ func (coll *MongoCollectionWrapper) Distinct(
 
 	event.Resource.Metadata["field_name"] = fieldName
 	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
 	)
 	completeMongoEvent(event)
 	return response, err
@@ -407,6 +420,7 @@ func (coll *MongoCollectionWrapper) Distinct(
 func (coll *MongoCollectionWrapper) Find(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.FindOptions,
 ) (*mongo.Cursor, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.Find(
 		ctx,
@@ -427,10 +441,10 @@ func (coll *MongoCollectionWrapper) Find(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "documents", docs, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "documents", docs, coll.tracer.GetConfig().Debug,
 	)
 	completeMongoEvent(event)
 	return response, err
@@ -440,6 +454,7 @@ func (coll *MongoCollectionWrapper) Find(
 func (coll *MongoCollectionWrapper) FindOne(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.FindOneOptions,
 ) *mongo.SingleResult {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response := coll.collection.FindOne(
 		ctx,
@@ -460,10 +475,10 @@ func (coll *MongoCollectionWrapper) FindOne(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "params", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "document", document, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug,
 	)
 	completeMongoEvent(event)
 	return response
@@ -473,6 +488,7 @@ func (coll *MongoCollectionWrapper) FindOne(
 func (coll *MongoCollectionWrapper) FindOneAndDelete(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.FindOneAndDeleteOptions,
 ) *mongo.SingleResult {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response := coll.collection.FindOneAndDelete(
 		ctx,
@@ -493,10 +509,10 @@ func (coll *MongoCollectionWrapper) FindOneAndDelete(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "params", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "document", document, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug,
 	)
 	completeMongoEvent(event)
 	return response
@@ -506,6 +522,7 @@ func (coll *MongoCollectionWrapper) FindOneAndDelete(
 func (coll *MongoCollectionWrapper) FindOneAndReplace(
 	ctx context.Context, filter interface{}, replacement interface{}, opts ...*mongoOptions.FindOneAndReplaceOptions,
 ) *mongo.SingleResult {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response := coll.collection.FindOneAndReplace(
 		ctx,
@@ -526,13 +543,13 @@ func (coll *MongoCollectionWrapper) FindOneAndReplace(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "replacement", replacement, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "replacement", replacement, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "document", document, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug,
 	)
 	completeMongoEvent(event)
 	return response
@@ -543,6 +560,7 @@ func (coll *MongoCollectionWrapper) FindOneAndReplace(
 func (coll *MongoCollectionWrapper) FindOneAndUpdate(
 	ctx context.Context, filter interface{}, update interface{}, opts ...*mongoOptions.FindOneAndReplaceOptions,
 ) *mongo.SingleResult {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response := coll.collection.FindOneAndReplace(
 		ctx,
@@ -563,13 +581,13 @@ func (coll *MongoCollectionWrapper) FindOneAndUpdate(
 	}
 
 	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "update", update, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "update", update, coll.tracer.GetConfig().Debug,
 	)
 	marshalToMetadata(
-		event.Resource.Metadata, "document", document, coll.currentTracer.GetConfig().Debug,
+		event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug,
 	)
 	completeMongoEvent(event)
 	return response
@@ -577,6 +595,7 @@ func (coll *MongoCollectionWrapper) FindOneAndUpdate(
 
 
 func (coll *MongoCollectionWrapper) Drop(ctx context.Context) error {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	err := coll.collection.Drop(
 		ctx,
@@ -593,6 +612,7 @@ func (coll *MongoCollectionWrapper) Drop(ctx context.Context) error {
 }
 
 func (coll *MongoCollectionWrapper) Indexes() mongo.IndexView {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	indexView := coll.collection.Indexes()
 	completeMongoEvent(event)
@@ -602,6 +622,7 @@ func (coll *MongoCollectionWrapper) Indexes() mongo.IndexView {
 func (coll *MongoCollectionWrapper) Watch(
 	ctx context.Context, pipeline interface{}, opts ...*mongoOptions.ChangeStreamOptions,
 ) (*mongo.ChangeStream, error) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.Watch(
 		ctx,
