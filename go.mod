@@ -4,7 +4,7 @@ go 1.11
 
 require (
 	github.com/aws/aws-lambda-go v1.17.0
-	github.com/aws/aws-sdk-go v1.36.30
+	github.com/aws/aws-sdk-go v1.32.6
 	github.com/aws/aws-sdk-go-v2 v0.23.0
 	github.com/containerd/containerd v1.4.1 // indirect
 	github.com/containerd/ttrpc v1.0.2 // indirect
