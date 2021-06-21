@@ -2,17 +2,11 @@ package tracer
 
 import (
 	"fmt"
-	"testing"
 
 	"github.com/epsagon/epsagon-go/protocol"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestMaskIgnoredKeys(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Mask Ignored Keys")
-}
 
 var _ = Describe("mask_ignored_keys", func() {
 	Describe("maskEventIgnoredKeys", func() {
@@ -34,6 +28,7 @@ var _ = Describe("mask_ignored_keys", func() {
 				testTracer.Config.IgnoredKeys = ignoredKeys
 				testTracer.maskEventIgnoredKeys(event, ignoredKeys)
 				Expect(event.Resource.Metadata["not-ignored"]).To(Equal("hello"))
+				Expect(event.Resource.Metadata["not-ignored"]).To(Equal("hello2"))
 				Expect(event.Resource.Metadata["ignored"]).To(Equal(maskedValue))
 			})
 		})
