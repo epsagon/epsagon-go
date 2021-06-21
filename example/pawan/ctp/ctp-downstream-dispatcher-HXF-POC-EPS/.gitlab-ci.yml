@@ -1,0 +1,202 @@
+# image: registry.gitlab.com/ctp1/nii/container-registry:golang
+
+variables:
+  DEV_REGION: us-east-1 #Deployment AWS region for your development environment
+  QA_REGION: us-east-2 #Deployment AWS region for your development environment
+  STG_REGION: us-east-1 #Deployment AWS region for your development environment
+  STG_WEST_2_REGION: us-west-2 #Deployment AWS region for your development environment
+  PROD_REGION: us-east-1 #Deployment AWS region for your production environment
+  PROD_WEST_2_RGION: us-west-2 #Deployment AWS region for your production environment
+  SERVERLESS: serverless@1.59.3
+
+.dev_variables: &dev_variables
+  STAGE: dev
+  AWS_ACCOUNT_ID: ${PREPROD_ACCOUNT_ID}
+  ACCESS_KEY: ${AWS_HXF_ACCESS_KEY_ID}
+  SECRET_ACCESS: ${AWS_HXF_SECRET_ACCESS_KEY}
+  AWS_REGION: ${DEV_REGION}
+
+.qa_variables: &qa_variables
+  STAGE: qa
+  AWS_ACCOUNT_ID: ${PREPROD_ACCOUNT_ID}
+  ACCESS_KEY: ${AWS_HXF_ACCESS_KEY_ID}
+  SECRET_ACCESS: ${AWS_HXF_SECRET_ACCESS_KEY}
+  AWS_REGION: ${QA_REGION}
+
+.stg_variables: &stg_variables
+  STAGE: stg
+  AWS_ACCOUNT_ID: ${PREPROD_ACCOUNT_ID}
+  ACCESS_KEY: ${AWS_HXF_ACCESS_KEY_ID}
+  SECRET_ACCESS: ${AWS_HXF_SECRET_ACCESS_KEY}
+  AWS_REGION: ${STG_REGION}
+
+.stg_west_variables: &stg_west_variables
+  STAGE: stg
+  AWS_ACCOUNT_ID: ${PREPROD_ACCOUNT_ID}
+  ACCESS_KEY: ${AWS_HXF_ACCESS_KEY_ID}
+  SECRET_ACCESS: ${AWS_HXF_SECRET_ACCESS_KEY}
+  AWS_REGION: ${STG_WEST_2_REGION}
+
+.prod_variables: &prod_variables
+  STAGE: prod
+  AWS_ACCOUNT_ID: ${PROD_ACCOUNT_ID}
+  ACCESS_KEY: ${AWS_HXF_ACCESS_KEY_ID}
+  SECRET_ACCESS: ${AWS_HXF_SECRET_ACCESS_KEY}
+  AWS_REGION: ${PROD_REGION}
+  SERVICE_ROLE: "arn:aws:iam::${PROD_ACCOUNT_ID}:role/${CI_LINK_ROLE_NAME}"
+
+.prod_west_variables: &prod_west_variables
+  STAGE: prod
+  AWS_ACCOUNT_ID: ${PROD_ACCOUNT_ID}
+  ACCESS_KEY: ${AWS_HXF_ACCESS_KEY_ID}
+  SECRET_ACCESS: ${AWS_HXF_SECRET_ACCESS_KEY}
+  AWS_REGION: ${PROD_WEST_2_REGION}
+  SERVICE_ROLE: "arn:aws:iam::${PROD_ACCOUNT_ID}:role/${CI_LINK_ROLE_NAME}"
+
+stages:
+  - build
+
+.deploy_script: &BuildDeploy
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$ACCESS_KEY
+    - export AWS_SECRET_ACCESS_KEY=$SECRET_ACCESS
+    - export AWS_DEFAULT_REGION=$AWS_REGION
+    # - apt update
+    # - apt-get install build-base
+    - apt-get update
+    - apt install curl -y
+    - apt-get -y install build-essential
+    - curl -sL https://deb.nodesource.com/setup_10.x | bash -
+    - apt install -y nodejs
+    - npm install -g ${SERVERLESS}
+    - go version
+    - go get -u golang.org/x/lint/golint
+    - go get -t ./...
+    - make clean
+    - make test
+    - make coverage
+    - make build
+    - ls
+  script:
+    - serverless deploy -v --stage $STAGE --region $AWS_REGION 
+
+
+.deploy_script: &BuildDeploy_prod
+  before_script:
+    - apt-get update && apt-get install -y python3
+    - apt-get install -y python3-distutils
+    - apt-get install -y python3-apt
+    - curl -sO https://bootstrap.pypa.io/get-pip.py
+    - python3 get-pip.py
+    - pip install awscli
+    - export AWS_ACCESS_KEY_ID=$ACCESS_KEY
+    - export AWS_SECRET_ACCESS_KEY=$SECRET_ACCESS
+    - export AWS_DEFAULT_REGION=$AWS_REGION
+    # - apt update
+    # - apt-get install build-base
+    - apt-get update
+    - apt install curl
+    - apt-get -y install build-essential
+    - curl -sL https://deb.nodesource.com/setup_10.x | bash -
+    - apt install -y nodejs
+    - npm install -g ${SERVERLESS}
+    - go version
+    - go get -u golang.org/x/lint/golint
+    - go get -t ./...
+    - make clean
+    - make test
+    - make coverage
+    - make build
+    - ls
+  script:
+    - session_name="${CI_BUILD_ID}-`date +%Y%m%d`"
+    - sts=($(aws sts assume-role --role-arn $SERVICE_ROLE --role-session-name "$session_name" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text) )
+    - export AWS_ACCESS_KEY_ID=${sts[0]} AWS_SECRET_ACCESS_KEY=${sts[1]} AWS_SESSION_TOKEN=${sts[2]}
+    - aws sts get-caller-identity
+    - serverless remove -v --stage $STAGE --region $AWS_REGION 
+    - serverless deploy -v --stage $STAGE --region $AWS_REGION 
+
+
+deploy:dev:
+  <<: *BuildDeploy
+  stage: build
+  tags:
+    - "17cyk8sjfrog"
+  variables:
+    <<: *dev_variables
+  only:
+    variables:
+      - $DEPLOY_TO == "17cydev"
+
+deploy:qa:
+  <<: *BuildDeploy
+  stage: build
+  tags:
+    - "17cyk8sjfrog"
+  variables:
+    <<: *qa_variables
+  only:
+    variables:
+      - $DEPLOY_TO == "17cyqa"
+
+deploy:stg:
+  <<: *BuildDeploy
+  stage: build
+  tags:
+    - "17cyk8sjfrog"
+  variables:
+    <<: *stg_variables
+  only:
+    variables:
+      - $DEPLOY_TO == "17cystg"
+
+deploy:stgwest2:
+  <<: *BuildDeploy
+  stage: build
+  tags:
+    - "17cyk8sjfrog"
+  variables:
+    <<: *stg_west_variables
+  image: $JFROG_DOCKER_HUB_ARTIFACTORY/golang:1.16.1
+  only:
+    variables:
+      - $DEPLOY_TO == "17cystgwest2"
+
+deploy:prod:
+  <<: *BuildDeploy_prod
+  stage: build
+  tags:
+    - "17cyk8sjfrog"
+  variables:
+    <<: *prod_variables
+  only:
+    variables:
+      - $DEPLOY_TO == "17cyprod"
+
+deploy:prodwest2:
+  <<: *BuildDeploy_prod
+  stage: build
+  tags:
+    - "17cyk8sjfrog"
+  variables:
+    <<: *prod_west_variables
+  only:
+    variables:
+      - $DEPLOY_TO == "17cyprodwest2"
+
+#deploy:preprod:
+  #<<: *BuildDeploy
+  #stage: build
+  #script:
+    #- session_name="${CI_BUILD_ID}-`date +%Y%m%d`"
+    #- sts=($(aws sts assume-role --role-arn $SERVICE_ROLE --role-session-name "$session_name" --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output text) )
+    #- export AWS_ACCESS_KEY_ID=${sts[0]} AWS_SECRET_ACCESS_KEY=${sts[1]} AWS_SESSION_TOKEN=${sts[2]}
+    #- aws sts get-caller-identity
+    #- serverless deploy -v --stage $STAGE --region $AWS_REGION
+  #variables:
+    #<<: *prod_variables
+  #only:
+    #variables:
+      #- $DEPLOY_TO == "17cyprod"
+
+

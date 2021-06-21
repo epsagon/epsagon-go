@@ -1,0 +1,137 @@
+service: ctp-downstream-dispatcher
+#frameworkVersion: ">=1.28.0 <2.0.0"
+provider:
+  name: aws
+  runtime: go1.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-2'}
+  timeout: 30
+  deploymentBucket:
+    name: com.ctp.nii.${self:service}.${self:provider.stage}.${self:provider.region}.deploys
+    maxPreviousDeploymentArtifacts: 10
+    blockPublicAccess: true
+    serverSideEncryption: AES256
+
+  tracing:
+    lambda: true
+#  environment: ${file(env.yml):${self:provider.stage}-${self:provider.region}}
+
+#  vpc:
+#    securityGroupIds:
+#      - Ref: CTPDownstreamDispatcherSG
+#    subnetIds:
+#      - ${self:custom.SUBNETID1}
+#      - ${self:custom.SUBNETID2}
+
+#TODO verify least-privilege roles/statements/access/etc settings
+# add statements to the Lambda function's IAM Role here
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - xray:PutTelemetryRecords
+        - xray:PutTraceSegments
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - ec2:CreateNetworkInterface
+        - ec2:DescribeNetworkInterfaces
+        - ec2:DeleteNetworkInterface
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - lambda:*
+      Resource: "*"
+
+#custom: ${file(env.yml):${self:provider.stage}-${self:provider.region}}
+
+package:
+# exclude:
+#   - ./**
+ include:
+   - ./bin/**
+   - env.yml
+
+functions:
+  dispatcher:
+#    handler: cmd/dispatcher/main
+    handler: bin/dispatcher
+#    events:
+#      - sqs:
+#          arn:
+#            Fn::GetAtt:
+#              - SQSQueue
+#              - Arn
+    environment:
+      CUSTOMER_CREATE: CUSTOMER_CREATE
+      CUSTOMER_UPDATE: CUSTOMER_UPDATE
+      CUSTOMER_EMAIL_UPDATE: CUSTOMER_EMAIL_UPDATE
+      CUSTOMER_PHONE_UPDATE: CUSTOMER_PHONE_UPDATE
+      CUSTOMER_ADDRESS_UPDATE: CUSTOMER_ADDRESS_UPDATE
+      CUSTOMER_LANGUAGE_UPDATE: CUSTOMER_UPDATE
+      SUBSCRIPTION_EVENT: SUBSCRIPTION_EVENT
+      PROVISIONING_EVENT: PROVISION_EVENT
+      REMOTE_AUTH_EVENT: REMOTEAUTH_EVENT
+      HOME_DEALER_EVENT: HOMEDEALER_EVENT
+      PAYMENT_METHOD_FAILURE_EVENT: PAYMENT_METHOD_FAILURE_EVENT
+      PAYMENT_FAILURE_EVENT: PAYMENT_FAILURE_EVENT
+      SUBSCRIPTION_EXPIRATION_EVENT: SUBSCRIPTION_EXPIRATION_EVENT
+      WIFI_CONSENT_EVENT: WIFI_CONSENT_EVENT
+      SUBSCRIPTION_ALERT_PURGE_EVENT: SUBSCRIPTION_ALERT_PURGE_EVENT
+      EPSAGON_DEBUG: TRUE
+      SUB_INT_SYNC_URI: https://google.com
+resources:
+  Resources:
+    authorizerRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: "CTPDownstreamDispatcherAuthRole-${self:provider.stage}-${self:provider.region}"
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Service:
+                  - "lambda.amazonaws.com"
+              Action:
+                - "sts:AssumeRole"
+        ManagedPolicyArns:
+          - "arn:aws:iam::aws:policy/AmazonAPIGatewayInvokeFullAccess"
+          - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+          - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          - "arn:aws:iam::aws:policy/AWSXrayFullAccess"
+    SQSQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-${self:provider.region}
+        DelaySeconds: 0 #TODO change to 600 in dev,stg,prd
+        MessageRetentionPeriod: 1209600
+        RedrivePolicy:
+          deadLetterTargetArn:
+            "Fn::GetAtt":
+              - ReceiverDeadLetterQueue
+              - Arn
+          maxReceiveCount: 1 #TODO change to 6 in dev,stg,prd
+    ReceiverDeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-${self:provider.region}-DLQ
+        MessageRetentionPeriod: 1209600
+    CTPDownstreamDispatcherSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Lambda security group for CTP
+        GroupName: ${self:service}-${self:provider.stage}-${self:provider.region}
+#        VpcId: ${self:custom.VPCID}
+#        SecurityGroupIngress:
+#          - IpProtocol: "-1"
+#            CidrIp: ${self:custom.CIDRIP}
+#        SecurityGroupEgress:
+#          - IpProtocol: "-1"
+#            CidrIp: 0.0.0.0/0
+Outputs:
+  CTPDownstreamDispatcherSG:
+    Description: CTP Downstream Dispatcher Security Group
+    Value:
+      'Fn::GetAtt': [ CTPDownstreamDispatcherSG, Arn ]
+    Export:
+      Name: ${self:service}:${self:provider.stage}:CTP-Downstream-Dispatcher-SecurityGroup
