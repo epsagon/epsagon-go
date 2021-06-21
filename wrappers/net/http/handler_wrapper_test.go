@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
@@ -16,7 +15,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
- 
+var _ = Describe("http_wrapper", func() {
+	Describe("WrapHandleFunc", func() {
 		var (
 			events         []*protocol.Event
 			exceptions     []*protocol.Exception
