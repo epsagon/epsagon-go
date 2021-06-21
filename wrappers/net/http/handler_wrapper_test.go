@@ -16,13 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestHandlerWrapper(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Gin Wrapper")
-}
-
-var _ = Describe("gin_wrapper", func() {
-	Describe("WrapHandleFunc", func() {
+ 
 		var (
 			events         []*protocol.Event
 			exceptions     []*protocol.Exception
