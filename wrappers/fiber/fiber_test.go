@@ -51,7 +51,7 @@ var _ = Describe("fiber_middleware", func() {
 				Disable:  true,
 				TestMode: true,
 			}}
-			events = make([]*protocol.Event, 0)
+			events = make([]*protocol.Event, 2, 5)
 			exceptions = make([]*protocol.Exception, 0)
 			tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 				Events:     &events,
