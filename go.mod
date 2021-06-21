@@ -25,7 +25,7 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/sclevine/agouti v3.0.0+incompatible // indirect
+	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/ugorji/go v1.1.13 // indirect
 	github.com/valyala/fasthttp v1.26.0
 	google.golang.org/protobuf v1.25.0 // indirect
