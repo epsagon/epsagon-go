@@ -143,7 +143,6 @@ func (middleware *FiberEpsagonMiddleware) HandlerFunc() fiber.Handler {
 				triggerEvent.Resource.Metadata["status_code"] = "500"
 				panic(userError)
 			}
-			panic(userError)
 		}()
 
 		wrapperTracer := tracer.CreateTracer(&config.Config)
