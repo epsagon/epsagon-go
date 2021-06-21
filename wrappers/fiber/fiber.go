@@ -136,7 +136,6 @@ func (middleware *FiberEpsagonMiddleware) HandlerFunc() fiber.Handler {
 				return
 			}
 			if !callingOriginalHandler {
-				panic(userError)
 				err = c.Next()
 				return
 			}
