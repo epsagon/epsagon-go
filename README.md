@@ -104,7 +104,7 @@ The following frameworks are supported by Epsagon:
 |[Generic Function](#generic)            |All                        |
 |[HTTP](#http)                           |All                        |
 |[Gin](#gin)                             |All                        |
-|[Fiber](#fiber)                             |All                        |
+|[Fiber](#fiber)                         |All                        |
 
 
 ### AWS Lambda
