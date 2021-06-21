@@ -28,7 +28,6 @@ var _ = Describe("mask_ignored_keys", func() {
 				testTracer.Config.IgnoredKeys = ignoredKeys
 				testTracer.maskEventIgnoredKeys(event, ignoredKeys)
 				Expect(event.Resource.Metadata["not-ignored"]).To(Equal("hello"))
-				Expect(event.Resource.Metadata["not-ignored"]).To(Equal("hello2"))
 				Expect(event.Resource.Metadata["ignored"]).To(Equal(maskedValue))
 			})
 		})
