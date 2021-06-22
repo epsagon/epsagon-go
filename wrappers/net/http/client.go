@@ -214,6 +214,9 @@ func (c *ClientWrapper) addDataToEvent(req *http.Request, resp *http.Response, e
 		addTraceIdToEvent(req, event)
 	}
 	if resp != nil {
+		if reqTraceID := resp.Header.Get("Apigw-Requestid"); reqTraceID != "" {
+			event.Resource.Metadata["request_trace_id"] = reqTraceID
+		}
 		if !c.getMetadataOnly() {
 			updateRequestData(resp.Request, event.Resource.Metadata)
 		}
