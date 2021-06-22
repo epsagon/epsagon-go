@@ -238,5 +238,55 @@ var _ = Describe("fiber_middleware", func() {
 
 			})
 		})
+		Context("Error Flows", func() {
+			It("Epsagon failure - start tracer", func() {
+				config := &epsagon.Config{Config: tracer.Config{
+					Disable:  true,
+					TestMode: true,
+				}}
+				tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
+					Events:     &events,
+					Exceptions: &exceptions,
+					Labels:     make(map[string]interface{}),
+					Config:     &config.Config,
+					PanicStart: true,
+				}
+				resp, err := app.Test(request)
+				verifyResponseSuccess(resp, err)
+				Expect(called).To(Equal(true))
+			})
+			It("Epsagon failure - add event", func() {
+				config := &epsagon.Config{Config: tracer.Config{
+					Disable:  true,
+					TestMode: true,
+				}}
+				tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
+					Events:        &events,
+					Exceptions:    &exceptions,
+					Labels:        make(map[string]interface{}),
+					Config:        &config.Config,
+					PanicAddEvent: true,
+				}
+				resp, err := app.Test(request)
+				verifyResponseSuccess(resp, err)
+				Expect(called).To(Equal(true))
+			})
+			It("Epsagon failure - stop tracer", func() {
+				config := &epsagon.Config{Config: tracer.Config{
+					Disable:  true,
+					TestMode: true,
+				}}
+				tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
+					Events:     &events,
+					Exceptions: &exceptions,
+					Labels:     make(map[string]interface{}),
+					Config:     &config.Config,
+					PanicStop:  true,
+				}
+				resp, err := app.Test(request)
+				verifyResponseSuccess(resp, err)
+				Expect(called).To(Equal(true))
+			})
+		})
 	})
 })
