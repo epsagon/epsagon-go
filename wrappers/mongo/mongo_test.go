@@ -2,6 +2,10 @@ package epsagonmongo
 
 import (
 	"context"
+	"fmt"
+	"reflect"
+
+	//"github.com/aws/aws-sdk-go-v2/config"
 	"testing"
 	"time"
 
@@ -20,31 +24,40 @@ var mongoServerURI string
 var docsInserted int64 = 0
 
 func TestMongoWrapper(t *testing.T) {
-	mongoServer, err := memongo.Start("4.2.0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer mongoServer.Stop()
-	mongoServerURI = mongoServer.URI()
+	//mongoServer, err := memongo.Start("4.2.0")
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	//defer mongoServer.Stop()
+	//mongoServerURI = mongoServer.URI()
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Mongo Driver Test Suite")
 }
 
-
 var _ = Describe("mongo_wrapper", func() {
 	Describe("CollectionWrapper", func() {
 		var (
-			events          	[]*protocol.Event
-			exceptions      	[]*protocol.Exception
-			wrapper         	*MongoCollectionWrapper
-			testContext			context.Context
-			testDatabaseName	string
-			testCollectionName	string
-			cancel				func()
+			mongoServer			*memongo.Server
+			started				chan bool
+			testConf			*epsagon.Config
+			events             []*protocol.Event
+			exceptions         []*protocol.Exception
+			wrapper            *MongoCollectionWrapper
+			testContext        context.Context
+			testDatabaseName   string
+			testCollectionName string
+			cancel             func()
 		)
 		BeforeEach(func() {
-			config := &epsagon.Config{Config: tracer.Config{
+			started = make(chan bool)
+			// start server goroutine, runs in background until block
+			go func()  {
+				mongoServer, _ = memongo.Start("4.2.0")
+				started <- true
+			}()
+
+			testConf = &epsagon.Config{Config: tracer.Config{
 				Disable:  true,
 				TestMode: true,
 			}}
@@ -54,21 +67,26 @@ var _ = Describe("mongo_wrapper", func() {
 				Events:     &events,
 				Exceptions: &exceptions,
 				Labels:     make(map[string]interface{}),
-				Config:     &config.Config,
+				Config:     &testConf.Config,
 			}
-
 
 			testCollectionName = "collectionName"
 			testDatabaseName = "databaseName"
 			testContext, cancel = context.WithTimeout(context.Background(), 2*time.Second)
 
-			client, _ := mongo.Connect(testContext, options.Client().ApplyURI(mongoServerURI))
+			// blocking await until server is started
+			select {
+			case <-started:
+				break
+			}
+			client, _ := mongo.Connect(testContext, options.Client().ApplyURI(mongoServer.URI()))
 			wrapper = &MongoCollectionWrapper{
 				collection: client.Database(testDatabaseName).Collection(testCollectionName),
-				tracer: tracer.GlobalTracer,
+				tracer:     tracer.GlobalTracer,
 			}
 		})
 		AfterEach(func() {
+			mongoServer.Stop()
 			cancel()
 		})
 		Context("Writing DB", func() {
@@ -76,7 +94,6 @@ var _ = Describe("mongo_wrapper", func() {
 				_, err := wrapper.InsertOne(context.Background(), struct {
 					Name string
 				}{"TestName"})
-				docsInserted++
 				Expect(err).To(BeNil())
 			})
 			It("calls InsertMany", func() {
@@ -90,22 +107,47 @@ var _ = Describe("mongo_wrapper", func() {
 						{Key: "age", Value: "44"},
 					},
 				})
-				docsInserted += 2
 				Expect(err).To(BeNil())
 			})
 		})
 		Context("Reading DB", func() {
-			It("calls FindOne", func() {
-				wrapper.FindOne(
+			It("calls InsertOne and FindOne", func() {
+				type doc struct {
+					Name string
+				}
+				reqDoc := doc{Name: "TestName"}
+				resDoc := reqDoc
+
+				wrapper.InsertOne(context.Background(), testDoc)
+				res := wrapper.FindOne(
 					context.Background(),
-					bson.D{{Key: "name", Value: "helloworld"}},
+					bson.D{{Key: "name", Value: "TestName"}},
 				)
+				reflect.ValueOf(res).
+					MethodByName("Decode").
+					Call([]reflect.Value{reflect.ValueOf(&resDoc)})
+				Expect(reqDoc).To(Equal(resDoc))
 			})
-			It("calls Find", func() {
-				wrapper.Find(
+			It("calls InsertMany and Find", func() {
+				type doc struct {
+					Name string
+				}
+				docs := []doc{
+					{Name: "Name1"},
+					{Name: "Name2"},
+				}
+				docMaps = make([]map[string]string, len(docs))
+				for i := 0; i < len(docs); i += 1 {
+
+				}
+				wrapper.InsertMany(context.Background(), )
+				cur, _ := wrapper.Find(
 					context.Background(),
 					bson.M{},
 				)
+
+
+				readCursor(cur)
 			})
 			It("calls CountDocuments", func() {
 				res, err := wrapper.CountDocuments(
@@ -113,7 +155,7 @@ var _ = Describe("mongo_wrapper", func() {
 					bson.D{{}},
 				)
 				Expect(err).To(BeNil())
-				Expect(res).To(Equal(docsInserted))
+				Expect(res).To(Equal(0))
 			})
 		})
 	})

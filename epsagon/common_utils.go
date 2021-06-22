@@ -119,7 +119,6 @@ func NewReadCloser(body []byte, err error) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader(body))
 }
 
-
 // DebugLog logs helpful debugging messages
 
 func DebugLog(debugMode bool, args ...interface{}) {

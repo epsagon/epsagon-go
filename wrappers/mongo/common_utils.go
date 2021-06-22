@@ -1,4 +1,3 @@
-
 package epsagonmongo
 
 import (
@@ -34,28 +33,30 @@ func currentFuncName() string {
 }
 
 func startMongoEvent(opName string, coll *MongoCollectionWrapper) *protocol.Event {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	return &protocol.Event{
-		Id: "mongodb-" + uuid.New().String(),
-		Origin: "mongodb",
+		Id:        "mongodb-" + uuid.New().String(),
+		Origin:    "mongodb",
 		ErrorCode: protocol.ErrorCode_OK,
 		StartTime: tracer.GetTimestamp(),
-		Resource: createMongoResource(opName, coll),
+		Resource:  createMongoResource(opName, coll),
 	}
 }
 
-func completeMongoEvent(event *protocol.Event, args ...context.Context) {
+func completeMongoEvent(currentTracer tracer.Tracer, event *protocol.Event) {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), currentTracer)
 	event.Duration = tracer.GetTimestamp() - event.StartTime
-	currentTracer := epsagon.ExtractTracer(args)
 	currentTracer.AddEvent(event)
 
 }
 
 func createMongoResource(opName string, coll *MongoCollectionWrapper) *protocol.Resource {
+	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	return &protocol.Resource{
-		Name: coll.Database().Name() + "." + coll.collection.Name(),
-		Type: "mongodb",
+		Name:      coll.Database().Name() + "." + coll.collection.Name(),
+		Type:      "mongodb",
 		Operation: opName,
-		Metadata: make(map[string]string),
+		Metadata:  make(map[string]string),
 	}
 }
 

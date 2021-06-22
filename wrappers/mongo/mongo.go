@@ -1,4 +1,3 @@
-
 package epsagonmongo
 
 import (
@@ -12,22 +11,20 @@ import (
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
-
 // MongoCollectionWrapper is Epsagon's wrapper for mongo.Collection
 type MongoCollectionWrapper struct {
-	collection		*mongo.Collection
-	tracer 	tracer.Tracer
+	collection *mongo.Collection
+	tracer     tracer.Tracer
 }
 
 func WrapMongoCollection(
 	collection *mongo.Collection, ctx ...context.Context,
 ) *MongoCollectionWrapper {
 	return &MongoCollectionWrapper{
-		collection:	collection,
-		tracer: 	epsagon.ExtractTracer(ctx),
+		collection: collection,
+		tracer:     epsagon.ExtractTracer(ctx),
 	}
 }
-
 
 func (coll *MongoCollectionWrapper) Name() string {
 	return coll.collection.Name()
@@ -44,45 +41,44 @@ func (coll *MongoCollectionWrapper) Clone(opts ...*mongoOptions.CollectionOption
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
-	completeMongoEvent(event)
+	completeMongoEvent(coll.tracer, event)
 
 	return response, err
 }
 
-
 func (coll *MongoCollectionWrapper) InsertOne(
 	ctx context.Context, document interface{}, opts ...*mongoOptions.InsertOneOptions,
 ) (*mongo.InsertOneResult, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.InsertOne(
 		ctx,
 		document,
-		opts...
+		opts...,
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
-	marshalToMetadata(event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug)
-	marshalToMetadata(event.Resource.Metadata, "response", response, coll.tracer.GetConfig().Debug)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "response", response, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
 func (coll *MongoCollectionWrapper) InsertMany(
 	ctx context.Context, documents []interface{}, opts ...*mongoOptions.InsertManyOptions,
 ) (*mongo.InsertManyResult, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.InsertMany(
 		ctx,
@@ -91,23 +87,23 @@ func (coll *MongoCollectionWrapper) InsertMany(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
-	marshalToMetadata(event.Resource.Metadata, "documents", documents, coll.tracer.GetConfig().Debug)
-	marshalToMetadata(event.Resource.Metadata, "response", *response, coll.tracer.GetConfig().Debug)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "documents", documents, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "response", *response, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
-
 
 func (coll *MongoCollectionWrapper) BulkWrite(
 	ctx context.Context, models []mongo.WriteModel, opts ...*mongoOptions.BulkWriteOptions,
 ) (*mongo.BulkWriteResult, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.BulkWrite(
 		ctx,
@@ -116,22 +112,22 @@ func (coll *MongoCollectionWrapper) BulkWrite(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
-	marshalToMetadata(event.Resource.Metadata, "documents", models, coll.tracer.GetConfig().Debug)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "documents", models, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
-
 
 func (coll *MongoCollectionWrapper) DeleteOne(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.DeleteOptions,
 ) (*mongo.DeleteResult, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.DeleteOne(
 		ctx,
@@ -140,27 +136,23 @@ func (coll *MongoCollectionWrapper) DeleteOne(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "response", *response, coll.tracer.GetConfig().Debug,
-	)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "response", *response, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
-
 
 func (coll *MongoCollectionWrapper) DeleteMany(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.DeleteOptions,
 ) (*mongo.DeleteResult, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.DeleteMany(
 		ctx,
@@ -169,26 +161,23 @@ func (coll *MongoCollectionWrapper) DeleteMany(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "response", response, coll.tracer.GetConfig().Debug,
-	)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "response", response, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
 func (coll *MongoCollectionWrapper) UpdateOne(
 	ctx context.Context, filter interface{}, update interface{}, opts ...*mongoOptions.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.UpdateOne(
 		ctx,
@@ -198,28 +187,24 @@ func (coll *MongoCollectionWrapper) UpdateOne(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "update_conditions", update, coll.tracer.GetConfig().Debug,
-	)
-	extractStructFields(event.Resource.Metadata, "response", *response)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "update_conditions", update, coll.tracer.GetConfig().Debug)
+		extractStructFields(event.Resource.Metadata, "response", *response)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
-
 
 func (coll *MongoCollectionWrapper) UpdateMany(
 	ctx context.Context, filter interface{}, update interface{}, opts ...*mongoOptions.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.UpdateMany(
 		ctx,
@@ -229,59 +214,50 @@ func (coll *MongoCollectionWrapper) UpdateMany(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
-
-	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "update_conditions", update, coll.tracer.GetConfig().Debug,
-	)
-	extractStructFields(event.Resource.Metadata, "response", *response)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "update_conditions", update, coll.tracer.GetConfig().Debug)
+		extractStructFields(event.Resource.Metadata, "response", *response)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
-
 
 func (coll *MongoCollectionWrapper) UpdateByID(
 	ctx context.Context, id interface{}, update interface{}, opts ...*mongoOptions.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.UpdateByID(
 		ctx,
 		id,
 		update,
-		opts...
+		opts...,
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "id", id, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "update_conditions", update, coll.tracer.GetConfig().Debug,
-	)
-	extractStructFields(event.Resource.Metadata, "response", response)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "id", id, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "update_conditions", update, coll.tracer.GetConfig().Debug)
+		extractStructFields(event.Resource.Metadata, "response", response)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
-
 
 func (coll *MongoCollectionWrapper) ReplaceOne(
 	ctx context.Context, filter interface{}, replacement interface{}, opts ...*mongoOptions.ReplaceOptions,
 ) (*mongo.UpdateResult, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.ReplaceOne(
 		ctx,
@@ -291,27 +267,24 @@ func (coll *MongoCollectionWrapper) ReplaceOne(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "replacement", replacement, coll.tracer.GetConfig().Debug,
-	)
-	extractStructFields(event.Resource.Metadata, "response", *response)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "replacement", replacement, coll.tracer.GetConfig().Debug)
+		extractStructFields(event.Resource.Metadata, "response", *response)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
 func (coll *MongoCollectionWrapper) Aggregate(
 	ctx context.Context, pipeline interface{}, opts ...*mongoOptions.AggregateOptions,
 ) (*mongo.Cursor, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.Aggregate(
 		ctx,
@@ -320,7 +293,7 @@ func (coll *MongoCollectionWrapper) Aggregate(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
@@ -331,21 +304,17 @@ func (coll *MongoCollectionWrapper) Aggregate(
 		logOperationFailure("Could not complete readCursor", err.Error())
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "params", pipeline, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "response", docs, coll.tracer.GetConfig().Debug,
-	)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "params", pipeline, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "response", docs, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
-
 
 func (coll *MongoCollectionWrapper) CountDocuments(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.CountOptions,
 ) (int64, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.CountDocuments(
 		ctx,
@@ -354,24 +323,23 @@ func (coll *MongoCollectionWrapper) CountDocuments(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
-	)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug)
+	}
 	event.Resource.Metadata["count"] = fmt.Sprintf("%d", response)
-	completeMongoEvent(event)
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
 func (coll *MongoCollectionWrapper) EstimatedDocumentCount(
 	ctx context.Context, opts ...*mongoOptions.EstimatedDocumentCountOptions,
 ) (int64, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.EstimatedDocumentCount(
 		ctx,
@@ -379,21 +347,20 @@ func (coll *MongoCollectionWrapper) EstimatedDocumentCount(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
 	event.Resource.Metadata["estimated_count"] = fmt.Sprintf("%d", response)
-	completeMongoEvent(event)
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
 func (coll *MongoCollectionWrapper) Distinct(
 	ctx context.Context, fieldName string, filter interface{}, opts ...*mongoOptions.DistinctOptions,
 ) ([]interface{}, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.Distinct(
 		ctx,
@@ -403,24 +370,23 @@ func (coll *MongoCollectionWrapper) Distinct(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
 
 	event.Resource.Metadata["field_name"] = fieldName
-	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
-	)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
 func (coll *MongoCollectionWrapper) Find(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.FindOptions,
 ) (*mongo.Cursor, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.Find(
 		ctx,
@@ -429,7 +395,7 @@ func (coll *MongoCollectionWrapper) Find(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
@@ -440,21 +406,17 @@ func (coll *MongoCollectionWrapper) Find(
 		logOperationFailure("Could not complete readCursor", err.Error())
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "documents", docs, coll.tracer.GetConfig().Debug,
-	)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "documents", docs, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
-
 
 func (coll *MongoCollectionWrapper) FindOne(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.FindOneOptions,
 ) *mongo.SingleResult {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response := coll.collection.FindOne(
 		ctx,
@@ -465,30 +427,26 @@ func (coll *MongoCollectionWrapper) FindOne(
 	var document map[string]string
 	decodedResponse := reflect.ValueOf(response).
 		MethodByName("Decode").
-		Call([]reflect.Value{ reflect.ValueOf(&document) })
+		Call([]reflect.Value{reflect.ValueOf(&document)})
 	if err := decodedResponse[0]; err.Interface() != nil {
 		logOperationFailure("Could not complete Decode SingleResult", err.String())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.String(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug,
-	)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response
 }
-
 
 func (coll *MongoCollectionWrapper) FindOneAndDelete(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.FindOneAndDeleteOptions,
 ) *mongo.SingleResult {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response := coll.collection.FindOneAndDelete(
 		ctx,
@@ -499,30 +457,26 @@ func (coll *MongoCollectionWrapper) FindOneAndDelete(
 	var document map[string]string
 	decodedResponse := reflect.ValueOf(response).
 		MethodByName("Decode").
-		Call([]reflect.Value{ reflect.ValueOf(&document) })
+		Call([]reflect.Value{reflect.ValueOf(&document)})
 	if err := decodedResponse[0]; err.Interface() != nil {
 		logOperationFailure("Could not complete Decode SingleResult", err.String())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.String(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug,
-	)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "params", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response
 }
-
 
 func (coll *MongoCollectionWrapper) FindOneAndReplace(
 	ctx context.Context, filter interface{}, replacement interface{}, opts ...*mongoOptions.FindOneAndReplaceOptions,
 ) *mongo.SingleResult {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response := coll.collection.FindOneAndReplace(
 		ctx,
@@ -533,34 +487,28 @@ func (coll *MongoCollectionWrapper) FindOneAndReplace(
 	var document map[string]string
 	decodedResponse := reflect.ValueOf(response).
 		MethodByName("Decode").
-		Call([]reflect.Value{ reflect.ValueOf(&document) })
+		Call([]reflect.Value{reflect.ValueOf(&document)})
 	if err := decodedResponse[0]; err.Interface() != nil {
 		logOperationFailure("Could not complete Decode SingleResult", err.String())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.String(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "replacement", replacement, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug,
-	)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "replacement", replacement, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response
 
 }
 
-
 func (coll *MongoCollectionWrapper) FindOneAndUpdate(
 	ctx context.Context, filter interface{}, update interface{}, opts ...*mongoOptions.FindOneAndReplaceOptions,
 ) *mongo.SingleResult {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response := coll.collection.FindOneAndReplace(
 		ctx,
@@ -571,58 +519,50 @@ func (coll *MongoCollectionWrapper) FindOneAndUpdate(
 	var document map[string]string
 	decodedResponse := reflect.ValueOf(response).
 		MethodByName("Decode").
-		Call([]reflect.Value{ reflect.ValueOf(&document) })
+		Call([]reflect.Value{reflect.ValueOf(&document)})
 	if err := decodedResponse[0]; err.Interface() != nil {
 		logOperationFailure("Could not complete Decode SingleResult", err.String())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.String(),
 		)
 	}
 
-	marshalToMetadata(
-		event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "update", update, coll.tracer.GetConfig().Debug,
-	)
-	marshalToMetadata(
-		event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug,
-	)
-	completeMongoEvent(event)
+	if !coll.tracer.GetConfig().MetadataOnly {
+		marshalToMetadata(event.Resource.Metadata, "filter", filter, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "update", update, coll.tracer.GetConfig().Debug)
+		marshalToMetadata(event.Resource.Metadata, "document", document, coll.tracer.GetConfig().Debug)
+	}
+	completeMongoEvent(coll.tracer, event)
 	return response
 }
 
-
 func (coll *MongoCollectionWrapper) Drop(ctx context.Context) error {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	err := coll.collection.Drop(
 		ctx,
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
-	completeMongoEvent(event)
+	completeMongoEvent(coll.tracer, event)
 	return err
 }
 
 func (coll *MongoCollectionWrapper) Indexes() mongo.IndexView {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	indexView := coll.collection.Indexes()
-	completeMongoEvent(event)
+	completeMongoEvent(coll.tracer, event)
 	return indexView
 }
 
 func (coll *MongoCollectionWrapper) Watch(
 	ctx context.Context, pipeline interface{}, opts ...*mongoOptions.ChangeStreamOptions,
 ) (*mongo.ChangeStream, error) {
-	defer epsagon.GeneralEpsagonRecover("mongo-driver", currentFuncName(), coll.tracer)
 	event := startMongoEvent(currentFuncName(), coll)
 	response, err := coll.collection.Watch(
 		ctx,
@@ -631,11 +571,11 @@ func (coll *MongoCollectionWrapper) Watch(
 	)
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
-		epsagon.ExtractTracer([]context.Context{}).AddExceptionTypeAndMessage(
+		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
 		)
 	}
-	completeMongoEvent(event)
+	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
