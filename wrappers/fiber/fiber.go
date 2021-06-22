@@ -86,6 +86,11 @@ func processResponseHeaders(responseHeaders *fasthttp.ResponseHeader, wrapperTra
 
 }
 
+// Gets the request content type header, empty string if not found
+func getRequestContentType(fiberCtx *fiber.Ctx) string {
+	return string(fiberCtx.Request().Header.ContentType())
+}
+
 // CreateHTTPTriggerEvent creates an HTTP trigger event
 func CreateHTTPTriggerEvent(wrapperTracer tracer.Tracer, fiberCtx *fiber.Ctx, resourceName string) *protocol.Event {
 	request := fiberCtx.Request()
@@ -127,6 +132,10 @@ func (middleware *FiberEpsagonMiddleware) HandlerFunc() fiber.Handler {
 		config = &epsagon.Config{}
 	}
 	return func(c *fiber.Ctx) (err error) {
+		if epsagon.ShouldIgnoreRequest(getRequestContentType(c), c.Path()) {
+			return c.Next()
+		}
+
 		callingOriginalHandler := false
 		called := false
 		var triggerEvent *protocol.Event = nil
