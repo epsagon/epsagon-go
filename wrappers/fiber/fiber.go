@@ -3,7 +3,6 @@ package epsagonfiber
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"runtime/debug"
 	"strconv"
 
@@ -58,33 +57,32 @@ func processQueryFromURI(uriObj *fasthttp.URI, wrapperTracer tracer.Tracer) stri
 
 }
 
-func processHeaders(rawHeaders interface{}, wrapperTracer tracer.Tracer) string {
-	if rawHeaders == nil {
+func processRequestHeaders(requestHeaders *fasthttp.RequestHeader, wrapperTracer tracer.Tracer) string {
+	if requestHeaders == nil {
 		return ""
 	}
 	headers := make(map[string]string)
-	headersType := ""
-	switch rawHeaders.(type) {
-	case *fasthttp.RequestHeader:
-		headersType = "request"
-		rawHeaders.(*fasthttp.RequestHeader).VisitAll(func(key, val []byte) {
-			headers[string(key)] = string(val)
-		})
-	case *fasthttp.ResponseHeader:
-		headersType = "response"
-		rawHeaders.(*fasthttp.ResponseHeader).VisitAll(func(key, val []byte) {
-			headers[string(key)] = string(val)
-		})
-	default:
-		if wrapperTracer.GetConfig().Debug {
-			log.Printf("EPSAGON DEBUG: received an invalid type of headers")
-		}
-		return ""
-	}
+	requestHeaders.VisitAll(func(key, val []byte) {
+		headers[string(key)] = string(val)
+	})
 	return convertMapValuesToString(
 		headers,
 		wrapperTracer,
-		fmt.Sprintf("Failed to serialize %s headers", headersType))
+		fmt.Sprintf("Failed to serialize request headers"))
+}
+
+func processResponseHeaders(responseHeaders *fasthttp.ResponseHeader, wrapperTracer tracer.Tracer) string {
+	if responseHeaders == nil {
+		return ""
+	}
+	headers := make(map[string]string)
+	responseHeaders.VisitAll(func(key, val []byte) {
+		headers[string(key)] = string(val)
+	})
+	return convertMapValuesToString(
+		headers,
+		wrapperTracer,
+		fmt.Sprintf("Failed to serialize response headers"))
 }
 
 // Gets the request content type header, empty string if not found
@@ -116,10 +114,15 @@ func CreateHTTPTriggerEvent(wrapperTracer tracer.Tracer, fiberCtx *fiber.Ctx, re
 	}
 	if !wrapperTracer.GetConfig().MetadataOnly {
 		event.Resource.Metadata["query_string_params"] = processQueryFromURI(request.URI(), wrapperTracer)
-		event.Resource.Metadata["request_headers"] = processHeaders(&request.Header, wrapperTracer)
+		event.Resource.Metadata["request_headers"] = processRequestHeaders(&request.Header, wrapperTracer)
 		event.Resource.Metadata["request_body"] = string(fiberCtx.Body())
 	}
 	return event
+}
+
+func fiberHandler(c *fiber.Ctx) (err error) {
+	err = c.Next()
+	return err
 }
 
 func (middleware *FiberEpsagonMiddleware) HandlerFunc() fiber.Handler {
@@ -180,7 +183,7 @@ func postExecutionUpdates(
 	response := c.Response()
 	triggerEvent.Resource.Metadata["status_code"] = strconv.Itoa(response.StatusCode())
 	if !wrapperTracer.GetConfig().MetadataOnly {
-		triggerEvent.Resource.Metadata["response_headers"] = processHeaders(&response.Header, wrapperTracer)
+		triggerEvent.Resource.Metadata["response_headers"] = processResponseHeaders(&response.Header, wrapperTracer)
 		triggerEvent.Resource.Metadata["response_body"] = string(response.Body())
 	}
 }
