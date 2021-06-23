@@ -239,12 +239,7 @@ func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 	resp, err = c.Client.Do(req)
 	called = true
 	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, c.getMetadataOnly())
-	if req != nil {
-		addTraceIdToEvent(req, event)
-	}
-	if !c.getMetadataOnly() {
-		updateRequestData(req, event.Resource.Metadata)
-	}
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }
