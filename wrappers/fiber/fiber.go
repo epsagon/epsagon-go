@@ -63,12 +63,15 @@ func processHeaders(rawHeaders interface{}, wrapperTracer tracer.Tracer) string 
 		return ""
 	}
 	headers := make(map[string]string)
+	headersType := ""
 	switch rawHeaders.(type) {
 	case *fasthttp.RequestHeader:
+		headersType = "request"
 		rawHeaders.(*fasthttp.RequestHeader).VisitAll(func(key, val []byte) {
 			headers[string(key)] = string(val)
 		})
 	case *fasthttp.ResponseHeader:
+		headersType = "response"
 		rawHeaders.(*fasthttp.ResponseHeader).VisitAll(func(key, val []byte) {
 			headers[string(key)] = string(val)
 		})
@@ -81,7 +84,7 @@ func processHeaders(rawHeaders interface{}, wrapperTracer tracer.Tracer) string 
 	return convertMapValuesToString(
 		headers,
 		wrapperTracer,
-		fmt.Sprintf("Failed to serialize headers"))
+		fmt.Sprintf("Failed to serialize %s headers", headersType))
 }
 
 // Gets the request content type header, empty string if not found
