@@ -24,7 +24,7 @@ func main() {
 	app.Post("/", func(c *fiber.Ctx) error {
 		// any call wrapped by Epsagon should receive the user context from the fiber context
 		client := http.Client{Transport: epsagonhttp.NewTracingTransport(c.UserContext())}
-		client.Get(fmt.Sprintf("https://www.epsagon.com/"))
+		client.Get(fmt.Sprintf("https://epsagon.com/"))
 		return c.SendString("Hello, World 👋!")
 	})
 
