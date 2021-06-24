@@ -47,7 +47,7 @@ var _ = Describe("gin_wrapper", func() {
 				Disable:  true,
 				TestMode: true,
 			}}
-			events = make([]*protocol.Event, 0)
+			events = make([]*protocol.Event, 0, 5)
 			exceptions = make([]*protocol.Exception, 0)
 			tracer.GlobalTracer = &tracer.MockedEpsagonTracer{
 				Events:     &events,
