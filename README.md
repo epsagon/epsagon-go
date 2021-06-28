@@ -104,6 +104,7 @@ The following frameworks are supported by Epsagon:
 |[Generic Function](#generic)            |All                        |
 |[HTTP](#http)                           |All                        |
 |[Gin](#gin)                             |All                        |
+|[GRPC](#grpc)                           |Unary                      |
 
 
 ### AWS Lambda
@@ -265,6 +266,36 @@ If you want to instument other integrated libraries inside the gin handler you c
 client := http.Client{
     Transport: epsagonhttp.NewTracingTransport(epsagongin.EpsagonContext(c))}
 resp, err := client.Get("http://example.com")
+```
+
+### gRPC
+
+Wrapping gRPC client:
+```go
+import (
+    epsagongrpc "github.com/epsagon/epsagon-go/wrappers/net/grpc"
+)
+
+...
+func setupClient() (int, error) {
+    conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(epsagongrpc.UnaryClientInterceptor()), grpc.WithBlock())
+}
+
+....
+func main () {
+    epsagon.GoWrapper(config, setupClient)()
+}
+```
+
+Wrapping gRPC Server:
+```go
+import (
+    epsagongrpc "github.com/epsagon/epsagon-go/wrappers/net/grpc"
+)
+...
+s := grpc.NewServer(
+    grpc.UnaryInterceptor(epsagongrpc.UnaryServerInterceptor(config)),
+)
 ```
 
 ## Integrations
