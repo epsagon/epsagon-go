@@ -2,10 +2,10 @@ package epsagongrpc
 
 import (
 	"context"
-	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
+	jsoniter "github.com/json-iterator/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -36,25 +36,26 @@ func UnaryClientInterceptor(args ...context.Context) grpc.UnaryClientInterceptor
 		Event := createGRPCEvent("grpc.client", method, "grpc-client")
 		ctx = InjectEpsagonTracerContextID(ctx, Event)
 
-		if !wrapperTracer.GetConfig().MetadataOnly {
-			extractGRPCRequest(Event.Resource, ctx, method, req)
-		}
 
 		defer wrapperTracer.AddEvent(Event)
 		err := invoker(ctx, method, req, reply, cc, opts...)
 
+		defer extractGRPCClientRequest(Event.Resource, method, req, cc.Target())
+
 		duration := tracer.GetTimestamp() - Event.StartTime
 		Event.Duration = duration
 
-		Event.Resource.Metadata["status_code"] = strconv.Itoa(int(status.Code(err)))
-		Event.Resource.Metadata["span.kind"] = "client"
+		Event.Resource.Metadata["rpc.status_code"] = strconv.Itoa(int(status.Code(err)))
 
 		if err != nil {
 			Event.ErrorCode = protocol.ErrorCode_ERROR
 			return err
 		}
 
-		Event.Resource.Metadata["grpc.response.body"] = fmt.Sprintf("%+v" , reply)
+		replyJson, err := jsoniter.MarshalToString(reply)
+		if err == nil {
+			Event.Resource.Metadata["grpc.response.body"] = replyJson
+		}
 
 		return err
 	}

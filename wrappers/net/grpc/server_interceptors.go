@@ -2,10 +2,10 @@ package epsagongrpc
 
 import (
 	"context"
-	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
+	jsoniter "github.com/json-iterator/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -26,7 +26,7 @@ func addTraceIdToEventFromContext(ctx context.Context, event *protocol.Event, de
 	traceIDs := md.Get(EPSAGON_TRACEID_HEADER_KEY)
 
 	if len(traceIDs) == 1 {
-		event.Resource.Metadata[tracer.EpsagonGRPCTraceIDKey] = traceIDs[0]
+		event.Resource.Metadata["epsagon_id"] = traceIDs[0]
 	} else {
 		if debugMode {
 			log.Printf("EPSAGON DEBUG Couldn't extract TraceID from metadata: %+v\n", md)
@@ -66,9 +66,7 @@ func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor 
 
 		Event.Duration = duration
 
-		if !wrapperTracer.GetConfig().MetadataOnly {
-			extractGRPCRequest(Event.Resource, ctx, info.FullMethod, req)
-		}
+		extractGRPCServerRequest(Event.Resource, ctx, info.FullMethod, req)
 
 		var err error = nil
 		if !wrapperResponse[1].IsNil() {
@@ -77,9 +75,14 @@ func UnaryServerInterceptor(config *epsagon.Config) grpc.UnaryServerInterceptor 
 		}
 
 		if !wrapperTracer.GetConfig().MetadataOnly {
-			Event.Resource.Metadata["status_code"] = strconv.Itoa(int(status.Code(err)))
-			Event.Resource.Metadata["grpc.response.body"] = fmt.Sprintf("%+v" , resp)
-			Event.Resource.Metadata["span.kind"] = "server"
+			Event.Resource.Metadata["rpc.status_code"] = strconv.Itoa(int(status.Code(err)))
+
+			respJson, ok := jsoniter.MarshalToString(resp)
+			if ok == nil {
+				Event.Resource.Metadata["grpc.response.body"] = respJson
+			} else {
+				log.Printf("EPSAGON DEBUG err while parsing response: %v", resp)
+			}
 		}
 
 		return resp.Interface().(interface{}), err

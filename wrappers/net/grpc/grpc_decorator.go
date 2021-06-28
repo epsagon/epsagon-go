@@ -2,12 +2,11 @@ package epsagongrpc
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/google/uuid"
+	jsoniter "github.com/json-iterator/go"
 	"google.golang.org/grpc/metadata"
 	"net/http"
 	"net/url"
@@ -35,13 +34,35 @@ func createGRPCEvent(origin string, method string, eventID string) *protocol.Eve
 func postGRPCRunner(handlerWrapper *epsagon.GenericWrapper) {
 	runner := handlerWrapper.GetRunnerEvent()
 	if runner != nil {
-		runner.Resource.Type = "grpc"
+		runner.Resource.Type = "grpc_server"
 	}
 }
 
 
-func extractGRPCRequest(Resource *protocol.Resource, ctx context.Context, fullMethod string, req interface{}) {
+func extractGRPCClientRequest(Resource *protocol.Resource, method string, req interface{}, target string) {
+	methodParts := strings.SplitN(method, "/", 2)
+
+	u := getURL(method, target)
+
+	if len(methodParts) == 2 {
+		Resource.Metadata["rpc.service"] = methodParts[0]
+	}
+
+	Resource.Name = u.Host
+	Resource.Metadata["net.peer.name"] = u.Hostname()
+	Resource.Metadata["rpc.method"] = method
+	Resource.Metadata["net.port"] = u.Port()
+
+	reqJson, ok := jsoniter.MarshalToString(req)
+	if ok == nil {
+		Resource.Metadata["grpc.request.body"] = reqJson
+	}
+}
+
+
+func extractGRPCServerRequest(Resource *protocol.Resource, ctx context.Context, fullMethod string, req interface{}) {
 	method := strings.TrimPrefix(fullMethod, "/")
+	methodParts := strings.SplitN(method, "/", 2)
 
 	var hdrs http.Header
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
@@ -54,20 +75,21 @@ func extractGRPCRequest(Resource *protocol.Resource, ctx context.Context, fullMe
 	}
 
 	target := hdrs.Get(":authority")
-	url := getURL(method, target)
+	u := getURL(method, target)
 
-	if hdrsString, err := json.Marshal(hdrs); err != nil {
-		Resource.Metadata["grpc.headers"] = string(hdrsString)
-	} else {
-		Resource.Metadata["grpc.headers"] = fmt.Sprintf("%+v", hdrs)
+	if len(methodParts) == 2 {
+		Resource.Metadata["rpc.service"] = methodParts[0]
 	}
 
-	Resource.Name = url.Host
-	Resource.Metadata["grpc.host"] = url.Hostname()
-	Resource.Metadata["grpc.url"] = url.String()
-	Resource.Metadata["grpc.path"] = url.Path
-	Resource.Metadata["grpc.port"] = url.Port()
-	Resource.Metadata["grpc.request.body"] = fmt.Sprintf("%+v" , req)
+	Resource.Name = u.Host
+	Resource.Metadata["net.peer.name"] = u.Hostname()
+	Resource.Metadata["rpc.method"] = method
+	Resource.Metadata["net.port"] = u.Port()
+
+	reqJson, ok := jsoniter.MarshalToString(req)
+	if ok == nil {
+		Resource.Metadata["grpc.request.body"] = reqJson
+	}
 }
 
 
@@ -85,3 +107,4 @@ func getURL(method string, target string) *url.URL{
 		Path:   method,
 	}
 }
+

@@ -78,10 +78,6 @@ func TestUnaryServerInterceptor (t *testing.T) {
 	RunSpecs(t, "gRPC Server Wrapper")
 }
 
-func VerifyGenericServerGRPCEventTags(r *protocol.Resource) {
-	Expect(r.Metadata["span.kind"]).To(Equal("server"))
-}
-
 var _ = Describe("gRPC Server Wrapper", func ()  {
 	var (
 		events         []*protocol.Event
@@ -155,8 +151,7 @@ var _ = Describe("gRPC Server Wrapper", func ()  {
 			Expect(resp.Message).To(Equal(response.Message))
 			Expect(events).To(HaveLen(2))
 			Expect(events[1].ErrorCode).To(Equal(protocol.ErrorCode_OK))
-			VerifyGenericServerGRPCEventTags(events[1].Resource)
-			Expect(events[1].Resource.Metadata["status_code"]).To(Equal("0"))
+			Expect(events[1].Resource.Metadata["rpc.status_code"]).To(Equal("0"))
 		})
 
 		It ("Send request to errored server and validate error", func () {
@@ -171,8 +166,7 @@ var _ = Describe("gRPC Server Wrapper", func ()  {
 			Expect(resp).To(BeNil())
 			Expect(events).To(HaveLen(2))
 			Expect(events[1].ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
-			Expect(events[1].Resource.Metadata["status_code"]).To(Equal("2"))
-			VerifyGenericServerGRPCEventTags(events[1].Resource)
+			Expect(events[1].Resource.Metadata["rpc.status_code"]).To(Equal("2"))
 		})
 	})
 })

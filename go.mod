@@ -11,7 +11,7 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.1.2
-	github.com/json-iterator/go v1.1.10 // indirect
+	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/onsi/ginkgo v1.13.0
@@ -22,6 +22,6 @@ require (
 	golang.org/x/sys v0.0.0-20210603125802-9665404d3644 // indirect
 	google.golang.org/genproto v0.0.0-20210607140030-00d4fb20b1ae // indirect
 	google.golang.org/grpc v1.38.0
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0 // indirect
-	google.golang.org/protobuf v1.26.0 // indirect
+	google.golang.org/grpc/examples v0.0.0-20210616235604-7e3535650101
+	google.golang.org/protobuf v1.26.0
 )
