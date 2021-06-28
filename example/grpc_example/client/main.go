@@ -21,11 +21,11 @@ package main
 
 import (
 	"context"
+	"github.com/epsagon/epsagon-go/epsagon"
 	"log"
 	"os"
 	"time"
 
-	epsagon "github.com/epsagon/epsagon-go/epsagon"
 	epsagongrpc "github.com/epsagon/epsagon-go/wrappers/net/grpc"
 	"google.golang.org/grpc"
 	pb "google.golang.org/grpc/examples/helloworld/helloworld"
@@ -36,15 +36,9 @@ const (
 	defaultName = "world"
 )
 
-func main() {
-	// Set up a connection to the server.
-	config := epsagon.NewTracerConfig(
-		"grcp-client-wrapper-test", "",
-	)
+func setupClient() (int, error) {
 
-	config.MetadataOnly = false
-
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(epsagongrpc.UnaryClientInterceptor(config)), grpc.WithBlock())
+	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(epsagongrpc.UnaryClientInterceptor()), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -63,4 +57,20 @@ func main() {
 		log.Fatalf("could not greet: %v", err)
 	}
 	log.Printf("Greeting: %s", r.GetMessage())
+
+	return 0, nil
+}
+
+
+func main() {
+	// Set up a connection to the server.
+	config := epsagon.NewTracerConfig(
+		"grcp-client-wrapper-test", "05b05129-e34e-40ea-873a-85c45a6d5b3f",
+	)
+
+	config.Debug = true
+	config.CollectorURL = "http://dev.tc.epsagon.com/"
+	config.MetadataOnly = false
+	config.SendTimeout = "10s"
+	epsagon.GoWrapper(config, setupClient)()
 }
