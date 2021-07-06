@@ -92,11 +92,11 @@ func marshalToMetadata(
 	metadata map[string]string,
 	metaField string,
 	s interface{},
-	debug bool,
+	config *tracer.Config,
 ) {
 	docBytes, err := json.Marshal(s)
 	if err != nil {
-		epsagon.DebugLog(debug, "Could not Marshal JSON", err)
+		epsagon.DebugLog(config.Debug, "Could not Marshal JSON", err)
 	}
 	docString := string(docBytes)
 	if docString == "" {
