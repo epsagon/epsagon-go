@@ -104,7 +104,6 @@ The following frameworks are supported by Epsagon:
 |[Generic Function](#generic)            |All                        |
 |[HTTP](#http)                           |All                        |
 |[Gin](#gin)                             |All                        |
-|[Mongo](#mongo)                         |All                        |
 
 
 ### AWS Lambda
@@ -147,7 +146,9 @@ func main() {
 	// With Epsagon instrumentation
 	config := epsagon.NewTracerConfig("generic-go-wrapper", "")
 	config.Debug = true
-	response := epsagon.GoWrapper(config, doTask)(5, "hello")
+	response := epsagon
+	
+	.GoWrapper(config, doTask)(5, "hello")
 	res2 := response[0].Int()
 	errInterface := response[1].Interface()
 }
@@ -268,81 +269,17 @@ client := http.Client{
 resp, err := client.Get("http://example.com")
 ```
 
-### Mongo
-
-Trace through all Mongo collection operations with Epsagon:
-
-```go
-
-package main
-
-import (
-	"context"
-	"github.com/epsagon/epsagon-go/epsagon"
-	epsagonmongo "github.com/epsagon/epsagon-go/wrappers/mongo"
-	"time"
-
-)
-
-
-func main() {
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	client, err := mongo.Connect(
-		ctx,
-		options.Client().ApplyURI("mongodb://..."),
-	)
-	defer func() {
-		if err = client.Disconnect(ctx); err != nil {
-			panic(err)
-		}
-	}()
-
-	db := client.Database("DB")
-	coll := epsagonmongo.WrapMongoCollection(
-		db.Collection("COLL"),
-	)
-
-	res, err = coll.InsertMany(
-		context.Background(),
-		[]interface{}{
-			bson.D{
-				{"name", "hello"},
-				{"age", "33"},
-			},
-			bson.D{
-				{"name", "world"},
-				{"age", "44"},
-			},
-		},
-	)
-	if err != nil  {
-		...
-	}
-}
-
-
-func main() {
-	config := epsagon.NewTracerConfig("test-mongo-app", "")
-	config.MetadataOnly = false
-	epsagon.GoWrapper(
-		config,
-		dbAPI,
-	)()
-
-}
-```
-
 ## Integrations
 
 Epsagon provides out-of-the-box instrumentation (tracing) for many popular frameworks and libraries.
 
-|Library             |Supported Version          |
-|--------------------|---------------------------|
-|net/http            |Fully supported            |
-|aws-sdk-go          |`>=1.10.0`                 |
-|aws-sdk-go-v2       |`>=0.23.0`                 |
+|Library              |Supported Version          |
+|---------------------|---------------------------|
+|[net/http](#net/http)|Fully supported            |
+|aws-sdk-go           |`>=1.10.0`                 |
+|aws-sdk-go-v2        |`>=0.23.0`                 |
+|[mongo](#mongo)      |`>=1.0`                        |
+
 
 ### net/http
 
@@ -407,6 +344,47 @@ import (
 	svc := epsagon.WrapAwsV2Service(dynamodb.New(cfg)).(*dynamodb.Client)
     ...
 ```
+
+
+### Mongo
+
+Trace through all Mongo collection operations by wrapping the Collection:
+
+```go
+
+package main
+
+import (
+	"context"
+	"github.com/epsagon/epsagon-go/epsagon"
+	epsagonmongo "github.com/epsagon/epsagon-go/wrappers/mongo"
+	"time"
+
+)
+
+
+func main() {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(
+		ctx,
+		options.Client().ApplyURI("mongodb://..."),
+	)
+	defer func() {
+		if err = client.Disconnect(ctx); err != nil {
+			panic(err)
+		}
+	}()
+
+	db := client.Database("DB")
+	coll := epsagonmongo.WrapMongoCollection(
+		db.Collection("COLL"),
+	)
+}
+
+```
+
 
 ## Configuration
 
