@@ -2,18 +2,12 @@ package epsagon
 
 import (
 	"reflect"
-	"testing"
 
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestGenericWrapper(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Generic Wrapper")
-}
 
 var _ = Describe("generic_wrapper", func() {
 	Describe("GoWrapper", func() {

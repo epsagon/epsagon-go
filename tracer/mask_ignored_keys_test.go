@@ -2,17 +2,11 @@ package tracer
 
 import (
 	"fmt"
-	"testing"
 
 	"github.com/epsagon/epsagon-go/protocol"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestMaskIgnoredKeys(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Mask Ignored Keys")
-}
 
 var _ = Describe("mask_ignored_keys", func() {
 	Describe("maskEventIgnoredKeys", func() {

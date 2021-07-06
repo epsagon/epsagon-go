@@ -104,6 +104,7 @@ The following frameworks are supported by Epsagon:
 |[Generic Function](#generic)            |All                        |
 |[HTTP](#http)                           |All                        |
 |[Gin](#gin)                             |All                        |
+|[Fiber](#fiber)                         | >= 2.11.0                 |
 
 
 ### AWS Lambda
@@ -266,6 +267,48 @@ If you want to instument other integrated libraries inside the gin handler you c
 ```go
 client := http.Client{
     Transport: epsagonhttp.NewTracingTransport(epsagongin.EpsagonContext(c))}
+resp, err := client.Get("http://example.com")
+```
+
+### fiber
+
+You can easily instrument fiber applications with Epsagon middleware:
+
+```go
+import (
+	"github.com/epsagon/epsagon-go/epsagon"
+	epsagonfiber "github.com/epsagon/epsagon-go/wrappers/fiber"
+	"github.com/gofiber/fiber/v2"
+)
+
+func main() {
+	config := epsagon.NewTracerConfig(
+		"fiber-example", "",
+	)
+	config.MetadataOnly = false
+	app := fiber.New()
+	// Match all routes
+	epsagonMiddleware := &epsagonfiber.FiberEpsagonMiddleware{
+		Config: config,
+	}
+	app.Use(epsagonMiddleware.HandlerFunc())
+	app.Post("/", func(c *fiber.Ctx) error {
+		return c.SendString("Hello, World 👋!")
+	})
+
+	app.Listen("0.0.0.0:3000")
+}
+app.Post("/", func(c *fiber.Ctx) error {
+		return c.SendString("Hello, World 👋!")
+	})
+```
+
+If you want to instument other integrated libraries inside the fiber handler you can get the Epsagon context from the fiber.Ctx UserContext function to do that:
+
+```go
+client := http.Client{
+	Transport: epsagonhttp.NewTracingTransport(c.UserContext()
+	)}
 resp, err := client.Get("http://example.com")
 ```
 
