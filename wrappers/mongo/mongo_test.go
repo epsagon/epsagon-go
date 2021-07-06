@@ -2,7 +2,6 @@ package epsagonmongo
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	//"github.com/aws/aws-sdk-go-v2/config"
@@ -118,7 +117,7 @@ var _ = Describe("mongo_wrapper", func() {
 				reqDoc := doc{Name: "TestName"}
 				resDoc := reqDoc
 
-				wrapper.InsertOne(context.Background(), testDoc)
+				wrapper.InsertOne(context.Background(), reqDoc)
 				res := wrapper.FindOne(
 					context.Background(),
 					bson.D{{Key: "name", Value: "TestName"}},
@@ -132,30 +131,44 @@ var _ = Describe("mongo_wrapper", func() {
 				type doc struct {
 					Name string
 				}
-				docs := []doc{
-					{Name: "Name1"},
-					{Name: "Name2"},
+				docs := []interface{}{
+					bson.D{
+						{Key: "name", Value: "hello"},
+						{Key: "age", Value: "33"},
+					},
+					bson.D{
+						{Key: "name", Value: "world"},
+						{Key: "age", Value: "44"},
+					},
 				}
-				docMaps = make([]map[string]string, len(docs))
-				for i := 0; i < len(docs); i += 1 {
 
-				}
-				wrapper.InsertMany(context.Background(), )
+				wrapper.InsertMany(context.Background(), docs)
 				cur, _ := wrapper.Find(
 					context.Background(),
 					bson.M{},
 				)
 
-
 				readCursor(cur)
 			})
 			It("calls CountDocuments", func() {
+				docs := []interface{}{
+					bson.D{
+						{Key: "name", Value: "hello"},
+						{Key: "age", Value: "33"},
+					},
+					bson.D{
+						{Key: "name", Value: "world"},
+						{Key: "age", Value: "44"},
+					},
+				}
+
+				wrapper.InsertMany(context.Background(), docs)
 				res, err := wrapper.CountDocuments(
 					context.Background(),
 					bson.D{{}},
 				)
 				Expect(err).To(BeNil())
-				Expect(res).To(Equal(0))
+				Expect(res).To(Equal(int64(2)))
 			})
 		})
 	})
