@@ -1,12 +1,12 @@
 package epsagon
 
 import (
+
 	awsFactories "github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"testing"
 )
 
 const testAccount = "test_account"
@@ -17,11 +17,6 @@ type CallerIdentityMock struct {
 	Account *string
 	Arn     *string
 	UserId  *string
-}
-
-func TestEpsagonFactoriesTracer(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "AWS SDK V2 Factories")
 }
 
 var _ = Describe("aws_sdk_v2_factories", func() {

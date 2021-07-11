@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
@@ -16,12 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestHandlerWrapper(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Gin Wrapper")
-}
-
-var _ = Describe("gin_wrapper", func() {
+var _ = Describe("http_wrapper", func() {
 	Describe("WrapHandleFunc", func() {
 		var (
 			events         []*protocol.Event

@@ -214,6 +214,9 @@ func (c *ClientWrapper) addDataToEvent(req *http.Request, resp *http.Response, e
 		addTraceIdToEvent(req, event)
 	}
 	if resp != nil {
+		if reqTraceID := resp.Header.Get("Apigw-Requestid"); reqTraceID != "" {
+			event.Resource.Metadata["request_trace_id"] = reqTraceID
+		}
 		if !c.getMetadataOnly() {
 			updateRequestData(resp.Request, event.Resource.Metadata)
 		}
@@ -236,12 +239,7 @@ func (c *ClientWrapper) Do(req *http.Request) (resp *http.Response, err error) {
 	resp, err = c.Client.Do(req)
 	called = true
 	event := postSuperCall(startTime, req.URL.String(), req.Method, resp, err, c.getMetadataOnly())
-	if req != nil {
-		addTraceIdToEvent(req, event)
-	}
-	if !c.getMetadataOnly() {
-		updateRequestData(req, event.Resource.Metadata)
-	}
+	c.addDataToEvent(req, resp, event)
 	c.tracer.AddEvent(event)
 	return
 }

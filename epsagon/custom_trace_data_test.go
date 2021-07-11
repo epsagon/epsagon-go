@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"time"
 
 	"github.com/epsagon/epsagon-go/epsagon"
@@ -21,11 +20,6 @@ import (
 )
 
 const TestLabelKey = "random_key"
-
-func TestEpsagonCustomTraceFields(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Custom trace fields tests")
-}
 
 func waitForTraceWithEvents(traceChannel chan *protocol.Trace, resourceName string, eventsCount int) *protocol.Event {
 	var trace *protocol.Trace

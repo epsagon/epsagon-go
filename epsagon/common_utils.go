@@ -10,8 +10,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
-	"unsafe"
 
+	"unsafe"
+	"strings"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/onsi/gomega/types"
 )
@@ -21,6 +22,27 @@ const DefaultErrorType = "Error"
 
 // MaxMetadataSize Maximum size of event metadata
 const MaxMetadataSize = 10 * 1024
+
+// HTTP Content types to ignore
+var ignoredContentTypes = [...]string{
+	"image",
+	"audio",
+	"video",
+	"font",
+	"zip",
+	"css",
+}
+
+// HTTP request file types to ignore
+var ignoredFileTypes = [...]string{
+	".js",
+	".jsx",
+	".woff",
+	".woff2",
+	".ttf",
+	".eot",
+	".ico",
+}
 
 // Config is the configuration for Epsagon's tracer
 type Config struct {
@@ -112,6 +134,26 @@ func ExtractRequestData(req *http.Request) (headers string, body string) {
 	return
 }
 
+// ShouldIgnoreRequest checks whether HTTP request should be ignored according
+// to given content type and request path
+func ShouldIgnoreRequest(contentType string, path string) bool {
+	if len(contentType) > 0 {
+		for _, ignoredContentType := range ignoredContentTypes {
+			if strings.Contains(contentType, ignoredContentType) {
+				return true
+			}
+		}
+	}
+	if len(path) > 0 {
+		for _, ignoredFileSuffix := range ignoredFileTypes {
+			if strings.HasSuffix(path, ignoredFileSuffix) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // NewReadCloser returns an io.ReadCloser
 // will mimick read from body depending on given error
 func NewReadCloser(body []byte, err error) io.ReadCloser {
@@ -166,7 +208,6 @@ func (matcher *matchUserError) Match(actual interface{}) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf("excpects userError, got %v", actual)
 	}
-
 	if !reflect.DeepEqual(uErr.exception, matcher.exception) {
 		return false, fmt.Errorf("expected\n\t%v\nexception, got\n\t%v", matcher.exception, uErr.exception)
 	}
