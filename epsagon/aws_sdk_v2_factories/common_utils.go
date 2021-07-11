@@ -1,4 +1,4 @@
-package epsagonawsv2factories
+package epsagonawssdk2
 
 import (
 	"encoding/json"

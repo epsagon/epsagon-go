@@ -1,4 +1,4 @@
-package epsagonawsv2factories
+package epsagonawssdk2
 
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -8,7 +8,7 @@ import (
 )
 
 // STSEventDataFactory to create epsagon Resource from aws.Request to STS
-func StsDataFactory(
+func stsDataFactory(
 	r *aws.Request,
 	res *protocol.Resource,
 	metadataOnly bool,

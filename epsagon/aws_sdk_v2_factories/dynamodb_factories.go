@@ -1,4 +1,4 @@
-package epsagonawsv2factories
+package epsagonawssdk2
 
 import (
 	"crypto/md5"
@@ -13,7 +13,7 @@ import (
 )
 
 // DynamodbEventDataFactory to create epsagon Resource from aws.Request to DynamoDB
-func DynamodbEventDataFactory(
+func dynamodbEventDataFactory(
 	r *aws.Request,
 	res *protocol.Resource,
 	metadataOnly bool,

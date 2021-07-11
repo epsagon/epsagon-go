@@ -1,4 +1,4 @@
-package epsagonawsv2factories
+package epsagonawssdk2
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 )
 
 // S3EventDataFactory creats an Epsagon Resource from aws.Request to S3
-func S3EventDataFactory(
+func s3EventDataFactory(
 	r *aws.Request,
 	res *protocol.Resource,
 	metadataOnly bool,

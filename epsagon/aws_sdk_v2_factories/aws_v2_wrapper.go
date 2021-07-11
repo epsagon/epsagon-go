@@ -1,11 +1,11 @@
-package epsagon
+package epsagonawssdk2
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
+	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"log"
@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// WrapAwsV2Service wrap aws service with epsgon
+// WrapAwsV2Service wrap aws service with epsagon
 // svc := epsagon.WrapAwsV2Service(dynamodb.New(cfg)).(*dynamodb.Client)
 func WrapAwsV2Service(svcClient interface{}, args ...context.Context) interface{} {
 	awsClient := reflect.ValueOf(svcClient).Elem().FieldByName("Client").Interface().(*aws.Client)
@@ -21,7 +21,7 @@ func WrapAwsV2Service(svcClient interface{}, args ...context.Context) interface{
 		aws.NamedHandler{
 			Name: "epsagon-aws-sdk-v2",
 			Fn: func(r *aws.Request) {
-				currentTracer := ExtractTracer(args)
+				currentTracer := epsagon.ExtractTracer(args)
 				completeEventData(r, currentTracer)
 			},
 		},
@@ -34,7 +34,7 @@ func getTimeStampFromRequest(r *aws.Request) float64 {
 }
 
 func completeEventData(r *aws.Request, currentTracer tracer.Tracer) {
-	defer GeneralEpsagonRecover("aws-sdk-go wrapper", "", currentTracer)
+	defer epsagon.GeneralEpsagonRecover("aws-sdk-go wrapper", "", currentTracer)
 	if currentTracer.GetConfig().Debug {
 		log.Printf("EPSAGON DEBUG OnComplete current tracer: %+v\n", currentTracer)
 		log.Printf("EPSAGON DEBUG OnComplete request response: %+v\n", r.HTTPResponse)
@@ -58,9 +58,9 @@ func completeEventData(r *aws.Request, currentTracer tracer.Tracer) {
 type factory func(*aws.Request, *protocol.Resource, bool, tracer.Tracer)
 
 var awsResourceEventFactories = map[string]factory{
-	"s3":       epsagonawsv2factories.S3EventDataFactory,
-	"dynamodb": epsagonawsv2factories.DynamodbEventDataFactory,
-	"sts":      epsagonawsv2factories.StsDataFactory,
+	"s3":       s3EventDataFactory,
+	"dynamodb": dynamodbEventDataFactory,
+	"sts":      stsDataFactory,
 }
 
 func extractResourceInformation(r *aws.Request, currentTracer tracer.Tracer) *protocol.Resource {
