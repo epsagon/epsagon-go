@@ -3,9 +3,8 @@ package epsagonmongo
 import (
 	"context"
 	"fmt"
-	"github.com/epsagon/epsagon-go/tracer"
-	"reflect"
 
+	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"go.mongodb.org/mongo-driver/mongo"
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
@@ -46,8 +45,9 @@ func (coll *MongoCollectionWrapper) Clone(opts ...*mongoOptions.CollectionOption
 			err.Error(),
 		)
 	}
-	completeMongoEvent(coll.tracer, event)
-
+	if event != nil {
+		completeMongoEvent(coll.tracer, event)
+	}
 	return response, err
 }
 
@@ -55,11 +55,14 @@ func (coll *MongoCollectionWrapper) InsertOne(
 	ctx context.Context, document interface{}, opts ...*mongoOptions.InsertOneOptions,
 ) (*mongo.InsertOneResult, error) {
 	event := startMongoEvent(currentFuncName(), coll)
+	fmt.Println("EVENT::::")
+	fmt.Println(event)
 	response, err := coll.collection.InsertOne(
 		ctx,
 		document,
 		opts...,
 	)
+
 	if err != nil {
 		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
@@ -68,11 +71,13 @@ func (coll *MongoCollectionWrapper) InsertOne(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "document", document, config)
-		marshalToMetadata(event.Resource.Metadata, "response", response, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "document", document, config)
+			marshalToMetadata(event.Resource.Metadata, "response", response, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -93,11 +98,13 @@ func (coll *MongoCollectionWrapper) InsertMany(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "documents", documents, config)
-		marshalToMetadata(event.Resource.Metadata, "response", *response, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "documents", documents, config)
+			marshalToMetadata(event.Resource.Metadata, "response", *response, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -118,10 +125,12 @@ func (coll *MongoCollectionWrapper) BulkWrite(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "documents", models, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "documents", models, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -142,11 +151,13 @@ func (coll *MongoCollectionWrapper) DeleteOne(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "params", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "response", *response, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "params", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "response", *response, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -167,11 +178,13 @@ func (coll *MongoCollectionWrapper) DeleteMany(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "params", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "response", response, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "params", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "response", response, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -193,12 +206,14 @@ func (coll *MongoCollectionWrapper) UpdateOne(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "update_conditions", update, config)
-		extractStructFields(event.Resource.Metadata, "response", *response)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "update_conditions", update, config)
+			extractStructFields(event.Resource.Metadata, "response", *response)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -219,12 +234,15 @@ func (coll *MongoCollectionWrapper) UpdateMany(
 			err.Error(),
 		)
 	}
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "update_conditions", update, config)
-		extractStructFields(event.Resource.Metadata, "response", *response)
+
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "update_conditions", update, config)
+			extractStructFields(event.Resource.Metadata, "response", *response)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -246,12 +264,14 @@ func (coll *MongoCollectionWrapper) UpdateByID(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "id", id, config)
-		marshalToMetadata(event.Resource.Metadata, "update_conditions", update, config)
-		extractStructFields(event.Resource.Metadata, "response", response)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "id", id, config)
+			marshalToMetadata(event.Resource.Metadata, "update_conditions", update, config)
+			extractStructFields(event.Resource.Metadata, "response", response)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -273,12 +293,14 @@ func (coll *MongoCollectionWrapper) ReplaceOne(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "replacement", replacement, config)
-		extractStructFields(event.Resource.Metadata, "response", *response)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "replacement", replacement, config)
+			extractStructFields(event.Resource.Metadata, "response", *response)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -304,11 +326,13 @@ func (coll *MongoCollectionWrapper) Aggregate(
 		logOperationFailure("Could not complete readCursor", err.Error())
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "params", pipeline, config)
-		marshalToMetadata(event.Resource.Metadata, "response", docs, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "params", pipeline, config)
+			marshalToMetadata(event.Resource.Metadata, "response", docs, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -329,11 +353,13 @@ func (coll *MongoCollectionWrapper) CountDocuments(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+		}
+		event.Resource.Metadata["count"] = fmt.Sprintf("%d", response)
+		completeMongoEvent(coll.tracer, event)
 	}
-	event.Resource.Metadata["count"] = fmt.Sprintf("%d", response)
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -353,10 +379,12 @@ func (coll *MongoCollectionWrapper) EstimatedDocumentCount(
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		event.Resource.Metadata["estimated_count"] = fmt.Sprintf("%d", response)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			event.Resource.Metadata["estimated_count"] = fmt.Sprintf("%d", response)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -378,11 +406,13 @@ func (coll *MongoCollectionWrapper) Distinct(
 		)
 	}
 
-	event.Resource.Metadata["field_name"] = fieldName
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+	if event != nil {
+		event.Resource.Metadata["field_name"] = fieldName
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -408,11 +438,13 @@ func (coll *MongoCollectionWrapper) Find(
 		logOperationFailure("Could not complete readCursor", err.Error())
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "documents", docs, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "documents", docs, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response, err
 }
 
@@ -427,22 +459,23 @@ func (coll *MongoCollectionWrapper) FindOne(
 	)
 
 	var document map[string]string
-	decodedResponse := reflect.ValueOf(response).
-		MethodByName("Decode").
-		Call([]reflect.Value{reflect.ValueOf(&document)})
-	if err := decodedResponse[0]; err.Interface() != nil {
-		logOperationFailure("Could not complete Decode SingleResult", err.String())
+	response.Decode(&document)
+
+	if err := response.Err(); err != nil {
+		logOperationFailure("Could not complete Decode SingleResult", err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
-			err.String(),
+			err.Error(),
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "params", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "document", document, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "params", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "document", document, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response
 }
 
@@ -457,22 +490,22 @@ func (coll *MongoCollectionWrapper) FindOneAndDelete(
 	)
 
 	var document map[string]string
-	decodedResponse := reflect.ValueOf(response).
-		MethodByName("Decode").
-		Call([]reflect.Value{reflect.ValueOf(&document)})
-	if err := decodedResponse[0]; err.Interface() != nil {
-		logOperationFailure("Could not complete Decode SingleResult", err.String())
+	response.Decode(&document)
+	if err := response.Err(); err != nil {
+		logOperationFailure("Could not complete Decode SingleResult", err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
-			err.String(),
+			err.Error(),
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "params", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "document", document, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "params", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "document", document, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response
 }
 
@@ -487,23 +520,24 @@ func (coll *MongoCollectionWrapper) FindOneAndReplace(
 		opts...,
 	)
 	var document map[string]string
-	decodedResponse := reflect.ValueOf(response).
-		MethodByName("Decode").
-		Call([]reflect.Value{reflect.ValueOf(&document)})
-	if err := decodedResponse[0]; err.Interface() != nil {
-		logOperationFailure("Could not complete Decode SingleResult", err.String())
+	response.Decode(&document)
+
+	if err := response.Err(); err != nil {
+		logOperationFailure("Could not complete Decode SingleResult", err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
-			err.String(),
+			err.Error(),
 		)
 	}
 
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "replacement", replacement, config)
-		marshalToMetadata(event.Resource.Metadata, "document", document, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "replacement", replacement, config)
+			marshalToMetadata(event.Resource.Metadata, "document", document, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response
 
 }
@@ -519,23 +553,22 @@ func (coll *MongoCollectionWrapper) FindOneAndUpdate(
 		opts...,
 	)
 	var document map[string]string
-	decodedResponse := reflect.ValueOf(response).
-		MethodByName("Decode").
-		Call([]reflect.Value{reflect.ValueOf(&document)})
-	if err := decodedResponse[0]; err.Interface() != nil {
-		logOperationFailure("Could not complete Decode SingleResult", err.String())
+	response.Decode(&document)
+	if err := response.Err(); err != nil {
+		logOperationFailure("Could not complete Decode SingleResult", err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
-			err.String(),
+			err.Error(),
 		)
 	}
-
-	if config := coll.tracer.GetConfig(); !config.MetadataOnly {
-		marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
-		marshalToMetadata(event.Resource.Metadata, "update", update, config)
-		marshalToMetadata(event.Resource.Metadata, "document", document, config)
+	if event != nil {
+		if config := coll.tracer.GetConfig(); !config.MetadataOnly {
+			marshalToMetadata(event.Resource.Metadata, "filter", filter, config)
+			marshalToMetadata(event.Resource.Metadata, "update", update, config)
+			marshalToMetadata(event.Resource.Metadata, "document", document, config)
+		}
+		completeMongoEvent(coll.tracer, event)
 	}
-	completeMongoEvent(coll.tracer, event)
 	return response
 }
 
@@ -551,14 +584,18 @@ func (coll *MongoCollectionWrapper) Drop(ctx context.Context) error {
 			err.Error(),
 		)
 	}
-	completeMongoEvent(coll.tracer, event)
+	if event != nil {
+		completeMongoEvent(coll.tracer, event)
+	}
 	return err
 }
 
 func (coll *MongoCollectionWrapper) Indexes() mongo.IndexView {
 	event := startMongoEvent(currentFuncName(), coll)
 	indexView := coll.collection.Indexes()
-	completeMongoEvent(coll.tracer, event)
+	if event != nil {
+		completeMongoEvent(coll.tracer, event)
+	}
 	return indexView
 }
 
@@ -578,6 +615,8 @@ func (coll *MongoCollectionWrapper) Watch(
 			err.Error(),
 		)
 	}
-	completeMongoEvent(coll.tracer, event)
+	if event != nil {
+		completeMongoEvent(coll.tracer, event)
+	}
 	return response, err
 }

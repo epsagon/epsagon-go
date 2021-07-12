@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
 	epsagonmongo "github.com/epsagon/epsagon-go/wrappers/mongo"
-	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -49,7 +48,7 @@ func dbAPI() {
 
 
 	fmt.Println("##InsertOne")
-	res, err = coll.InsertOne(
+	_, err = coll.InsertOne(
 		context.Background(),
 		doc{Name: "bon"},
 	)
@@ -59,7 +58,7 @@ func dbAPI() {
 
 
 	fmt.Println("##InsertMany")
-	res, err = coll.InsertMany(
+	_, err = coll.InsertMany(
 		context.Background(),
 		[]interface{}{
 			bson.D{
@@ -136,24 +135,13 @@ func dbAPI() {
 
 func main() {
 
-	err := os.Setenv("EPSAGON_METADATA", "FALSE")
-	if err != nil {
-		return
-	}
-	err = os.Setenv("EPSAGON_COLLECTOR_URL", "")
-	if err != nil {
-		return
-	}
-	err = os.Setenv("EPSAGON_DEBUG", "TRUE")
-	if err != nil {
-		return
-	}
-
 	config := epsagon.NewTracerConfig(
-		"mongo-dev",
-		"38a22955-dee3-4991-8db8-afa09fc9cef6",
+		"skate-shop",
+		"token",
 	)
 	config.MetadataOnly = false
+	config.Debug = true
+
 	epsagon.GoWrapper(
 		config,
 		dbAPI,

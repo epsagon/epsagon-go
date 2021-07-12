@@ -2,9 +2,6 @@ package epsagonmongo
 
 import (
 	"context"
-	"reflect"
-
-	//"github.com/aws/aws-sdk-go-v2/config"
 	"testing"
 	"time"
 
@@ -19,17 +16,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var mongoServerURI string
-var docsInserted int64 = 0
 
 func TestMongoWrapper(t *testing.T) {
-	//mongoServer, err := memongo.Start("4.2.0")
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//defer mongoServer.Stop()
-	//mongoServerURI = mongoServer.URI()
-
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Mongo Driver Test Suite")
 }
@@ -38,6 +26,7 @@ var _ = Describe("mongo_wrapper", func() {
 	Describe("CollectionWrapper", func() {
 		var (
 			mongoServer			*memongo.Server
+			mongoOptions		*memongo.Options
 			started				chan bool
 			testConf			*epsagon.Config
 			events             []*protocol.Event
@@ -52,7 +41,11 @@ var _ = Describe("mongo_wrapper", func() {
 			started = make(chan bool)
 			// start server goroutine, runs in background until block
 			go func()  {
-				mongoServer, _ = memongo.Start("4.2.0")
+				mongoOptions = &memongo.Options{
+					MongoVersion: "4.2.0",
+					StartupTimeout: 5 * time.Second,
+				}
+				mongoServer, _ = memongo.StartWithOptions(mongoOptions)
 				started <- true
 			}()
 
@@ -71,7 +64,7 @@ var _ = Describe("mongo_wrapper", func() {
 
 			testCollectionName = "collectionName"
 			testDatabaseName = "databaseName"
-			testContext, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+			testContext, cancel = context.WithTimeout(context.Background(), 2 * time.Second)
 
 			// blocking await until server is started
 			select {
@@ -115,16 +108,15 @@ var _ = Describe("mongo_wrapper", func() {
 					Name string
 				}
 				reqDoc := doc{Name: "TestName"}
-				resDoc := reqDoc
+				resDoc := doc{}
 
 				wrapper.InsertOne(context.Background(), reqDoc)
-				res := wrapper.FindOne(
+				response := wrapper.FindOne(
 					context.Background(),
 					bson.D{{Key: "name", Value: "TestName"}},
 				)
-				reflect.ValueOf(res).
-					MethodByName("Decode").
-					Call([]reflect.Value{reflect.ValueOf(&resDoc)})
+
+				response.Decode(&resDoc)
 				Expect(reqDoc).To(Equal(resDoc))
 			})
 			It("calls InsertMany and Find", func() {

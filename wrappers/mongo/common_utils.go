@@ -17,7 +17,7 @@ import (
 )
 
 // currentFuncName returns the name of the caller function as a string
-// for func Foo() { x := currentFuncName }, x == "Foo"
+// for func Foo() { x := currentFuncName() }, x == "Foo"
 func currentFuncName() string {
 	current := make([]uintptr, 1)
 	if level := runtime.Callers(2, current); level == 0 {

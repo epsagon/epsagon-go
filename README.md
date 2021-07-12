@@ -105,6 +105,8 @@ The following frameworks are supported by Epsagon:
 |[HTTP](#http)                           |All                        |
 |[Gin](#gin)                             |All                        |
 |[Fiber](#fiber)                         | >= 2.11.0                 |
+|[mongo](#mongo)                         |>=1.0                      |
+
 
 
 ### AWS Lambda
@@ -312,6 +314,45 @@ client := http.Client{
 resp, err := client.Get("http://example.com")
 ```
 
+### mongo
+
+Trace through all Mongo collection operations by wrapping the Collection:
+
+```go
+
+package main
+
+import (
+	"context"
+	"github.com/epsagon/epsagon-go/epsagon"
+	epsagonmongo "github.com/epsagon/epsagon-go/wrappers/mongo"
+	"time"
+
+)
+
+
+func main() {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(
+		ctx,
+		options.Client().ApplyURI("mongodb://..."),
+	)
+	defer func() {
+		if err = client.Disconnect(ctx); err != nil {
+			panic(err)
+		}
+	}()
+
+	db := client.Database("DB")
+	coll := epsagonmongo.WrapMongoCollection(
+		db.Collection("COLL"),
+	)
+}
+
+```
+
 ## Integrations
 
 Epsagon provides out-of-the-box instrumentation (tracing) for many popular frameworks and libraries.
@@ -321,7 +362,6 @@ Epsagon provides out-of-the-box instrumentation (tracing) for many popular frame
 |[net/http](#net/http)|Fully supported            |
 |aws-sdk-go           |`>=1.10.0`                 |
 |aws-sdk-go-v2        |`>=0.23.0`                 |
-|[mongo](#mongo)      |`>=1.0`                        |
 
 
 ### net/http
@@ -389,44 +429,7 @@ import (
 ```
 
 
-### Mongo
 
-Trace through all Mongo collection operations by wrapping the Collection:
-
-```go
-
-package main
-
-import (
-	"context"
-	"github.com/epsagon/epsagon-go/epsagon"
-	epsagonmongo "github.com/epsagon/epsagon-go/wrappers/mongo"
-	"time"
-
-)
-
-
-func main() {
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	client, err := mongo.Connect(
-		ctx,
-		options.Client().ApplyURI("mongodb://..."),
-	)
-	defer func() {
-		if err = client.Disconnect(ctx); err != nil {
-			panic(err)
-		}
-	}()
-
-	db := client.Database("DB")
-	coll := epsagonmongo.WrapMongoCollection(
-		db.Collection("COLL"),
-	)
-}
-
-```
 
 
 ## Configuration
