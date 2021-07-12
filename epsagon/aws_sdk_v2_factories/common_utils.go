@@ -3,32 +3,58 @@ package epsagonawsv2factories
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
+	smithyHttp "github.com/aws/smithy-go/transport/http"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	"reflect"
 	"strconv"
+	"time"
 )
 
+type (
+	// AWSClient represents the AWS SVC client passed to the wrapper
+	AWSClient interface {}
+
+	// AWSCall replaces aws.Request struct
+	AWSCall   struct {
+		RequestID string
+		PartitionID string
+		Service string
+		Region string
+		Operation string
+
+		Req *smithyHttp.Request
+		Res *smithyHttp.Response
+		Input interface{}
+		Output interface{}
+		StartTime float64
+		EndTime float64
+		Duration time.Duration
+	}
+)
+
+
 type specificOperationHandler func(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	currentTracer tracer.Tracer,
 )
 
 func handleSpecificOperation(
-	r *aws.Request,
+	r *AWSCall,
 	res *protocol.Resource,
 	metadataOnly bool,
 	handlers map[string]specificOperationHandler,
 	defaultHandler specificOperationHandler,
 	currentTracer tracer.Tracer,
 ) {
+
 	handler := handlers[res.Operation]
 	if handler == nil {
 		handler = defaultHandler
 	}
+
 	if handler != nil {
 		handler(r, res, metadataOnly, currentTracer)
 	}
@@ -40,6 +66,14 @@ func getFieldStringPtr(value reflect.Value, fieldName string) (string, bool) {
 		return "", false
 	}
 	return field.Elem().String(), true
+}
+
+func getFieldNumPtrAsString(value reflect.Value, fieldName string) (string, bool) {
+	field := value.FieldByName(fieldName)
+	if field == (reflect.Value{}) {
+		return "", false
+	}
+	return fmt.Sprintf("%v", field), true
 }
 
 func updateMetadataField(data reflect.Value, key string, res *protocol.Resource) {
@@ -61,6 +95,14 @@ func updateMetadataFromBytes(
 func updateMetadataFromValue(
 	value reflect.Value, fieldName string, targetKey string, metadata map[string]string) {
 	fieldValue, ok := getFieldStringPtr(value, fieldName)
+	if ok {
+		metadata[targetKey] = fieldValue
+	}
+}
+
+func updateMetadataFromNumValue(
+	value reflect.Value, fieldName string, targetKey string, metadata map[string]string) {
+	fieldValue, ok := getFieldNumPtrAsString(value, fieldName)
 	if ok {
 		metadata[targetKey] = fieldValue
 	}

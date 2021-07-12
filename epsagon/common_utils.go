@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	awsFactories "github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"reflect"
-	"strings"
 
+	"unsafe"
+	"strings"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/onsi/gomega/types"
 )
@@ -159,6 +161,31 @@ func NewReadCloser(body []byte, err error) io.ReadCloser {
 		return &errorReader{err: err}
 	}
 	return ioutil.NopCloser(bytes.NewReader(body))
+}
+
+// extractAPIOptions extracts and returns an SVC's middleware API Options
+// extraction goes == awsClient -> options -> APIOptions
+func extractAPIOptions(svcClient awsFactories.AWSClient) reflect.Value {
+	// New pointer to unexported field "options"
+	optionsField := reflect.ValueOf(svcClient).Elem().FieldByName("options")
+	options := NewPointerAtField(optionsField).Interface()
+
+	// New pointer to field of unexported field, "APIOptions" since unsettable by default
+	apiOptionsField := reflect.ValueOf(options).FieldByName("APIOptions")
+	apiOptions := reflect.NewAt(
+		apiOptionsField.Type(),
+		unsafe.Pointer(optionsField.UnsafeAddr()),
+	).Elem()
+
+	return apiOptions
+}
+
+// NewPointerAtField returns a new pointer to a field of a Value
+func NewPointerAtField(field reflect.Value) reflect.Value {
+	return reflect.NewAt(
+		field.Type(),
+		unsafe.Pointer(field.UnsafeAddr()),
+	).Elem()
 }
 
 type errorReader struct {

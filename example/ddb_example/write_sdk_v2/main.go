@@ -3,50 +3,57 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/epsagon/epsagon-go/epsagon"
-	"github.com/google/uuid"
 	"log"
 	"os"
+	"reflect"
 )
 
-func ddbHandler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	cfg, err := external.LoadDefaultAWSConfig()
+func ddbHandler()  {
+	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		panic("Failed to load default aws config")
 	}
 	cfg.Region = "eu-west-1"
-	svc := epsagon.WrapAwsV2Service(dynamodb.New(cfg)).(*dynamodb.Client)
-	putItemInput := dynamodb.PutItemInput{
-		Item: map[string]dynamodb.AttributeValue{
-			"item":    {S: aws.String(uuid.New().String())},
-			"request": {S: &request.Body},
+	svc := epsagon.WrapAwsV2Service(dynamodb.NewFromConfig(cfg)).(*dynamodb.Client)
+	fmt.Println(svc)
+	fmt.Println(reflect.TypeOf(svc))
+
+	resp, err := svc.GetItem(context.Background(), &dynamodb.GetItemInput{
+		Key:                      map[string]types.AttributeValue{
+			"attr_name": &types.AttributeValueMemberS{Value: "attr_value"},
 		},
-		TableName: aws.String(os.Getenv("TABLE_NAME")),
-	}
-	req := svc.PutItemRequest(&putItemInput)
-
-	resp, err := req.Send(context.Background())
+		TableName:                aws.String(os.Getenv("TABLE_NAME")),
+	})
 	if err != nil {
-		return events.APIGatewayProxyResponse{
-			Body: fmt.Sprintf("PutItem Failed: %s\n%s",
-				resp.String(), err.Error()),
-			StatusCode: 500,
-		}, nil
+		fmt.Println(err)
+		return
 	}
+	fmt.Println(resp)
 
-	log.Println("Successfully written item to table")
-	return events.APIGatewayProxyResponse{Body: request.Body, StatusCode: 200}, nil
+	putResp, err := svc.PutItem(context.Background(), &dynamodb.PutItemInput{
+		Item: 		map[string]types.AttributeValue{
+			"attr_name": &types.AttributeValueMemberS{Value: "attr_value"},
+		},
+		TableName: 	aws.String(os.Getenv("TABLE_NAME")),
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(putResp)
+
 }
 
 func main() {
 	log.Println("enter main")
 	config := epsagon.NewTracerConfig("ddb-test-go-v2", "")
+	config.MetadataOnly = true
 	config.Debug = true
-	lambda.Start(epsagon.WrapLambdaHandler(config, ddbHandler))
+	epsagon.GoWrapper(config, ddbHandler)()
 	log.Println("exit main")
 }
