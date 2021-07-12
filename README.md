@@ -318,7 +318,7 @@ Epsagon provides out-of-the-box instrumentation (tracing) for many popular frame
 |--------------------|---------------------------|
 |net/http            |Fully supported            |
 |aws-sdk-go          |`>=1.10.0`                 |
-|aws-sdk-go-v2       |`>=0.23.0`                 |
+|aws-sdk-go-v2       |`>=1.0.0`                 |
 
 ### net/http
 

@@ -16,7 +16,6 @@ require (
 	github.com/gofiber/fiber/v2 v2.11.0
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.3
-	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -26,8 +25,8 @@ require (
 	github.com/onsi/ginkgo v1.16.1
 	github.com/onsi/gomega v1.11.0
 	github.com/stretchr/testify v1.7.0 // indirect
-	github.com/sclevine/agouti v3.0.0+incompatible // indirect
 	github.com/ugorji/go v1.1.13 // indirect
+	github.com/valyala/fasthttp v1.26.0
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
