@@ -109,7 +109,9 @@ var _ = Describe("mongo_wrapper", func() {
 				reqDoc := doc{Name: "TestName"}
 				resDoc := doc{}
 
-				wrapper.InsertOne(context.Background(), reqDoc)
+				_, err := wrapper.InsertOne(context.Background(), reqDoc)
+				Expect(err).To(BeNil())
+
 				response := wrapper.FindOne(
 					context.Background(),
 					bson.D{{Key: "name", Value: "TestName"}},
@@ -117,6 +119,8 @@ var _ = Describe("mongo_wrapper", func() {
 
 				response.Decode(&resDoc)
 				Expect(reqDoc).To(Equal(resDoc))
+				Expect(response.Err()).To(BeNil())
+
 			})
 			It("calls InsertMany and Find", func() {
 				type doc struct {
@@ -133,11 +137,15 @@ var _ = Describe("mongo_wrapper", func() {
 					},
 				}
 
-				wrapper.InsertMany(context.Background(), docs)
-				cur, _ := wrapper.Find(
+				_, err := wrapper.InsertMany(context.Background(), docs)
+				Expect(err).To(BeNil())
+
+				cur, err := wrapper.Find(
 					context.Background(),
 					bson.M{},
 				)
+				Expect(err).To(BeNil())
+
 
 				readCursor(cur)
 			})

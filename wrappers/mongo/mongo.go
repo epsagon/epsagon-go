@@ -34,12 +34,12 @@ func (coll *MongoCollectionWrapper) Database() *mongo.Database {
 }
 
 func (coll *MongoCollectionWrapper) Clone(opts ...*mongoOptions.CollectionOptions) (interface{}, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("Clone", coll)
 	response, err := coll.collection.Clone(
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprint("Could not complete Clone"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -54,7 +54,7 @@ func (coll *MongoCollectionWrapper) Clone(opts ...*mongoOptions.CollectionOption
 func (coll *MongoCollectionWrapper) InsertOne(
 	ctx context.Context, document interface{}, opts ...*mongoOptions.InsertOneOptions,
 ) (*mongo.InsertOneResult, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("InsertOne", coll)
 	fmt.Println("EVENT::::")
 	fmt.Println(event)
 	response, err := coll.collection.InsertOne(
@@ -64,7 +64,7 @@ func (coll *MongoCollectionWrapper) InsertOne(
 	)
 
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprint("Could not complete InsertOne"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -84,14 +84,14 @@ func (coll *MongoCollectionWrapper) InsertOne(
 func (coll *MongoCollectionWrapper) InsertMany(
 	ctx context.Context, documents []interface{}, opts ...*mongoOptions.InsertManyOptions,
 ) (*mongo.InsertManyResult, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("InsertMany", coll)
 	response, err := coll.collection.InsertMany(
 		ctx,
 		documents,
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "InsertMany"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -111,14 +111,14 @@ func (coll *MongoCollectionWrapper) InsertMany(
 func (coll *MongoCollectionWrapper) BulkWrite(
 	ctx context.Context, models []mongo.WriteModel, opts ...*mongoOptions.BulkWriteOptions,
 ) (*mongo.BulkWriteResult, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("BulkWrite", coll)
 	response, err := coll.collection.BulkWrite(
 		ctx,
 		models,
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprint("Could not complete BulkWrite"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -137,14 +137,14 @@ func (coll *MongoCollectionWrapper) BulkWrite(
 func (coll *MongoCollectionWrapper) DeleteOne(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.DeleteOptions,
 ) (*mongo.DeleteResult, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("DeleteOne", coll)
 	response, err := coll.collection.DeleteOne(
 		ctx,
 		filter,
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprint("Could not complete DeleteOne"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -164,14 +164,14 @@ func (coll *MongoCollectionWrapper) DeleteOne(
 func (coll *MongoCollectionWrapper) DeleteMany(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.DeleteOptions,
 ) (*mongo.DeleteResult, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("DeleteMany", coll)
 	response, err := coll.collection.DeleteMany(
 		ctx,
 		filter,
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete DeleteMany"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -191,7 +191,7 @@ func (coll *MongoCollectionWrapper) DeleteMany(
 func (coll *MongoCollectionWrapper) UpdateOne(
 	ctx context.Context, filter interface{}, update interface{}, opts ...*mongoOptions.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("UpdateOne", coll)
 	response, err := coll.collection.UpdateOne(
 		ctx,
 		filter,
@@ -199,7 +199,7 @@ func (coll *MongoCollectionWrapper) UpdateOne(
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "UpdateOne"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -220,7 +220,7 @@ func (coll *MongoCollectionWrapper) UpdateOne(
 func (coll *MongoCollectionWrapper) UpdateMany(
 	ctx context.Context, filter interface{}, update interface{}, opts ...*mongoOptions.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("UpdateMany", coll)
 	response, err := coll.collection.UpdateMany(
 		ctx,
 		filter,
@@ -228,7 +228,7 @@ func (coll *MongoCollectionWrapper) UpdateMany(
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "UpdateMany"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -249,7 +249,7 @@ func (coll *MongoCollectionWrapper) UpdateMany(
 func (coll *MongoCollectionWrapper) UpdateByID(
 	ctx context.Context, id interface{}, update interface{}, opts ...*mongoOptions.UpdateOptions,
 ) (*mongo.UpdateResult, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("UpdateByID", coll)
 	response, err := coll.collection.UpdateByID(
 		ctx,
 		id,
@@ -257,7 +257,7 @@ func (coll *MongoCollectionWrapper) UpdateByID(
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "UpdateByID"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -278,7 +278,7 @@ func (coll *MongoCollectionWrapper) UpdateByID(
 func (coll *MongoCollectionWrapper) ReplaceOne(
 	ctx context.Context, filter interface{}, replacement interface{}, opts ...*mongoOptions.ReplaceOptions,
 ) (*mongo.UpdateResult, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("ReplaceOne", coll)
 	response, err := coll.collection.ReplaceOne(
 		ctx,
 		filter,
@@ -286,7 +286,7 @@ func (coll *MongoCollectionWrapper) ReplaceOne(
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "ReplaceOne"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -307,14 +307,14 @@ func (coll *MongoCollectionWrapper) ReplaceOne(
 func (coll *MongoCollectionWrapper) Aggregate(
 	ctx context.Context, pipeline interface{}, opts ...*mongoOptions.AggregateOptions,
 ) (*mongo.Cursor, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("Aggregate", coll)
 	response, err := coll.collection.Aggregate(
 		ctx,
 		pipeline,
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "Aggregate"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -339,14 +339,14 @@ func (coll *MongoCollectionWrapper) Aggregate(
 func (coll *MongoCollectionWrapper) CountDocuments(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.CountOptions,
 ) (int64, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("CountDocuments", coll)
 	response, err := coll.collection.CountDocuments(
 		ctx,
 		filter,
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "CountDocuments"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -366,13 +366,13 @@ func (coll *MongoCollectionWrapper) CountDocuments(
 func (coll *MongoCollectionWrapper) EstimatedDocumentCount(
 	ctx context.Context, opts ...*mongoOptions.EstimatedDocumentCountOptions,
 ) (int64, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("EstimatedDocumentCount", coll)
 	response, err := coll.collection.EstimatedDocumentCount(
 		ctx,
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "EstimatedDocumentCount"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -391,7 +391,7 @@ func (coll *MongoCollectionWrapper) EstimatedDocumentCount(
 func (coll *MongoCollectionWrapper) Distinct(
 	ctx context.Context, fieldName string, filter interface{}, opts ...*mongoOptions.DistinctOptions,
 ) ([]interface{}, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("Distinct", coll)
 	response, err := coll.collection.Distinct(
 		ctx,
 		fieldName,
@@ -399,7 +399,7 @@ func (coll *MongoCollectionWrapper) Distinct(
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "Distinct"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -419,14 +419,14 @@ func (coll *MongoCollectionWrapper) Distinct(
 func (coll *MongoCollectionWrapper) Find(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.FindOptions,
 ) (*mongo.Cursor, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("Find", coll)
 	response, err := coll.collection.Find(
 		ctx,
 		filter,
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "Find"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -451,7 +451,7 @@ func (coll *MongoCollectionWrapper) Find(
 func (coll *MongoCollectionWrapper) FindOne(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.FindOneOptions,
 ) *mongo.SingleResult {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("FindOne", coll)
 	response := coll.collection.FindOne(
 		ctx,
 		filter,
@@ -482,7 +482,7 @@ func (coll *MongoCollectionWrapper) FindOne(
 func (coll *MongoCollectionWrapper) FindOneAndDelete(
 	ctx context.Context, filter interface{}, opts ...*mongoOptions.FindOneAndDeleteOptions,
 ) *mongo.SingleResult {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("FindOneAndDelete", coll)
 	response := coll.collection.FindOneAndDelete(
 		ctx,
 		filter,
@@ -512,7 +512,7 @@ func (coll *MongoCollectionWrapper) FindOneAndDelete(
 func (coll *MongoCollectionWrapper) FindOneAndReplace(
 	ctx context.Context, filter interface{}, replacement interface{}, opts ...*mongoOptions.FindOneAndReplaceOptions,
 ) *mongo.SingleResult {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("FindOneAndReplace", coll)
 	response := coll.collection.FindOneAndReplace(
 		ctx,
 		filter,
@@ -545,7 +545,7 @@ func (coll *MongoCollectionWrapper) FindOneAndReplace(
 func (coll *MongoCollectionWrapper) FindOneAndUpdate(
 	ctx context.Context, filter interface{}, update interface{}, opts ...*mongoOptions.FindOneAndReplaceOptions,
 ) *mongo.SingleResult {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("FindOneAndUpdate", coll)
 	response := coll.collection.FindOneAndReplace(
 		ctx,
 		filter,
@@ -578,7 +578,7 @@ func (coll *MongoCollectionWrapper) Drop(ctx context.Context) error {
 		ctx,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "Drop"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
@@ -591,7 +591,7 @@ func (coll *MongoCollectionWrapper) Drop(ctx context.Context) error {
 }
 
 func (coll *MongoCollectionWrapper) Indexes() mongo.IndexView {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("Indexes", coll)
 	indexView := coll.collection.Indexes()
 	if event != nil {
 		completeMongoEvent(coll.tracer, event)
@@ -602,14 +602,14 @@ func (coll *MongoCollectionWrapper) Indexes() mongo.IndexView {
 func (coll *MongoCollectionWrapper) Watch(
 	ctx context.Context, pipeline interface{}, opts ...*mongoOptions.ChangeStreamOptions,
 ) (*mongo.ChangeStream, error) {
-	event := startMongoEvent(currentFuncName(), coll)
+	event := startMongoEvent("Watch", coll)
 	response, err := coll.collection.Watch(
 		ctx,
 		pipeline,
 		opts...,
 	)
 	if err != nil {
-		logOperationFailure(fmt.Sprintf("Could not complete %s", currentFuncName()), err.Error())
+		logOperationFailure(fmt.Sprintf("Could not complete %s", "Watch"), err.Error())
 		coll.tracer.AddExceptionTypeAndMessage(
 			"mongo-driver",
 			err.Error(),
