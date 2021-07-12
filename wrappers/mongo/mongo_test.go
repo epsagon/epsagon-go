@@ -16,7 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-
 func TestMongoWrapper(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Mongo Driver Test Suite")
@@ -25,10 +24,10 @@ func TestMongoWrapper(t *testing.T) {
 var _ = Describe("mongo_wrapper", func() {
 	Describe("CollectionWrapper", func() {
 		var (
-			mongoServer			*memongo.Server
-			mongoOptions		*memongo.Options
-			started				chan bool
-			testConf			*epsagon.Config
+			mongoServer        *memongo.Server
+			mongoOptions       *memongo.Options
+			started            chan bool
+			testConf           *epsagon.Config
 			events             []*protocol.Event
 			exceptions         []*protocol.Exception
 			wrapper            *MongoCollectionWrapper
@@ -40,9 +39,9 @@ var _ = Describe("mongo_wrapper", func() {
 		BeforeEach(func() {
 			started = make(chan bool)
 			// start server goroutine, runs in background until block
-			go func()  {
+			go func() {
 				mongoOptions = &memongo.Options{
-					MongoVersion: "4.2.0",
+					MongoVersion:   "4.2.0",
 					StartupTimeout: 5 * time.Second,
 				}
 				mongoServer, _ = memongo.StartWithOptions(mongoOptions)
@@ -64,7 +63,7 @@ var _ = Describe("mongo_wrapper", func() {
 
 			testCollectionName = "collectionName"
 			testDatabaseName = "databaseName"
-			testContext, cancel = context.WithTimeout(context.Background(), 2 * time.Second)
+			testContext, cancel = context.WithTimeout(context.Background(), 2*time.Second)
 
 			// blocking await until server is started
 			select {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/epsagon/epsagon-go/epsagon"
+	"github.com/epsagon/epsagon-go/tracer"
 	"go.mongodb.org/mongo-driver/mongo"
 	mongoOptions "go.mongodb.org/mongo-driver/mongo/options"
 )

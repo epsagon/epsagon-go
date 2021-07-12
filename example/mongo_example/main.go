@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -13,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
-
 
 func dbAPI() {
 
@@ -45,17 +43,14 @@ func dbAPI() {
 	}
 	var res interface{}
 
-
-
 	fmt.Println("##InsertOne")
 	_, err = coll.InsertOne(
 		context.Background(),
 		doc{Name: "bon"},
 	)
-	if err != nil  {
+	if err != nil {
 		panic(err)
 	}
-
 
 	fmt.Println("##InsertMany")
 	_, err = coll.InsertMany(
@@ -71,11 +66,9 @@ func dbAPI() {
 			},
 		},
 	)
-	if err != nil  {
+	if err != nil {
 		panic(err)
 	}
-
-
 
 	fmt.Println("##FindOne")
 	coll.FindOne(
@@ -83,10 +76,8 @@ func dbAPI() {
 		bson.D{{Key: "name", Value: "bon"}},
 	)
 
-
 	fmt.Println("##Find")
 	coll.Find(context.Background(), bson.M{})
-
 
 	fmt.Println("##Aggregate")
 	res, err = coll.Aggregate(
@@ -98,7 +89,6 @@ func dbAPI() {
 	if err != nil || err == mongo.ErrNoDocuments {
 		panic(err)
 	}
-
 
 	fmt.Println("##CountDocuments")
 	res, err = coll.CountDocuments(
@@ -131,7 +121,6 @@ func dbAPI() {
 		panic(err)
 	}
 }
-
 
 func main() {
 
