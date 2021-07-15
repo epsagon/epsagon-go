@@ -24,6 +24,8 @@ func WrapAwsV2Service(svcClient awsFactories.AWSClient, args ...context.Context)
 			awsFactories.InitializeMiddleware(awsCall, currentTracer, completeEventData),
 			awsFactories.FinalizeMiddleware(awsCall, currentTracer),
 		)
+	} else {
+		log.Printf("EPSAGON DEBUG No tracer found, cannot wrap AWS client")
 	}
 	return svcClient
 }
