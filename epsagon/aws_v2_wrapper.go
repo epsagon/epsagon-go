@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+
 	awsFactories "github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
-	"log"
 )
 
 // WrapAwsV2Service wrap aws service with epsgon
@@ -17,12 +18,13 @@ func WrapAwsV2Service(svcClient awsFactories.AWSClient, args ...context.Context)
 	apiOptions := extractAPIOptions(svcClient)
 	awsCall := &awsFactories.AWSCall{}
 	currentTracer := ExtractTracer(args)
-
-	awsFactories.AddMiddlewareFuncs(
-		apiOptions,
-		awsFactories.InitializeMiddleware(awsCall, currentTracer, completeEventData),
-		awsFactories.FinalizeMiddleware(awsCall, currentTracer),
-	)
+	if currentTracer != nil {
+		awsFactories.AddMiddlewareFuncs(
+			apiOptions,
+			awsFactories.InitializeMiddleware(awsCall, currentTracer, completeEventData),
+			awsFactories.FinalizeMiddleware(awsCall, currentTracer),
+		)
+	}
 	return svcClient
 }
 
