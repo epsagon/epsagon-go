@@ -18,20 +18,25 @@ type epsagonHook struct {
 	port    string
 	dbIndex string
 	event   *protocol.Event
+	tracer  tracer.Tracer
 }
 
-func NewClient(opt *redis.Options) *redis.Client {
+func NewClient(opt *redis.Options, epsagonCtx context.Context) *redis.Client {
 	client := redis.NewClient(opt)
-	return wrapClient(client, opt)
+	return wrapClient(client, opt, epsagonCtx)
 }
 
-func wrapClient(client *redis.Client, opt *redis.Options) *redis.Client {
-	host, port := getClientHostPort(opt)
-	client.AddHook(&epsagonHook{
-		host:    host,
-		port:    port,
-		dbIndex: string(opt.DB),
-	})
+func wrapClient(client *redis.Client, opt *redis.Options, epsagonCtx context.Context) *redis.Client {
+	currentTracer := epsagon.ExtractTracer([]context.Context{epsagonCtx})
+	if currentTracer != nil {
+		host, port := getClientHostPort(opt)
+		client.AddHook(&epsagonHook{
+			host:    host,
+			port:    port,
+			dbIndex: string(opt.DB),
+			tracer:  currentTracer,
+		})
+	}
 	return client
 }
 
@@ -81,12 +86,7 @@ func (epsHook *epsagonHook) before(ctx context.Context, operation, cmdArgs strin
 }
 
 func (epsHook *epsagonHook) after(ctx context.Context, response, errMsg string) error {
-	currentTracer := epsagon.ExtractTracer([]context.Context{ctx})
-	if currentTracer == nil {
-		return nil
-	}
-
-	if !currentTracer.GetConfig().MetadataOnly {
+	if !epsHook.tracer.GetConfig().MetadataOnly {
 		epsHook.event.Resource.Metadata["redis.response"] = response
 	}
 
@@ -103,7 +103,7 @@ func (epsHook *epsagonHook) after(ctx context.Context, response, errMsg string) 
 	}
 
 	event.Duration = eventEndTime - event.StartTime
-	currentTracer.AddEvent(event)
+	epsHook.tracer.AddEvent(event)
 	return nil
 }
 

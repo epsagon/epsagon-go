@@ -40,12 +40,3 @@ func ExtractTracer(ctx []context.Context) tracer.Tracer {
 	}
 	return tracerValue
 }
-
-// MergeTracerContext merges the provided tracer context with the given context.
-func MergeTracerContext(ctx context.Context, tracerCtx context.Context) context.Context {
-	tracer := ExtractTracer([]context.Context{tracerCtx})
-	if tracer != nil {
-		return context.WithValue(ctx, tracerKeyValue, tracer)
-	}
-	return ctx
-}
