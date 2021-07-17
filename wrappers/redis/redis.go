@@ -86,12 +86,16 @@ func (epsHook *epsagonHook) before(ctx context.Context, operation, cmdArgs strin
 }
 
 func (epsHook *epsagonHook) after(ctx context.Context, response, errMsg string) error {
+	event := epsHook.event
+	if event == nil {
+		return nil
+	}
 	if !epsHook.tracer.GetConfig().MetadataOnly {
-		epsHook.event.Resource.Metadata["redis.response"] = response
+		event.Resource.Metadata["redis.response"] = response
 	}
 
-	event := epsHook.event
 	eventEndTime := tracer.GetTimestamp()
+	event.Duration = eventEndTime - event.StartTime
 
 	if errMsg != "" {
 		event.ErrorCode = protocol.ErrorCode_EXCEPTION
@@ -102,7 +106,6 @@ func (epsHook *epsagonHook) after(ctx context.Context, response, errMsg string) 
 		}
 	}
 
-	event.Duration = eventEndTime - event.StartTime
 	epsHook.tracer.AddEvent(event)
 	return nil
 }
