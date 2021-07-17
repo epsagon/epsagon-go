@@ -125,7 +125,9 @@ func createEvent(epsHook *epsagonHook, operation string, metadata map[string]str
 
 func getResourceMetadata(epsHook *epsagonHook, cmdArgs string) map[string]string {
 	metadata := getConnectionMetadata(epsHook)
-	metadata["Command Arguments"] = cmdArgs
+	if !epsHook.tracer.GetConfig().MetadataOnly {
+		metadata["Command Arguments"] = cmdArgs
+	}
 	return metadata
 }
 
