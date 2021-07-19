@@ -332,7 +332,7 @@ func main() {
 				DB:       0,
 			}, req.Context())
 
-			value, _ := rdb.Get(context.Background(), "mykey").Result()
+			value, _ := rdb.Get(context.Background(), "somekey").Result()
 			io.WriteString(w, value)
 		}),
 	)

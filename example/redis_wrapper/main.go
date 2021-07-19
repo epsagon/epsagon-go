@@ -12,24 +12,31 @@ import (
 )
 
 func main() {
-	config := epsagon.NewTracerConfig(
-		"redis-wrapper-test", "",
-	)
+	config := epsagon.NewTracerConfig("redis-wrapper-test", "")
 	config.MetadataOnly = false
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ping", epsagonhttp.WrapHandleFunc(
 		config,
 		func(w http.ResponseWriter, req *http.Request) {
-			// initialize the redis client as usual, but also make sure
-			// to pass in the epsagon tracer context
+			// initialize the redis client as usual
+			// make sure to pass in the epsagon tracer context
 			rdb := epsagonredis.NewClient(&redis.Options{
 				Addr:     "localhost:6379",
 				Password: "",
 				DB:       0,
 			}, req.Context())
 
-			value, _ := rdb.Get(context.Background(), "mykey").Result()
+			ctx := context.Background()
+
+			// pipeline operations
+			pipe := rdb.Pipeline()
+			pipe.Set(ctx, "somekey", "somevalue", 0)
+			pipe.Get(ctx, "somekey")
+			pipe.Exec(ctx)
+
+			// single operation
+			value, _ := rdb.Get(ctx, "somekey").Result()
 
 			io.WriteString(w, value)
 		}),
