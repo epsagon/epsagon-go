@@ -3,6 +3,7 @@ package epsagonredis
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"runtime/debug"
 
@@ -33,7 +34,7 @@ func wrapClient(client *redis.Client, opt *redis.Options, epsagonCtx context.Con
 		client.AddHook(&epsagonHook{
 			host:    host,
 			port:    port,
-			dbIndex: string(opt.DB),
+			dbIndex: fmt.Sprint(opt.DB),
 			tracer:  currentTracer,
 		})
 	}
