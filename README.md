@@ -313,7 +313,7 @@ resp, err := client.Get("http://example.com")
 
 ### go-redis
 
-The go-redis instrumentation supports both single and pipeline operations ([full examples](https://github.com/epsagon/epsagon-go/tree/master/example)):
+The go-redis instrumentation supports both single and pipeline operations ([full example](https://github.com/epsagon/epsagon-go/tree/master/example)):
 
 ```go
 func main() {
