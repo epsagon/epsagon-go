@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"reflect"
 	"strings"
@@ -159,6 +160,14 @@ func NewReadCloser(body []byte, err error) io.ReadCloser {
 		return &errorReader{err: err}
 	}
 	return ioutil.NopCloser(bytes.NewReader(body))
+}
+
+// DebugLog logs helpful debugging messages
+
+func DebugLog(debugMode bool, args ...interface{}) {
+	if debugMode {
+		log.Println("[EPSAGON]", args)
+	}
 }
 
 type errorReader struct {
