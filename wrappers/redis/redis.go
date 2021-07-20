@@ -55,44 +55,57 @@ func getClientHostPort(opt *redis.Options) (host, port string) {
 	return opt.Addr, ""
 }
 
-func (epsHook *epsagonHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.Context, error) {
+func (epsHook *epsagonHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (processCtx context.Context, err error) {
+	processCtx, err = ctx, nil
+	defer func() { recover() }()
+
 	cmdArgs := safeJsonify(cmd.Args())
-	return epsHook.before(ctx, cmd.Name(), cmdArgs)
+	epsHook.before(cmd.Name(), cmdArgs)
+	return
 }
 
-func (epsHook *epsagonHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
+func (epsHook *epsagonHook) AfterProcess(ctx context.Context, cmd redis.Cmder) (err error) {
+	defer func() { recover() }()
+
 	var errMsg string
 	if err := cmd.Err(); err != nil {
 		errMsg = err.Error()
 	}
-	return epsHook.after(ctx, cmd.String(), errMsg)
+	epsHook.after(cmd.String(), errMsg)
+	return
 }
 
-func (epsHook *epsagonHook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (context.Context, error) {
+func (epsHook *epsagonHook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (processCtx context.Context, err error) {
+	processCtx, err = ctx, nil
+	defer func() { recover() }()
+
 	cmdArgs := safeJsonify(getPiplineCmdArgs(cmds))
-	return epsHook.before(ctx, "Pipeline", cmdArgs)
+	epsHook.before("Pipeline", cmdArgs)
+	return
 }
 
-func (epsHook *epsagonHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
+func (epsHook *epsagonHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) (err error) {
+	defer func() { recover() }()
+
 	var errMsg string
 	if errors := getPipelineErrors(cmds); len(errors) > 0 {
 		errMsg = safeJsonify(errors)
 
 	}
 	response := safeJsonify(getPipelineResponse(cmds))
-	return epsHook.after(ctx, response, errMsg)
+	epsHook.after(response, errMsg)
+	return
 }
 
-func (epsHook *epsagonHook) before(ctx context.Context, operation, cmdArgs string) (context.Context, error) {
+func (epsHook *epsagonHook) before(operation, cmdArgs string) {
 	metadata := getResourceMetadata(epsHook, cmdArgs)
 	epsHook.event = createEvent(epsHook, operation, metadata)
-	return ctx, nil
 }
 
-func (epsHook *epsagonHook) after(ctx context.Context, response, errMsg string) error {
+func (epsHook *epsagonHook) after(response, errMsg string) {
 	event := epsHook.event
 	if event == nil {
-		return nil
+		return
 	}
 	if !epsHook.tracer.GetConfig().MetadataOnly {
 		event.Resource.Metadata["redis.response"] = response
@@ -111,7 +124,6 @@ func (epsHook *epsagonHook) after(ctx context.Context, response, errMsg string) 
 	}
 
 	epsHook.tracer.AddEvent(event)
-	return nil
 }
 
 func createEvent(epsHook *epsagonHook, operation string, metadata map[string]string) *protocol.Event {
