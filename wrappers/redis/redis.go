@@ -27,7 +27,10 @@ func NewClient(opt *redis.Options, epsagonCtx context.Context) *redis.Client {
 	return wrapClient(client, opt, epsagonCtx)
 }
 
-func wrapClient(client *redis.Client, opt *redis.Options, epsagonCtx context.Context) *redis.Client {
+func wrapClient(client *redis.Client, opt *redis.Options, epsagonCtx context.Context) (wrappedClient *redis.Client) {
+	wrappedClient = client
+	defer func() { recover() }()
+
 	currentTracer := epsagon.ExtractTracer([]context.Context{epsagonCtx})
 	if currentTracer != nil {
 		host, port := getClientHostPort(opt)
@@ -38,7 +41,7 @@ func wrapClient(client *redis.Client, opt *redis.Options, epsagonCtx context.Con
 			tracer:  currentTracer,
 		})
 	}
-	return client
+	return wrappedClient
 }
 
 func getClientHostPort(opt *redis.Options) (host, port string) {
