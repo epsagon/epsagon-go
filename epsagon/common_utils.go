@@ -8,13 +8,14 @@ import (
 	awsFactories "github.com/epsagon/epsagon-go/epsagon/aws_sdk_v2_factories"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"reflect"
 
-	"unsafe"
-	"strings"
 	"github.com/epsagon/epsagon-go/tracer"
 	"github.com/onsi/gomega/types"
+	"strings"
+	"unsafe"
 )
 
 // DefaultErrorType Default custom error type
@@ -164,7 +165,7 @@ func NewReadCloser(body []byte, err error) io.ReadCloser {
 }
 
 // extractAPIOptions extracts and returns an SVC's middleware API Options
-// extraction goes == awsClient -> options -> APIOptions
+// extraction goes: awsClient -> options -> APIOptions
 func extractAPIOptions(svcClient awsFactories.AWSClient) reflect.Value {
 	// New pointer to unexported field "options"
 	optionsField := reflect.ValueOf(svcClient).Elem().FieldByName("options")
@@ -186,6 +187,13 @@ func NewPointerAtField(field reflect.Value) reflect.Value {
 		field.Type(),
 		unsafe.Pointer(field.UnsafeAddr()),
 	).Elem()
+}
+
+// DebugLog logs helpful debugging messages
+func DebugLog(debugMode bool, args ...interface{}) {
+	if debugMode {
+		log.Println("[EPSAGON]", args)
+	}
 }
 
 type errorReader struct {
