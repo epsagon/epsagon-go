@@ -14,7 +14,6 @@ import (
 
 type MiddlewareFunc func(stack *smithyMiddleware.Stack) error
 
-
 func AddMiddlewareFuncs(apiOptions reflect.Value, option ...MiddlewareFunc) reflect.Value {
 	if ! apiOptions.CanSet() {
 		return apiOptions
@@ -44,11 +43,11 @@ func InitializeMiddleware (
 				) (
 					out smithyMiddleware.InitializeOutput, metadata smithyMiddleware.Metadata, err error,
 				) {
-
 					awsCall.StartTime = tracer.GetTimestamp()
 					awsCall.Input = in.Parameters
 
 					out, metadata, err = next.HandleInitialize(ctx, in)
+
 					if err != nil {
 						tracer.AddException(&protocol.Exception{
 							Type:                 "aws-sdk-go-v2",
@@ -87,7 +86,6 @@ func FinalizeMiddleware (awsCall *AWSCall, currentTracer tracer.Tracer) func(sta
 				) {
 					out, metadata, err = next.HandleFinalize(ctx, in)
 
-
 					if err != nil {
 						tracer.AddException(&protocol.Exception{
 							Type:                 "go-aws-sdk-v2",
@@ -95,6 +93,7 @@ func FinalizeMiddleware (awsCall *AWSCall, currentTracer tracer.Tracer) func(sta
 							Traceback:            "",
 							Time:                 tracer.GetTimestamp(),
 						})
+						return out, metadata, err
 					}
 
 					requestID, ok := awsMiddleware.GetRequestIDMetadata(metadata)
