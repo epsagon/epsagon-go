@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/epsagon/epsagon-go/protocol"
@@ -49,6 +50,24 @@ func getAWSAccount(lc *lambdacontext.LambdaContext) string {
 		return arnParts[4]
 	}
 	return ""
+}
+
+func createLambdaEvent(preInvokeInfo *preInvokeData) *protocol.Event {
+	endTime := tracer.GetTimestamp()
+	duration := endTime - preInvokeInfo.StartTime
+
+	return &protocol.Event{
+		Id:        preInvokeInfo.LambdaContext.AwsRequestID,
+		StartTime: preInvokeInfo.StartTime,
+		Resource: &protocol.Resource{
+			Name:      lambdacontext.FunctionName,
+			Type:      "lambda",
+			Operation: "invoke",
+			Metadata:  preInvokeInfo.InvocationMetadata,
+		},
+		Origin:   "runner",
+		Duration: duration,
+	}
 }
 
 func (wrapper *epsagonLambdaWrapper) preInvokeOps(
@@ -100,23 +119,9 @@ func (wrapper *epsagonLambdaWrapper) postInvokeOps(
 		}
 	}()
 
-	endTime := tracer.GetTimestamp()
-	duration := endTime - preInvokeInfo.StartTime
-
-	lambdaEvent := &protocol.Event{
-		Id:        preInvokeInfo.LambdaContext.AwsRequestID,
-		StartTime: preInvokeInfo.StartTime,
-		Resource: &protocol.Resource{
-			Name:      lambdacontext.FunctionName,
-			Type:      "lambda",
-			Operation: "invoke",
-			Metadata:  preInvokeInfo.InvocationMetadata,
-		},
-		Origin:    "runner",
-		Duration:  duration,
-		ErrorCode: invokeInfo.errorStatus,
-		Exception: invokeInfo.ExceptionInfo,
-	}
+	lambdaEvent := createLambdaEvent(preInvokeInfo)
+	lambdaEvent.ErrorCode = invokeInfo.errorStatus
+	lambdaEvent.Exception = invokeInfo.ExceptionInfo
 
 	if !wrapper.config.MetadataOnly {
 		result, err := json.Marshal(invokeInfo.result)
@@ -151,10 +156,30 @@ func (wrapper *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Ra
 	}()
 
 	preInvokeInfo := wrapper.preInvokeOps(ctx, payload)
+	go wrapper.trackTimeout(ctx, preInvokeInfo)
 	wrapper.InvokeClientLambda(ctx, payload, invokeInfo)
 	wrapper.postInvokeOps(preInvokeInfo, invokeInfo)
 
 	return invokeInfo.result, invokeInfo.err
+}
+
+func (wrapper *epsagonLambdaWrapper) trackTimeout(ctx context.Context, preInvokeInfo *preInvokeData) {
+	deadline, isDeadlineSet := ctx.Deadline()
+	if isDeadlineSet {
+		thresholdDuration := time.Duration(tracer.GetLambdaTimeoutThresholdMs())
+		deadline = deadline.Add(-thresholdDuration * time.Millisecond)
+		timeoutChannel := time.After(time.Until(deadline))
+
+		for range timeoutChannel {
+			if wrapper.invoking {
+				lambdaEvent := createLambdaEvent(preInvokeInfo)
+				lambdaEvent.ErrorCode = 3
+
+				wrapper.tracer.AddEvent(lambdaEvent)
+				wrapper.tracer.Stop()
+			}
+		}
+	}
 }
 
 func (wrapper *epsagonLambdaWrapper) InvokeClientLambda(

@@ -55,6 +55,20 @@ var strongKeys = map[string]bool{
 	"item_hash":              true,
 }
 
+// threshold in milliseconds to send the trace before a Lambda timeout occurs
+const defaultLambdaTimeoutThresholdMs = 200
+
+func GetLambdaTimeoutThresholdMs() int {
+	timeoutThresholdMs := defaultLambdaTimeoutThresholdMs
+	userDefinedThreshold, ok := os.LookupEnv("EPSAGON_LAMBDA_TIMEOUT_THRESHOLD_MS")
+	if ok {
+		if userDefinedThreshold, err := strconv.Atoi(userDefinedThreshold); err == nil {
+			timeoutThresholdMs = userDefinedThreshold
+		}
+	}
+	return timeoutThresholdMs
+}
+
 // Tracer is what a general program tracer has to provide
 type Tracer interface {
 	AddEvent(*protocol.Event)
