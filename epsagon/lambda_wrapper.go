@@ -19,6 +19,8 @@ var (
 	coldStart = true
 )
 
+const timeoutErrorCode = 3
+
 type genericLambdaHandler func(context.Context, json.RawMessage) (interface{}, error)
 
 // epsagonLambdaWrapper is a generic lambda function type
@@ -173,7 +175,7 @@ func (wrapper *epsagonLambdaWrapper) trackTimeout(ctx context.Context, preInvoke
 		for range timeoutChannel {
 			if wrapper.invoking {
 				lambdaEvent := createLambdaEvent(preInvokeInfo)
-				lambdaEvent.ErrorCode = 3
+				lambdaEvent.ErrorCode = timeoutErrorCode
 
 				wrapper.tracer.AddEvent(lambdaEvent)
 				wrapper.tracer.Stop()
