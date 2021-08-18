@@ -465,15 +465,15 @@ import (
 
 Advanced options can be configured as a parameter to the `Config` struct to the `WrapLambdaHandler` or as environment variables.
 
-|Parameter             |Environment Variable          |Type   |Default      |Description                                                                        |
-|----------------------|------------------------------|-------|-------------|-----------------------------------------------------------------------------------|
-|Token                 |EPSAGON_TOKEN                 |String |-            |Epsagon account token                                                              |
-|ApplicationName       |-                             |String |-            |Application name that will be set for traces                                       |
-|MetadataOnly          |EPSAGON_METADATA              |Boolean|`true`       |Whether to send only the metadata (`True`) or also the payloads (`False`)          |
-|CollectorURL          |EPSAGON_COLLECTOR_URL         |String |-            |The address of the trace collector to send trace to                                |
-|Debug                 |EPSAGON_DEBUG                 |Boolean|`False`      |Enable debug prints for troubleshooting                                            |
-|SendTimeout           |EPSAGON_SEND_TIMEOUT_SEC      |String |`1s`         |The timeout duration to send the traces to the trace collector                     |
-
+|Parameter             |Environment Variable                |Type   |Default      |Description                                                                        |
+|----------------------|------------------------------------|-------|-------------|-----------------------------------------------------------------------------------|
+|Token                 |EPSAGON_TOKEN                       |String |-            |Epsagon account token                                                              |
+|ApplicationName       |-                                   |String |-            |Application name that will be set for traces                                       |
+|MetadataOnly          |EPSAGON_METADATA                    |Boolean|`true`       |Whether to send only the metadata (`True`) or also the payloads (`False`)          |
+|CollectorURL          |EPSAGON_COLLECTOR_URL               |String |-            |The address of the trace collector to send trace to                                |
+|Debug                 |EPSAGON_DEBUG                       |Boolean|`False`      |Enable debug prints for troubleshooting                                            |
+|SendTimeout           |EPSAGON_SEND_TIMEOUT_SEC            |String |`1s`         |The timeout duration to send the traces to the trace collector                     |
+|_                     |EPSAGON_LAMBDA_TIMEOUT_THRESHOLD_MS |Integer|`200`        |The threshold in milliseconds to send the trace before a Lambda timeout occurs     |
 
 
 ## Getting Help
