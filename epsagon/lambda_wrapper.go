@@ -19,7 +19,7 @@ var (
 	coldStart = true
 )
 
-const timeoutErrorCode = 3
+const TimeoutErrorCode protocol.ErrorCode = 3
 
 type genericLambdaHandler func(context.Context, json.RawMessage) (interface{}, error)
 
@@ -30,6 +30,7 @@ type epsagonLambdaWrapper struct {
 	tracer   tracer.Tracer
 	invoked  bool
 	invoking bool
+	timeout  bool
 }
 
 type preInvokeData struct {
@@ -160,7 +161,9 @@ func (wrapper *epsagonLambdaWrapper) Invoke(ctx context.Context, payload json.Ra
 	preInvokeInfo := wrapper.preInvokeOps(ctx, payload)
 	go wrapper.trackTimeout(ctx, preInvokeInfo)
 	wrapper.InvokeClientLambda(ctx, payload, invokeInfo)
-	wrapper.postInvokeOps(preInvokeInfo, invokeInfo)
+	if !wrapper.timeout {
+		wrapper.postInvokeOps(preInvokeInfo, invokeInfo)
+	}
 
 	return invokeInfo.result, invokeInfo.err
 }
@@ -174,8 +177,10 @@ func (wrapper *epsagonLambdaWrapper) trackTimeout(ctx context.Context, preInvoke
 
 		for range timeoutChannel {
 			if wrapper.invoking {
+				wrapper.timeout = true
+
 				lambdaEvent := createLambdaEvent(preInvokeInfo)
-				lambdaEvent.ErrorCode = timeoutErrorCode
+				lambdaEvent.ErrorCode = TimeoutErrorCode
 
 				wrapper.tracer.AddEvent(lambdaEvent)
 				wrapper.tracer.Stop()
@@ -223,12 +228,19 @@ func WrapLambdaHandler(config *Config, handler interface{}) interface{} {
 	return func(ctx context.Context, payload json.RawMessage) (interface{}, error) {
 		wrapperTracer := tracer.CreateGlobalTracer(&config.Config)
 		wrapperTracer.Start()
-		defer wrapperTracer.Stop()
+
 		wrapper := &epsagonLambdaWrapper{
 			config:  config,
 			handler: makeGenericHandler(handler),
 			tracer:  wrapperTracer,
 		}
+
+		defer func() {
+			if !wrapper.timeout {
+				wrapperTracer.Stop()
+			}
+		}()
+
 		return wrapper.Invoke(ctx, payload)
 	}
 }
