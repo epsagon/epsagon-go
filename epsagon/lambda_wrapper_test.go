@@ -3,11 +3,15 @@ package epsagon
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
+	"reflect"
+	"time"
+
 	"github.com/epsagon/epsagon-go/protocol"
 	"github.com/epsagon/epsagon-go/tracer"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"reflect"
 )
 
 var _ = Describe("lambda_wrapper", func() {
@@ -79,7 +83,125 @@ var _ = Describe("lambda_wrapper", func() {
 				Expect(exceptions).To(BeEmpty())
 				Expect(events).To(HaveLen(2))
 			})
+
+			Context("Lambda timeout handling", func() {
+				It("Marks event as success when timeout defined but not reached", func() {
+					const lambdaTimeout = 5 * time.Minute
+
+					called := false
+					wrapper := &epsagonLambdaWrapper{
+						config:  &Config{},
+						handler: makeGenericHandler(func() { called = true }),
+						tracer:  tracer.GlobalTracer,
+					}
+
+					lambdaDeadline := time.Now().Add(lambdaTimeout)
+					ctx, cancel := context.WithDeadline(context.Background(), lambdaDeadline)
+					defer cancel()
+
+					payload := json.RawMessage("{}")
+					wrapper.Invoke(ctx, payload)
+
+					Expect(called).To(Equal(true))
+					Expect(exceptions).To(BeEmpty())
+					Expect(events).To(HaveLen(2))
+
+					var trigger, runner *protocol.Event
+					for _, event := range events {
+						if event.Origin == "trigger" {
+							trigger = event
+						} else if event.Origin == "runner" {
+							runner = event
+						}
+					}
+					Expect(trigger).NotTo(BeNil())
+					Expect(runner).NotTo(BeNil())
+					Expect(trigger.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+					Expect(runner.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				})
+
+				It("Marks event as timeout when the default lambda timout threshold reached", func() {
+					const lambdaTimeout = (tracer.DefaultLambdaTimeoutThresholdMs + 100) * time.Millisecond
+
+					called := false
+					wrapper := &epsagonLambdaWrapper{
+						config: &Config{},
+						handler: makeGenericHandler(func() {
+							called = true
+							time.Sleep(lambdaTimeout)
+						}),
+						tracer: tracer.GlobalTracer,
+					}
+
+					lambdaDeadline := time.Now().Add(lambdaTimeout)
+					ctx, cancel := context.WithDeadline(context.Background(), lambdaDeadline)
+					defer cancel()
+
+					payload := json.RawMessage("{}")
+					wrapper.Invoke(ctx, payload)
+
+					Expect(called).To(Equal(true))
+					Expect(exceptions).To(BeEmpty())
+					Expect(events).To(HaveLen(2))
+
+					var trigger, runner *protocol.Event
+					for _, event := range events {
+						if event.Origin == "trigger" {
+							trigger = event
+						} else if event.Origin == "runner" {
+							runner = event
+						}
+					}
+					Expect(trigger).NotTo(BeNil())
+					Expect(runner).NotTo(BeNil())
+					Expect(trigger.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+					Expect(runner.ErrorCode).To(Equal(TimeoutErrorCode))
+				})
+
+				It("Marks event as timeout when a user defined lambda timout threshold reached", func() {
+					const userDefinedTimeoutThresholdMs = 50
+					os.Setenv("EPSAGON_LAMBDA_TIMEOUT_THRESHOLD_MS", fmt.Sprint(userDefinedTimeoutThresholdMs))
+					defer os.Unsetenv("EPSAGON_LAMBDA_TIMEOUT_THRESHOLD_MS")
+
+					const lambdaTimeout = (userDefinedTimeoutThresholdMs + 100) * time.Millisecond
+
+					called := false
+					wrapper := &epsagonLambdaWrapper{
+						config: &Config{},
+						handler: makeGenericHandler(func() {
+							called = true
+							time.Sleep(lambdaTimeout)
+						}),
+						tracer: tracer.GlobalTracer,
+					}
+
+					lambdaDeadline := time.Now().Add(lambdaTimeout)
+					ctx, cancel := context.WithDeadline(context.Background(), lambdaDeadline)
+					defer cancel()
+
+					payload := json.RawMessage("{}")
+					wrapper.Invoke(ctx, payload)
+
+					Expect(called).To(Equal(true))
+					Expect(exceptions).To(BeEmpty())
+					Expect(events).To(HaveLen(2))
+
+					var trigger, runner *protocol.Event
+					for _, event := range events {
+						if event.Origin == "trigger" {
+							trigger = event
+						} else if event.Origin == "runner" {
+							runner = event
+						}
+					}
+					Expect(trigger).NotTo(BeNil())
+					Expect(runner).NotTo(BeNil())
+					Expect(trigger.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+					Expect(runner.ErrorCode).To(Equal(TimeoutErrorCode))
+				})
+			})
 		})
+
 		Describe("Error Flows", func() {
 			var (
 				events     []*protocol.Event
