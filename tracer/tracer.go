@@ -224,7 +224,7 @@ func (tracer *epsagonTracer) addRunnerLabels(event *protocol.Event) {
 func (tracer *epsagonTracer) addRunnerException(event *protocol.Event) {
 	if tracer.runnerException != nil {
 		event.Exception = tracer.runnerException
-		event.ErrorCode = protocol.ErrorCode_EXCEPTION
+		event.ErrorCode = protocol.ErrorCode_ERROR
 	}
 }
 
