@@ -2,21 +2,11 @@
 package main
 
 import (
-	"fmt"
 	"github.com/epsagon/epsagon-go/epsagon"
 	"github.com/epsagon/epsagon-go/wrappers/net/http"
 	"net/http"
 )
 
-func reporter() {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered in f", r)
-			epsagon.Error("Panic in PendingReservationsHandler")
-		}
-	}()
-	panic("Unknown Panic")
-}
 
 func SetEpsagonConfig() *epsagon.Config {
 	appName := "simple-error-go"
@@ -33,7 +23,6 @@ func SetEpsagonConfig() *epsagon.Config {
 func handler(res http.ResponseWriter, req *http.Request) {
 	println("/test pinged")
 	epsagon.Error("Unknown timezone", req.Context())
-	//panic("this is panic")
 	res.Write([]byte("Pong.\n"))
 }
 

@@ -208,7 +208,7 @@ func main() {
 	mux.HandleFunc("/ping", epsagonhttp.WrapHandleFunc(
 		epsagon.NewTracerConfig("test-http-mux", ""),
 		func(rw http.ResponseWriter, req *http.Request) {
-			epsagon.Error("Ping Endpoint Called")
+			epsagon.Error("Ping Endpoint Called", req.Context())
 			rw.Write([]byte("Pong.\n"))
 		}),
         "my-handler-name",
@@ -223,7 +223,7 @@ The third and fourth arguments to `epsagonhttp.WrapHandleFunc` are optional and 
 	mux.HandleFunc("/ping", epsagonhttp.WrapHandleFunc(
 		epsagon.NewTracerConfig("test-http-mux", ""),
 		func(rw http.ResponseWriter, req *http.Request) {
-			epsagon.Error("Ping Endpoint Called")
+			epsagon.Error("Ping Endpoint Called", req.Context())
 			rw.Write([]byte("Pong.\n"))
 		}),
         "my-handler-name",
