@@ -10,12 +10,11 @@ import (
 
 func SetEpsagonConfig() *epsagon.Config {
 	appName := "simple-error-go"
-	token := "38a22955-dee3-4991-8db8-afa09fc9cef6"
+	token := ""
 	config := epsagon.NewTracerConfig(appName, token)
 	config.Debug = true
 	config.MetadataOnly = false
 	config.SendTimeout = "10s"
-	config.CollectorURL = "https://dev.tc.epsagon.com"
 
 	return config
 }
