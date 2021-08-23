@@ -85,8 +85,7 @@ func WrapHandleFunc(
 		wrapperTracer.AddEvent(triggerEvent)
 		triggerEvent.Resource.Metadata["status_code"] = "200"
 		defer func() {
-			userError := recover()
-			if userError != nil {
+			if userError := recover(); userError != nil {
 				triggerEvent.Resource.Metadata["status_code"] = "500"
 				panic(userError)
 			}
@@ -94,6 +93,7 @@ func WrapHandleFunc(
 
 		newRequest := request.WithContext(
 			epsagon.ContextWithTracer(wrapperTracer, request.Context()))
+
 		if !config.MetadataOnly {
 			rw = &WrappedResponseWriter{
 				ResponseWriter: rw,
@@ -101,8 +101,7 @@ func WrapHandleFunc(
 			}
 		}
 		defer func() {
-			wrappedResponseWriter, ok := rw.(*WrappedResponseWriter)
-			if ok {
+			if wrappedResponseWriter, ok := rw.(*WrappedResponseWriter); ok {
 				wrappedResponseWriter.UpdateResource()
 			}
 		}()

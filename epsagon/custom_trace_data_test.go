@@ -238,7 +238,7 @@ var _ = Describe("Custom trace fields", func() {
 					resourceName,
 				)()
 				runnerEvent := waitForTrace(traceChannel, resourceName)
-				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
 				exception := runnerEvent.Exception
 				verifyException(epsagon.DefaultErrorType, errorMessage, exception)
 			})
@@ -253,7 +253,7 @@ var _ = Describe("Custom trace fields", func() {
 					resourceName,
 				)()
 				runnerEvent := waitForTrace(traceChannel, resourceName)
-				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
 				exception := runnerEvent.Exception
 				verifyException(epsagon.DefaultErrorType, errorMessage, exception)
 			})
@@ -269,7 +269,7 @@ var _ = Describe("Custom trace fields", func() {
 					resourceName,
 				)()
 				runnerEvent := waitForTrace(traceChannel, resourceName)
-				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
 				exception := runnerEvent.Exception
 				verifyException(errorType, errorMessage, exception)
 			})
@@ -285,7 +285,7 @@ var _ = Describe("Custom trace fields", func() {
 					resourceName,
 				)()
 				runnerEvent := waitForTrace(traceChannel, resourceName)
-				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_OK))
+				Expect(runnerEvent.ErrorCode).To(Equal(protocol.ErrorCode_ERROR))
 				exception := runnerEvent.Exception
 				verifyException(errorType, errorMessage, exception)
 			})
