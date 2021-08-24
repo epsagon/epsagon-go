@@ -3,6 +3,7 @@ module github.com/epsagon/epsagon-go
 go 1.11
 
 require (
+	github.com/alicebob/miniredis/v2 v2.15.1
 	github.com/aws/aws-lambda-go v1.17.0
 	github.com/aws/aws-sdk-go v1.36.30
 	github.com/aws/aws-sdk-go-v2 v0.23.0
