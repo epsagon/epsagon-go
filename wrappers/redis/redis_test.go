@@ -94,6 +94,8 @@ var _ = Describe("Redis wrapper", func() {
 					"Redis DB Index": Equal("0"),
 				}),
 			}))
+			Expect(events[0].Resource.Metadata["Command Arguments"]).To(BeEmpty())
+			Expect(events[0].Resource.Metadata["redis.response"]).To(BeEmpty())
 		})
 
 		It("Adds event, MetadataOnly=false", func() {
@@ -169,6 +171,8 @@ var _ = Describe("Redis wrapper", func() {
 						"Redis DB Index": Equal("0"),
 					}),
 				}))
+				Expect(event.Resource.Metadata["Command Arguments"]).To(BeEmpty())
+				Expect(event.Resource.Metadata["redis.response"]).To(BeEmpty())
 			}
 		})
 
@@ -209,6 +213,8 @@ var _ = Describe("Redis wrapper", func() {
 					"Redis DB Index": Equal("0"),
 				}),
 			}))
+			Expect(events[0].Resource.Metadata["Command Arguments"]).To(BeEmpty())
+			Expect(events[0].Resource.Metadata["redis.response"]).To(BeEmpty())
 		})
 	})
 
@@ -250,6 +256,8 @@ var _ = Describe("Redis wrapper", func() {
 					"Redis DB Index": Equal("0"),
 				}),
 			}))
+			Expect(events[0].Resource.Metadata["Command Arguments"]).To(BeEmpty())
+			Expect(events[0].Resource.Metadata["redis.response"]).To(BeEmpty())
 		})
 
 		It("Adds pipeline event, MetadataOnly=false", func() {
@@ -339,6 +347,8 @@ var _ = Describe("Redis wrapper", func() {
 					"Redis DB Index": Equal("0"),
 				}),
 			}))
+			Expect(events[0].Resource.Metadata["Command Arguments"]).To(BeEmpty())
+			Expect(events[0].Resource.Metadata["redis.response"]).To(BeEmpty())
 		})
 	})
 })
