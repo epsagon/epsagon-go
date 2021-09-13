@@ -38,6 +38,29 @@ var (
 			"hello": "world",
 		},
 	}
+	exampleAPIGatewayV2HTTP = lambdaEvents.APIGatewayV2HTTPRequest{
+		RawPath: "/hello",
+		RequestContext: lambdaEvents.APIGatewayV2HTTPRequestContext{
+			APIID: "test-api",
+			HTTP: lambdaEvents.APIGatewayV2HTTPRequestContextHTTPDescription{
+				Method: "GET",
+			},
+		},
+		Body:            "<b>hello world</b>",
+		IsBase64Encoded: false,
+		Headers: map[string]string{
+			"hello": "world",
+		},
+		StageVariables: map[string]string{
+			"hello": "world",
+		},
+		PathParameters: map[string]string{
+			"hello": "world",
+		},
+		QueryStringParameters: map[string]string{
+			"hello": "world",
+		},
+	}
 	exampleDDB = lambdaEvents.DynamoDBEvent{
 		Records: []lambdaEvents.DynamoDBEventRecord{
 			lambdaEvents.DynamoDBEventRecord{
@@ -86,8 +109,18 @@ var _ = Describe("epsagon trigger suite", func() {
 		})
 
 		Context("Handling of known trigger - API Gateway", func() {
-			It("Identifies the first known handler, API Gateway", func() {
+			It("Identifies the first known handler, API Gateway - REST", func() {
 				exampleJSON, err := json.Marshal(exampleAPIGateWay)
+				if err != nil {
+					Fail("Failed to marshal json")
+				}
+				addLambdaTrigger(json.RawMessage(exampleJSON), false, triggerFactories, tracer.GlobalTracer)
+				Expect(len(events)).To(BeNumerically("==", 1))
+				Expect(events[0].Resource.Type).To(Equal("api_gateway"))
+			})
+
+			It("Identifies the first known handler, API Gateway - HTTP", func() {
+				exampleJSON, err := json.Marshal(exampleAPIGatewayV2HTTP)
 				if err != nil {
 					Fail("Failed to marshal json")
 				}
