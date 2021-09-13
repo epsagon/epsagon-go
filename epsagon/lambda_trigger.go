@@ -58,7 +58,7 @@ func getEventAssertionException(rawEvent interface{}, assertedType string) *prot
 func getAPIGatewayTriggerEvent(eventFields *APIGatewayEventFields, metadataOnly bool) *protocol.Event {
 	triggerEvent := getAPIGatewayBaseEvent(eventFields)
 	if !metadataOnly {
-		addAPIGatewayEventMetadata(triggerEvent, eventFields)
+		addAPIGatewayRequestData(triggerEvent, eventFields)
 	}
 	return triggerEvent
 }
@@ -82,7 +82,7 @@ func getAPIGatewayBaseEvent(eventFields *APIGatewayEventFields) *protocol.Event 
 	}
 }
 
-func addAPIGatewayEventMetadata(triggerEvent *protocol.Event, eventFields *APIGatewayEventFields) {
+func addAPIGatewayRequestData(triggerEvent *protocol.Event, eventFields *APIGatewayEventFields) {
 	if bodyJSON, err := json.Marshal(eventFields.body); err != nil {
 		tracer.AddException(&protocol.Exception{
 			Type:      "trigger-creation",
