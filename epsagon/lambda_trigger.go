@@ -21,14 +21,6 @@ import (
 
 type triggerFactory func(event interface{}, metadataOnly bool) *protocol.Event
 
-func unknownTrigger(event interface{}, metadataOnly bool) *protocol.Event {
-	return &protocol.Event{}
-}
-
-func getReflectType(i interface{}) reflect.Type {
-	return reflect.TypeOf(i)
-}
-
 func mapParametersToString(params map[string]string) string {
 	buf, err := json.Marshal(params)
 	if err != nil {
@@ -43,50 +35,106 @@ func mapParametersToString(params map[string]string) string {
 	return string(buf)
 }
 
-func triggerAPIGatewayProxyRequest(rawEvent interface{}, metadataOnly bool) *protocol.Event {
-	event, ok := rawEvent.(lambdaEvents.APIGatewayProxyRequest)
-	if !ok {
-		tracer.AddException(&protocol.Exception{
-			Type: "trigger-creation",
-			Message: fmt.Sprintf(
-				"failed to convert rawEvent to lambdaEvents.APIGatewayProxyRequest %v",
-				rawEvent),
-			Time: tracer.GetTimestamp(),
-		})
-		return nil
+type APIGatewayEventFields struct {
+	requestId             string
+	headers               map[string]string
+	host                  string
+	httpMethod            string
+	stage                 string
+	queryStringParameters map[string]string
+	pathParameters        map[string]string
+	path                  string
+	body                  string
+}
+
+func getEventAssertionException(rawEvent interface{}, assertedType string) *protocol.Exception {
+	return &protocol.Exception{
+		Type:    "trigger-creation",
+		Message: fmt.Sprintf("failed to convert rawEvent to %s. %v", assertedType, rawEvent),
+		Time:    tracer.GetTimestamp(),
 	}
-	triggerEvent := &protocol.Event{
-		Id:        event.RequestContext.RequestID,
+}
+
+func getAPIGatewayTriggerEvent(eventFields *APIGatewayEventFields, metadataOnly bool) *protocol.Event {
+	triggerEvent := getAPIGatewayBaseEvent(eventFields)
+	if !metadataOnly {
+		addAPIGatewayRequestData(triggerEvent, eventFields)
+	}
+	return triggerEvent
+}
+
+func getAPIGatewayBaseEvent(eventFields *APIGatewayEventFields) *protocol.Event {
+	return &protocol.Event{
+		Id:        eventFields.requestId,
 		Origin:    "trigger",
 		StartTime: tracer.GetTimestamp(),
 		Resource: &protocol.Resource{
-			Name:      event.Headers["Host"],
+			Name:      eventFields.host,
 			Type:      "api_gateway",
-			Operation: event.HTTPMethod,
+			Operation: eventFields.httpMethod,
 			Metadata: map[string]string{
-				"stage":                   event.RequestContext.Stage,
-				"query_string_parameters": mapParametersToString(event.QueryStringParameters),
-				"path_parameters":         mapParametersToString(event.PathParameters),
-				"path":                    event.Resource,
+				"stage":                   eventFields.stage,
+				"query_string_parameters": mapParametersToString(eventFields.queryStringParameters),
+				"path_parameters":         mapParametersToString(eventFields.pathParameters),
+				"path":                    eventFields.path,
 			},
 		},
 	}
-	if !metadataOnly {
-		if bodyJSON, err := json.Marshal(event.Body); err != nil {
-			tracer.AddException(&protocol.Exception{
-				Type:      "trigger-creation",
-				Message:   fmt.Sprintf("Failed to serialize body %s", event.Body),
-				Traceback: string(debug.Stack()),
-				Time:      tracer.GetTimestamp(),
-			})
-			triggerEvent.Resource.Metadata["body"] = ""
-		} else {
-			triggerEvent.Resource.Metadata["body"] = string(bodyJSON)
-		}
-		triggerEvent.Resource.Metadata["headers"] = mapParametersToString(event.Headers)
-	}
+}
 
-	return triggerEvent
+func addAPIGatewayRequestData(triggerEvent *protocol.Event, eventFields *APIGatewayEventFields) {
+	if bodyJSON, err := json.Marshal(eventFields.body); err != nil {
+		tracer.AddException(&protocol.Exception{
+			Type:      "trigger-creation",
+			Message:   fmt.Sprintf("Failed to serialize body %s", eventFields.body),
+			Traceback: string(debug.Stack()),
+			Time:      tracer.GetTimestamp(),
+		})
+		triggerEvent.Resource.Metadata["body"] = ""
+	} else {
+		triggerEvent.Resource.Metadata["body"] = string(bodyJSON)
+	}
+	triggerEvent.Resource.Metadata["headers"] = mapParametersToString(eventFields.headers)
+}
+
+func triggerAPIGatewayProxyRequest(rawEvent interface{}, metadataOnly bool) *protocol.Event {
+	event, ok := rawEvent.(lambdaEvents.APIGatewayProxyRequest)
+	if !ok {
+		assertionException := getEventAssertionException(rawEvent, "lambdaEvents.APIGatewayProxyRequest")
+		tracer.AddException(assertionException)
+		return nil
+	}
+	return getAPIGatewayTriggerEvent(&APIGatewayEventFields{
+		requestId:             event.RequestContext.RequestID,
+		headers:               event.Headers,
+		host:                  event.Headers["Host"],
+		httpMethod:            event.HTTPMethod,
+		stage:                 event.RequestContext.Stage,
+		queryStringParameters: event.QueryStringParameters,
+		pathParameters:        event.PathParameters,
+		path:                  event.Resource,
+		body:                  event.Body,
+	}, metadataOnly)
+}
+
+func triggerAPIGatewayV2HTTPRequest(rawEvent interface{}, metadataOnly bool) *protocol.Event {
+	event, ok := rawEvent.(lambdaEvents.APIGatewayV2HTTPRequest)
+	if !ok {
+		assertionException := getEventAssertionException(rawEvent, "lambdaEvents.APIGatewayV2HTTPRequest")
+		tracer.AddException(assertionException)
+		return nil
+	}
+	return getAPIGatewayTriggerEvent(&APIGatewayEventFields{
+		requestId:             event.RequestContext.RequestID,
+		headers:               event.Headers,
+		host:                  event.Headers["host"],
+		httpMethod:            event.RequestContext.HTTP.Method,
+		stage:                 event.RequestContext.Stage,
+		queryStringParameters: event.QueryStringParameters,
+		pathParameters:        event.PathParameters,
+		path:                  event.RawPath,
+		body:                  event.Body,
+	}, metadataOnly)
 }
 
 func triggerS3Event(rawEvent interface{}, metadataOnly bool) *protocol.Event {
@@ -351,6 +399,10 @@ var (
 			EventType: reflect.TypeOf(lambdaEvents.APIGatewayProxyRequest{}),
 			Factory:   triggerAPIGatewayProxyRequest,
 		},
+		"api_gateway_http2": {
+			EventType: reflect.TypeOf(lambdaEvents.APIGatewayV2HTTPRequest{}),
+			Factory:   triggerAPIGatewayV2HTTPRequest,
+		},
 		"aws:s3": {
 			EventType: reflect.TypeOf(lambdaEvents.S3Event{}),
 			Factory:   triggerS3Event,
@@ -394,12 +446,22 @@ type recordField struct {
 	EventSource string
 }
 
+type httpDescription struct {
+	Method string
+}
+
+type requestContext struct {
+	APIID string
+	HTTP  httpDescription
+}
+
 type interestingFields struct {
-	Records    []recordField
-	HTTPMethod string
-	Context    map[string]interface{}
-	MethodArn  string
-	Source     string
+	Records        []recordField
+	HTTPMethod     string
+	Context        map[string]interface{}
+	MethodArn      string
+	Source         string
+	RequestContext requestContext
 }
 
 func guessTriggerSource(payload json.RawMessage) string {
@@ -421,6 +483,8 @@ func guessTriggerSource(payload json.RawMessage) string {
 		triggerSource = "api_gateway"
 	} else if _, ok := rawEvent.Context["http-method"]; ok {
 		triggerSource = "api_gateway_no_proxy"
+	} else if len(rawEvent.RequestContext.APIID) > 0 && len(rawEvent.RequestContext.HTTP.Method) > 0 {
+		triggerSource = "api_gateway_http2"
 	} else if len(rawEvent.Source) > 0 {
 		sourceSlice := strings.Split(rawEvent.Source, ".")
 		triggerSource = sourceSlice[len(sourceSlice)-1]
