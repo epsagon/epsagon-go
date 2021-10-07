@@ -11,12 +11,10 @@ before_install:
 
 install:
   - go mod download
-  - go get -u golang.org/x/lint/golint
-  - apt-get install golint
+  - go get golang.org/x/lint/golint
   - go mod tidy
 
 script:
   - go test ./...
   - go vet -v ./...
-  - go get -u golang.org/x/lint/golint
   - golint $(go list ./...)
