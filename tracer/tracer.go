@@ -437,7 +437,7 @@ func CreateGlobalTracer(config *Config) Tracer {
 	defer mutex.Unlock()
 	if GlobalTracer != nil && !GlobalTracer.Stopped() {
 		log.Println("The tracer is already created, Closing and Creating.")
-		GlobalTracer.Stop()
+		StopGlobalTracer()
 	}
 	GlobalTracer = CreateTracer(config)
 	return GlobalTracer
