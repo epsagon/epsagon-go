@@ -43,7 +43,6 @@ func runWithTracer(endpoint string, operations func()) {
 	tracer.CreateGlobalTracer(&tracer.Config{
 		CollectorURL: endpoint,
 		Token:        "1",
-		Debug:        true,
 	})
 	tracer.GlobalTracer.Start()
 	defer tracer.StopGlobalTracer()
