@@ -177,6 +177,9 @@ func Test_AddTypeError(t *testing.T) {
 }
 
 func Test_MaxTraceSize_sanity(t *testing.T) {
+	defer func() {
+		os.Setenv(tracer.MaxTraceSizeEnvVar, "")
+	}()
 	os.Setenv(tracer.MaxTraceSizeEnvVar, "2048")
 	defaultTimeout := time.Second * 5
 	timeout := &defaultTimeout
