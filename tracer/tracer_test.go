@@ -39,6 +39,7 @@ var _ = Describe("epsagonTracer suite", func() {
 })
 
 func runWithTracer(endpoint string, operations func()) {
+	tracer.GlobalTracer = nil
 	tracer.CreateGlobalTracer(&tracer.Config{
 		CollectorURL: endpoint,
 		Token:        "1",
