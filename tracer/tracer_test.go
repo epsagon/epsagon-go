@@ -76,8 +76,10 @@ func testWithTracer(timeout *time.Duration, operations func()) *protocol.Trace {
 	timer := time.NewTimer(*timeout)
 	select {
 	case <-timer.C:
+		fakeCollectorServer.Close()
 		return nil
 	case trace := <-traceChannel:
+		fakeCollectorServer.Close()
 		return trace
 	}
 }
