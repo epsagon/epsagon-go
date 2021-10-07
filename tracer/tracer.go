@@ -27,11 +27,23 @@ var (
 	GlobalTracer Tracer
 )
 
+// DefaultMaxTraceSizeKB is the default maximum trace size (in KB)
+const DefaultMaxTraceSizeKB = 64
+
+// DefaultMaxTraceSize is the default maximum trace size (in bytes)
+const DefaultMaxTraceSize = DefaultMaxTraceSizeKB * 1024
+
+// MaxTraceSizeKB is the maximum allowed trace size (in KB)
+const MaxTraceSizeKB = 512
+
 // MaxTraceSize is the maximum allowed trace size (in bytes)
-const MaxTraceSize = 64 * 1024
+const MaxTraceSize = MaxTraceSizeKB * 1024
 
 // MaxLabelsSize is the maximum allowed total labels size (in bytes)
 const MaxLabelsSize = 10 * 1024
+
+// MaxTraceSizeEnvVar max trace size environment variable
+const MaxTraceSizeEnvVar = "EPSAGON_MAX_TRACE_SIZE"
 
 // LabelsKey is the key for labels in resource metadata
 const LabelsKey = "labels"
@@ -103,6 +115,7 @@ type Config struct {
 	Disable         bool     // Disable sending traces
 	TestMode        bool     // TestMode sending traces
 	IgnoredKeys     []string // IgnoredKeys are keys that will be masked from events metadata
+	MaxTraceSize    int      // MaxTraceSize is the maximum allowed trace size (in bytes)
 }
 
 type epsagonLabel struct {
@@ -253,10 +266,10 @@ func (tracer *epsagonTracer) stripEvents(traceLength int, marshaler *jsonpb.Mars
 		}
 		strippedSize := eventSize - len(eventJSON)
 		traceLength -= strippedSize
-		if traceLength <= MaxTraceSize {
+		if traceLength <= tracer.Config.MaxTraceSize {
 			if tracer.Config.Debug {
 				traceLength := traceLength / 1024
-				log.Printf("EPSAGON DEBUG trimmed trace from %dKB to %dKB (max allowed size: 64KB)", originalTraceLength, traceLength)
+				log.Printf("EPSAGON DEBUG trimmed trace from %dKB to %dKB (max allowed size: %dKB)", originalTraceLength, traceLength, MaxTraceSizeKB)
 			}
 			return true
 		}
@@ -272,7 +285,7 @@ func (tracer *epsagonTracer) getTraceJSON(trace *protocol.Trace, runnerEvent *pr
 		return
 	}
 	traceLength := len(traceJSON)
-	if traceLength > MaxTraceSize {
+	if traceLength > tracer.Config.MaxTraceSize {
 		ok := tracer.stripEvents(traceLength, &marshaler)
 		if !ok {
 			err = errors.New("Trace is too big (max allowed size: 64KB)")
@@ -341,6 +354,23 @@ func fillConfigDefaults(config *Config) {
 		config.Token = os.Getenv("EPSAGON_TOKEN")
 		if config.Debug {
 			log.Println("EPSAGON DEBUG: setting token from environment variable")
+		}
+	}
+	if config.MaxTraceSize > MaxTraceSize || config.MaxTraceSize < 0 {
+		config.MaxTraceSize = DefaultMaxTraceSize
+		if config.Debug {
+			log.Printf("EPSAGON DEBUG: MaxTraceSize is invalid (must be <= %dKB), using default size (%dKB)", MaxTraceSizeKB, DefaultMaxTraceSizeKB)
+		}
+	} else {
+		rawTraceSize := os.Getenv(MaxTraceSizeEnvVar)
+		maxTraceSize, err := strconv.Atoi(rawTraceSize)
+		if err != nil || maxTraceSize <= 0 || maxTraceSize > MaxTraceSize {
+			config.MaxTraceSize = DefaultMaxTraceSize
+		} else {
+			config.MaxTraceSize = maxTraceSize
+			if config.Debug {
+				log.Println("EPSAGON DEBUG: setting max trace size from environment variable")
+			}
 		}
 	}
 	if config.MetadataOnly {

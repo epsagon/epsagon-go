@@ -65,6 +65,7 @@ func NewTracerConfig(applicationName, token string) *Config {
 			MetadataOnly:    true,
 			Debug:           false,
 			SendTimeout:     "1s",
+			MaxTraceSize:    tracer.DefaultMaxTraceSize,
 		},
 	}
 }

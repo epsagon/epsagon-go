@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,42 +21,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-// FakeCollector implements a fake trace collector that will
-// listen on an endpoint untill a trace is received and then will
-// return that parsed trace
-type FakeCollector struct {
-	Endpoint string
-}
-
-// Listen on the endpoint for one trace and push it to outChannel
-func (fc *FakeCollector) Listen(outChannel chan *protocol.Trace) {
-	ln, err := net.Listen("tcp", fc.Endpoint)
-	if err != nil {
-		outChannel <- nil
-		return
-	}
-	defer ln.Close()
-	conn, err := ln.Accept()
-	if err != nil {
-		outChannel <- nil
-		return
-	}
-	defer conn.Close()
-	var buf = make([]byte, 0)
-	_, err = conn.Read(buf)
-	if err != nil {
-		outChannel <- nil
-		return
-	}
-	var receivedTrace protocol.Trace
-	err = json.Unmarshal(buf, &receivedTrace)
-	if err != nil {
-		outChannel <- nil
-		return
-	}
-	outChannel <- &receivedTrace
-}
 
 func TestEpsagonTracer(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -77,6 +41,7 @@ var _ = Describe("epsagonTracer suite", func() {
 func runWithTracer(endpoint string, operations func()) {
 	tracer.CreateGlobalTracer(&tracer.Config{
 		CollectorURL: endpoint,
+		Token:        "1",
 	})
 	tracer.GlobalTracer.Start()
 	defer tracer.StopGlobalTracer()
@@ -85,11 +50,25 @@ func runWithTracer(endpoint string, operations func()) {
 
 // testWithTracer runs a test with
 func testWithTracer(timeout *time.Duration, operations func()) *protocol.Trace {
-	endpoint := "127.0.0.1:54769"
 	traceChannel := make(chan *protocol.Trace)
-	fc := FakeCollector{Endpoint: endpoint}
-	go fc.Listen(traceChannel)
-	go runWithTracer("http://"+endpoint, operations)
+	fakeCollectorServer := httptest.NewServer(http.HandlerFunc(
+		func(res http.ResponseWriter, req *http.Request) {
+			buf, err := ioutil.ReadAll(req.Body)
+			if err != nil {
+				traceChannel <- nil
+				return
+			}
+			var receivedTrace protocol.Trace
+			err = json.Unmarshal(buf, &receivedTrace)
+			if err != nil {
+				traceChannel <- nil
+				return
+			}
+			traceChannel <- &receivedTrace
+			res.Write([]byte(""))
+		},
+	))
+	go runWithTracer(fakeCollectorServer.URL, operations)
 	if timeout == nil {
 		defaultTimeout := time.Second * 10
 		timeout = &defaultTimeout
@@ -175,22 +154,33 @@ func Test_handleSendTracesResponse(t *testing.T) {
 }
 
 func Test_AddLabel_sanity(t *testing.T) {
-	defaultTimeout := time.Second * 100
+	defaultTimeout := time.Second * 5
 	timeout := &defaultTimeout
 	trace := testWithTracer(timeout, func() { epsagon.Label("test_key", "test_value") })
-	println(trace)
+	Expect(trace).ToNot(BeNil())
 }
 
 func Test_AddError_sanity(t *testing.T) {
-	defaultTimeout := time.Second * 100
+	defaultTimeout := time.Second * 5
 	timeout := &defaultTimeout
 	trace := testWithTracer(timeout, func() { epsagon.Error("some error") })
-	println(trace)
+	Expect(trace).ToNot(BeNil())
 }
 
 func Test_AddTypeError(t *testing.T) {
-	defaultTimeout := time.Second * 100
+	defaultTimeout := time.Second * 5
 	timeout := &defaultTimeout
 	trace := testWithTracer(timeout, func() { epsagon.TypeError("some error", "test error type") })
-	println(trace)
+	Expect(trace).ToNot(BeNil())
+}
+
+func Test_MaxTraceSize_sanity(t *testing.T) {
+	os.Setenv(tracer.MaxTraceSizeEnvVar, "2048")
+	defaultTimeout := time.Second * 5
+	timeout := &defaultTimeout
+	trace := testWithTracer(timeout, func() { epsagon.Label("1", "2") })
+	Expect(trace).ToNot(BeNil())
+	os.Setenv(tracer.MaxTraceSizeEnvVar, "64")
+	trace = testWithTracer(timeout, func() { epsagon.Label("1", "2") })
+	Expect(trace).To(BeNil())
 }
