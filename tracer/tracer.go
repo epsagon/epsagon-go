@@ -359,7 +359,7 @@ func fillConfigDefaults(config *Config) {
 	if config.MaxTraceSize > MaxTraceSize || config.MaxTraceSize < 0 {
 		config.MaxTraceSize = DefaultMaxTraceSize
 		if config.Debug {
-			log.Printf("EPSAGON DEBUG: MaxTraceSize is invalid (must be <= %dKB), using default size (%dKB)", MaxTraceSizeKB, DefaultMaxTraceSizeKB)
+			log.Printf("EPSAGON DEBUG: MaxTraceSize is invalid (must be <= %dKB), using default size (%dKB)\n", MaxTraceSizeKB, DefaultMaxTraceSizeKB)
 		}
 	} else {
 		rawTraceSize := os.Getenv(MaxTraceSizeEnvVar)
@@ -369,7 +369,7 @@ func fillConfigDefaults(config *Config) {
 		} else {
 			config.MaxTraceSize = maxTraceSize
 			if config.Debug {
-				log.Println("EPSAGON DEBUG: setting max trace size (%dKB) from environment variable", maxTraceSize/1024)
+				log.Printf("EPSAGON DEBUG: setting max trace size (%dKB) from environment variable\n", maxTraceSize/1024)
 			}
 		}
 	}
