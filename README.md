@@ -475,6 +475,7 @@ Advanced options can be configured as a parameter to the `Config` struct to the 
 |CollectorURL          |EPSAGON_COLLECTOR_URL               |String |-            |The address of the trace collector to send trace to                                |
 |Debug                 |EPSAGON_DEBUG                       |Boolean|`False`      |Enable debug prints for troubleshooting                                            |
 |SendTimeout           |EPSAGON_SEND_TIMEOUT_SEC            |String |`1s`         |The timeout duration to send the traces to the trace collector                     |
+|MaxTraceSize          |EPSAGON_MAX_TRACE_SIZE              |Integer|`1287936`    |The max allowed trace size (in bytes). Defaults to 64KB, max allowed size - 512KB  |
 |_                     |EPSAGON_LAMBDA_TIMEOUT_THRESHOLD_MS |Integer|`200`        |The threshold in milliseconds to send the trace before a Lambda timeout occurs     |
 
 

@@ -288,7 +288,7 @@ func (tracer *epsagonTracer) getTraceJSON(trace *protocol.Trace, runnerEvent *pr
 	if traceLength > tracer.Config.MaxTraceSize {
 		ok := tracer.stripEvents(traceLength, &marshaler)
 		if !ok {
-			err = errors.New("Trace is too big (max allowed size: 64KB)")
+			err = errors.New(fmt.Sprintf("Trace is too big (max allowed size: %dKB)", tracer.Config.MaxTraceSize/1024))
 			return
 		}
 		runnerEvent.Resource.Metadata[IsTrimmedKey] = "true"
@@ -369,7 +369,7 @@ func fillConfigDefaults(config *Config) {
 		} else {
 			config.MaxTraceSize = maxTraceSize
 			if config.Debug {
-				log.Println("EPSAGON DEBUG: setting max trace size from environment variable")
+				log.Println("EPSAGON DEBUG: setting max trace size (%dKB) from environment variable", maxTraceSize/1024)
 			}
 		}
 	}
