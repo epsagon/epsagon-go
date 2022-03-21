@@ -23,7 +23,7 @@ require (
 	github.com/onsi/gomega v1.11.0
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/ugorji/go v1.1.13 // indirect
-	github.com/valyala/fasthttp v1.26.0
+	github.com/valyala/fasthttp v1.34.0
 	go.mongodb.org/mongo-driver v1.5.2
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
