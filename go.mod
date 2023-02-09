@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go v1.36.30
 	github.com/aws/aws-sdk-go-v2 v0.23.0
 	github.com/benweissmann/memongo v0.1.1
-	github.com/gin-gonic/gin v1.7.0
+	github.com/gin-gonic/gin v1.7.7
 	github.com/go-redis/redis/v8 v8.11.0
 	github.com/gofiber/fiber/v2 v2.11.0
 	github.com/gogo/protobuf v1.3.1
